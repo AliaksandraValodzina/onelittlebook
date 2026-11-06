@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { BRAND } from "../lib/brand";
 import { fontFaceCss } from "../lib/render/fonts";
+import { themeCss } from "../lib/theme";
 import "./globals.css";
 
 /**
@@ -28,6 +29,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           have, and nobody would see it until the book arrived.
         */}
         <style dangerouslySetInnerHTML={{ __html: fontFaceCss() }} />
+        {/*
+          **The approved palette and the display face, from one module.**
+
+          `lib/theme.ts` holds the five colours the captain approved and the
+          one token that decides the display typeface, and emits them as the
+          `:root` block. The stylesheet in `app/shop.css` reads nothing but
+          those custom properties, so changing either is the edit of a single
+          line in that one module — and `test/theme.test.ts` fails if any other
+          file under `app/` or `lib/` writes a family name or a palette value,
+          which is why neither is quoted in this comment.
+        */}
+        <style dangerouslySetInnerHTML={{ __html: themeCss() }} />
       </head>
       <body className="antialiased">{children}</body>
     </html>

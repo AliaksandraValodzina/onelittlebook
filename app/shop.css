@@ -1,0 +1,1507 @@
+/*
+  **The approved design, as its own stylesheet.**
+
+  These rules are the CSS of the three artefacts the captain approved —
+  `landing.html`, `book-page.html` and `flow.html` — taken across rather than
+  reinterpreted, which is what "build them as real pages; do not reinterpret
+  them" asks for. A reviewer holding the artefact beside this file is comparing
+  like with like, and that is the point: a design re-expressed as four hundred
+  Tailwind utilities cannot be checked against the thing that was approved.
+
+  **No colour and no family is written here.** Every value is a custom property
+  out of `lib/theme.ts`, which is the file the palette and the display face
+  live in and the only place either can be changed. The artefacts declared
+  their own `:root`; that block is deliberately absent below.
+
+  Three reconciliations were needed where two artefacts used one class name for
+  two things, and each is marked where it occurs: `.btn` (inline on the landing
+  page, full width in a modal) takes a `.wide` modifier; `.hd` takes `.mid`;
+  and the book page's small spread diagram is scoped under `.shot` so the
+  flow's real spread keeps the name.
+*/
+
+/* ── furniture ──────────────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+.wrap {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/*
+  The display face, applied in one place.
+
+  Every heading in the shop carries `.dsp`, so the weight and the tracking that
+  the chosen face wants are set once from the same token that chose it — see
+  `lib/theme.ts` § DISPLAY_CANDIDATES for why a family string alone is not
+  enough to switch between the two.
+*/
+.dsp {
+  font-family: var(--display);
+  font-weight: var(--display-weight);
+  letter-spacing: var(--display-tracking);
+  line-height: 1.08;
+}
+
+.ribbon {
+  background: var(--green);
+  color: #efe7d6;
+  text-align: center;
+  font-size: 0.84rem;
+  padding: 9px 16px;
+  letter-spacing: 0.01em;
+}
+
+nav.shop {
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+nav.shop .in {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+  height: 68px;
+}
+
+.mark {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--display);
+  font-weight: var(--display-weight);
+  font-size: 1.22rem;
+  letter-spacing: -0.02em;
+  color: var(--green);
+  text-decoration: none;
+}
+
+.mark .glyph {
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  background: var(--green);
+  display: grid;
+  place-items: center;
+  color: #f7efdf;
+  font-size: 0.95rem;
+}
+
+nav.shop a.lnk {
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 0.95rem;
+}
+
+nav.shop a.lnk:hover {
+  color: var(--green);
+}
+
+nav.shop .sp {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  color: var(--mut);
+  font-size: 0.9rem;
+}
+
+.crumb {
+  font-size: 0.84rem;
+  color: var(--mut);
+  padding: 16px 0;
+}
+
+.crumb a {
+  color: var(--mut);
+}
+
+/* ── the button ─────────────────────────────────────────────────────────── */
+
+/*
+  Inline on the landing page; `.wide` for the modal and the book page, where it
+  is the only action on the screen and fills the column. One rule, because two
+  buttons that disagree about their padding read as two shops.
+*/
+.btn {
+  display: inline-block;
+  background: var(--ink);
+  color: #fbf5e8;
+  text-decoration: none;
+  padding: 15px 32px;
+  font-weight: 600;
+  font-size: 1rem;
+  border: 0;
+  cursor: pointer;
+  font-family: var(--ui);
+  text-align: center;
+}
+
+.btn:hover {
+  background: #000;
+}
+
+.btn.wide {
+  display: block;
+  width: 100%;
+  padding: 17px 28px;
+  font-size: 1.05rem;
+}
+
+.btn.ghost {
+  background: transparent;
+  color: #f3ebdb;
+  border: 1.5px solid rgb(243 235 219 / 50%);
+}
+
+.btn.alt {
+  background: var(--paper);
+  color: var(--ink);
+  border: 1.6px solid var(--ink);
+}
+
+.btn.quiet {
+  background: #ede6d8;
+  color: var(--mut);
+}
+
+.btn:disabled,
+.btn.off {
+  background: #d9cfbc;
+  color: #7b7260;
+  cursor: not-allowed;
+}
+
+/* ── hero ───────────────────────────────────────────────────────────────── */
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr);
+}
+
+@media (max-width: 860px) {
+  .hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.hero .pic {
+  background: linear-gradient(158deg, #e8decc, #d6c7ae);
+  min-height: 460px;
+  display: grid;
+  place-items: center;
+  padding: 40px;
+  position: relative;
+}
+
+.pic .cap,
+.main .cap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 12px;
+  text-align: center;
+  font-size: 0.7rem;
+  color: #6e5f4c;
+}
+
+/*
+  **The book, as an object on a shelf.**
+
+  A square page with a stack of pages showing at the fore edge and a three
+  degree tilt. The artefacts draw the cover as a CSS block with the name in it;
+  the real pages put `renderPageSvg`'s output inside, which is the same call the
+  print path makes — see `app/_shop/Cover.tsx`.
+*/
+.bk {
+  width: min(300px, 76%);
+  aspect-ratio: 1;
+  background: #f8f0e4;
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  overflow: hidden;
+  box-shadow:
+    0 34px 46px -22px rgb(60 42 24 / 60%),
+    7px 0 0 -1px #efe4d4,
+    9px 0 0 -1px #dfd2bd;
+  transform: rotate(-3deg);
+}
+
+.bk svg,
+.bk img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.hero .say {
+  background: var(--green);
+  color: #f3ebdb;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 54px 46px;
+}
+
+@media (max-width: 600px) {
+  .hero .say {
+    padding: 38px 24px;
+  }
+}
+
+.hero h1 {
+  font-size: clamp(2rem, 4.2vw, 3rem);
+  margin: 0 0 0.35em;
+  color: #fbf5e8;
+}
+
+.hero p.sub {
+  font-size: 1.06rem;
+  color: #cfdcd3;
+  margin: 0 0 26px;
+  max-width: 38ch;
+}
+
+.hero .acts {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.hero .fine {
+  font-size: 0.84rem;
+  color: #a9c0b4;
+  margin: 14px 0 0;
+}
+
+/* ── the trust row ──────────────────────────────────────────────────────── */
+
+.trust {
+  background: var(--cream);
+  border-bottom: 1px solid var(--line);
+}
+
+.trust .in {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 26px;
+  padding: 28px 0;
+}
+
+.trust .i {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.trust .i svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.trust b {
+  display: block;
+  font-size: 0.95rem;
+}
+
+.trust span {
+  font-size: 0.86rem;
+  color: var(--mut);
+}
+
+/* ── section furniture ─────────────────────────────────────────────────── */
+
+section.shop {
+  padding: 72px 0;
+}
+
+section.shop.tint {
+  background: var(--cream);
+}
+
+.hd {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 18px;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+}
+
+/* The book page centres its section headings; the landing page does not. */
+.hd.mid {
+  display: block;
+  text-align: center;
+  margin-bottom: 34px;
+}
+
+.hd h2 {
+  font-size: clamp(1.6rem, 2.8vw, 2.1rem);
+  margin: 0;
+}
+
+.hd a {
+  color: var(--green);
+  font-size: 0.95rem;
+}
+
+.eyebrow {
+  font-size: 0.74rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--green);
+  font-weight: 600;
+  margin: 0 0 10px;
+}
+
+/* ── the shelf: the bit that grows ─────────────────────────────────────── */
+
+.shelf {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(258px, 1fr));
+  gap: 26px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+}
+
+.card .block {
+  background: var(--cream-2);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  padding: 30px;
+  position: relative;
+  overflow: hidden;
+}
+
+.card .block .bk {
+  width: 72%;
+  transform: rotate(-2deg) scale(0.96);
+  box-shadow:
+    0 20px 28px -16px rgb(60 42 24 / 55%),
+    6px 0 0 -1px #efe4d4;
+}
+
+.badge {
+  position: absolute;
+  top: 13px;
+  right: 13px;
+  background: #f6e2a8;
+  color: #6a5212;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  border-radius: 99px;
+  padding: 5px 12px;
+}
+
+.card h3 {
+  font-size: 1.05rem;
+  margin: 16px 0 4px;
+}
+
+.card p {
+  font-size: 0.92rem;
+  color: var(--mut);
+  margin: 0 0 12px;
+  min-height: 2.9em;
+}
+
+.card .pr {
+  font-weight: 600;
+  color: var(--green);
+  margin: 0 0 14px;
+  font-size: 0.98rem;
+}
+
+.card .btn {
+  padding: 13px 20px;
+  font-size: 0.95rem;
+}
+
+.card.soon .block {
+  background: repeating-linear-gradient(45deg, #f2ead9, #f2ead9 12px, #efe5d1 12px, #efe5d1 24px);
+  border: 1.5px dashed #d9cbb2;
+}
+
+.card.soon .ph {
+  font-family: var(--display);
+  color: #9d9076;
+  font-size: 1.05rem;
+  text-align: center;
+  line-height: 1.35;
+  /* `.card p` gives every other paragraph a floor so the tiles line up; this
+     one is centred inside its block and must not inherit it. */
+  min-height: 0;
+  margin: 0;
+}
+
+.card.soon h3 {
+  color: var(--mut);
+}
+
+/* ── how it works ──────────────────────────────────────────────────────── */
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(215px, 1fr));
+  gap: 30px;
+}
+
+.step .ic {
+  width: 58px;
+  height: 58px;
+  border-radius: 14px;
+  background: var(--green);
+  display: grid;
+  place-items: center;
+  margin-bottom: 14px;
+}
+
+.step h4 {
+  margin: 0 0 5px;
+  font-size: 1rem;
+}
+
+.step p {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--mut);
+}
+
+/* ── the rose band ─────────────────────────────────────────────────────── */
+
+.made {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: stretch;
+}
+
+@media (max-width: 860px) {
+  .made {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.made .pic {
+  background: linear-gradient(150deg, #d9c7b2, #c2a98c);
+  min-height: 330px;
+  display: grid;
+  place-items: center;
+  color: #5b4733;
+  font-family: var(--display);
+  font-size: 1.05rem;
+  text-align: center;
+  padding: 30px;
+}
+
+.made .txt {
+  background: var(--rose);
+  color: #fcefea;
+  padding: 48px 44px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+@media (max-width: 600px) {
+  .made .txt {
+    padding: 36px 24px;
+  }
+}
+
+.made h2 {
+  font-size: clamp(1.6rem, 2.8vw, 2.1rem);
+  margin: 0 0 0.4em;
+  color: #fff6f1;
+}
+
+.made p {
+  color: #f3d9d1;
+  margin: 0 0 22px;
+  max-width: 44ch;
+}
+
+/* ── questions ─────────────────────────────────────────────────────────── */
+
+details.q {
+  border-bottom: 1px solid var(--line);
+  padding: 17px 0;
+}
+
+details.q summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1rem;
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+details.q summary::-webkit-details-marker {
+  display: none;
+}
+
+details.q summary::after {
+  content: "＋";
+  color: var(--green);
+  font-weight: 400;
+}
+
+details.q[open] summary::after {
+  content: "－";
+}
+
+details.q p {
+  margin: 11px 0 0;
+  color: var(--mut);
+  font-size: 0.95rem;
+  max-width: 70ch;
+}
+
+details.q dl {
+  margin: 10px 0 0;
+  font-size: 0.93rem;
+  color: var(--mut);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 5px 18px;
+}
+
+details.q dt {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+details.q dd {
+  margin: 0;
+}
+
+/* ── footer ────────────────────────────────────────────────────────────── */
+
+footer.shop {
+  background: var(--green);
+  color: #cbdad1;
+  padding: 54px 0 34px;
+  font-size: 0.92rem;
+}
+
+footer.shop .cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 30px;
+  margin-bottom: 34px;
+}
+
+footer.shop h5 {
+  color: #f3ebdb;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin: 0 0 12px;
+}
+
+footer.shop a {
+  color: #cbdad1;
+  text-decoration: none;
+  display: block;
+  margin: 0.42em 0;
+}
+
+footer.shop a:hover {
+  color: #fff;
+}
+
+footer.shop .btm {
+  border-top: 1px solid rgb(203 218 209 / 22%);
+  padding-top: 20px;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+}
+
+/* ── the book page ─────────────────────────────────────────────────────── */
+
+.pdp {
+  display: grid;
+  grid-template-columns: minmax(0, 1.04fr) minmax(0, 1fr);
+  gap: 46px;
+  padding: 4px 0 60px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .pdp {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+  }
+}
+
+.gal .main {
+  background: var(--cream-2);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  padding: 46px;
+  position: relative;
+}
+
+.gal .main .bk {
+  width: min(330px, 80%);
+}
+
+.rail {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+  list-style: none;
+  padding: 0;
+}
+
+.rail li {
+  flex: 1;
+  aspect-ratio: 1;
+  background: var(--cream-2);
+  border: 1.5px solid transparent;
+  overflow: hidden;
+}
+
+.rail li.on {
+  border-color: var(--green);
+}
+
+.rail li svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.pdp h1 {
+  font-size: clamp(1.8rem, 3.2vw, 2.5rem);
+  margin: 0 0 14px;
+}
+
+.desc {
+  color: var(--mut);
+  margin: 0 0 20px;
+}
+
+.facts {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 22px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.facts li {
+  display: flex;
+  gap: 11px;
+  align-items: center;
+  padding: 11px 0;
+  font-size: 0.95rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.facts li:last-child {
+  border-bottom: 0;
+}
+
+.facts svg {
+  flex: 0 0 auto;
+}
+
+.price {
+  font-family: var(--display);
+  font-size: 1.6rem;
+  color: var(--green);
+  margin: 0 0 4px;
+}
+
+.price small {
+  font-family: var(--ui);
+  font-size: 0.86rem;
+  color: var(--mut);
+  font-weight: 400;
+}
+
+.under {
+  text-align: center;
+  font-size: 0.86rem;
+  color: var(--mut);
+  margin: 11px 0 24px;
+}
+
+.strip {
+  background: var(--cream);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.strip .in {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 22px;
+  padding: 26px 0;
+  text-align: center;
+}
+
+.strip .c {
+  font-size: 0.9rem;
+}
+
+.strip .c b {
+  display: block;
+  margin-top: 7px;
+  font-size: 0.92rem;
+}
+
+.band {
+  padding: 52px 24px;
+  text-align: center;
+}
+
+.band.butter {
+  background: #f7e6b4;
+}
+
+.band .q {
+  font-family: var(--display);
+  font-size: clamp(1.1rem, 2.1vw, 1.45rem);
+  line-height: 1.45;
+  max-width: 46ch;
+  margin: 0 auto 14px;
+  color: #2a2520;
+}
+
+.band .who {
+  font-size: 0.86rem;
+  color: #5a5349;
+}
+
+/* ── the three little screens on the book page ─────────────────────────── */
+
+.flow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(255px, 1fr));
+  gap: 26px;
+  align-items: stretch;
+}
+
+/* The three captions line up because the three screens above them do. */
+.flow > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.flow .shot {
+  flex: 1;
+}
+
+.shot {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.shot .top {
+  height: 26px;
+  background: var(--cream-2);
+  border-bottom: 1px solid var(--line);
+}
+
+.shot .body {
+  padding: 16px;
+  min-height: 188px;
+}
+
+.mini {
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mut);
+  font-weight: 600;
+}
+
+.mini-h {
+  font-family: var(--display);
+  font-size: 1rem;
+  margin: 5px 0 11px;
+}
+
+/* Scoped: the flow's real spread keeps the plain `.spread` name. */
+.shot .spread {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  height: 92px;
+}
+
+.shot .spread div {
+  background: var(--cream-2);
+}
+
+.shotcap {
+  text-align: center;
+  margin-top: 13px;
+  font-size: 0.92rem;
+}
+
+.shotcap b {
+  display: block;
+  font-family: var(--display);
+  font-size: 1.02rem;
+  margin-bottom: 3px;
+}
+
+.num {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--rose);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+/* ── a real person ─────────────────────────────────────────────────────── */
+
+.help {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  align-items: stretch;
+}
+
+@media (max-width: 860px) {
+  .help {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.help .pic {
+  background: linear-gradient(150deg, #d9c7b2, #bfa78a);
+  min-height: 320px;
+  display: grid;
+  place-items: center;
+  font-family: var(--display);
+  color: #5b4733;
+  text-align: center;
+  padding: 28px;
+  font-size: 1rem;
+}
+
+.help .txt {
+  background: var(--green);
+  color: #d7e4dc;
+  padding: 46px 44px;
+}
+
+@media (max-width: 600px) {
+  .help .txt {
+    padding: 34px 24px;
+  }
+}
+
+.help h2 {
+  color: #fbf5e8;
+  font-size: clamp(1.5rem, 2.6vw, 2rem);
+  margin: 0 0 0.5em;
+}
+
+.help .eyebrow {
+  color: #a9c0b4;
+}
+
+.help ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.help li {
+  display: flex;
+  gap: 11px;
+  padding: 9px 0;
+  font-size: 0.95rem;
+  border-bottom: 1px solid rgb(215 228 220 / 18%);
+}
+
+.help li:last-child {
+  border-bottom: 0;
+}
+
+.help li b {
+  color: #fbf5e8;
+}
+
+/* ── the flow: one screen at a time ───────────────────────────────────── */
+
+.stage {
+  background: #efe9dd;
+  min-height: 70vh;
+  padding: 36px 22px 90px;
+  display: grid;
+  justify-items: center;
+  /* Rows take their own height: without this the implicit second row — the
+     step counter — is stretched to fill `min-height` and floats a long way
+     below the card. */
+  align-content: start;
+}
+
+.modal {
+  background: var(--paper);
+  border-radius: 6px;
+  width: 100%;
+  max-width: 720px;
+  box-shadow: 0 30px 70px -30px rgb(26 23 19 / 60%);
+  overflow: hidden;
+}
+
+.modal .bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 22px;
+  border-bottom: 1px solid var(--line);
+}
+
+.modal .bar .back,
+.modal .bar .x {
+  color: var(--mut);
+  font-size: 1.1rem;
+  text-decoration: none;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font-family: var(--ui);
+}
+
+.modal .bar h4 {
+  font-family: var(--display);
+  font-weight: var(--display-weight);
+  font-size: 1.22rem;
+  margin: 0 auto;
+  letter-spacing: -0.01em;
+}
+
+.modal .body {
+  padding: 26px 28px 30px;
+}
+
+.modal .say {
+  text-align: center;
+  color: var(--mut);
+  font-size: 0.94rem;
+  margin: 0 0 22px;
+}
+
+.two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 620px) {
+  .two {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pick {
+  border: 1.5px solid var(--line);
+  padding: 22px;
+  text-align: center;
+}
+
+.pick .art {
+  aspect-ratio: 1;
+  background: var(--cream-2);
+  display: grid;
+  place-items: center;
+  font-size: 2.6rem;
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+
+.pick b {
+  display: block;
+  font-family: var(--display);
+  font-size: 1.1rem;
+  margin-bottom: 5px;
+}
+
+.pick p {
+  font-size: 0.88rem;
+  color: var(--mut);
+  margin: 0 0 15px;
+  min-height: 3.2em;
+}
+
+.foot {
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--mut);
+  margin-top: 16px;
+}
+
+label.f,
+.f {
+  display: block;
+  font-size: 0.84rem;
+  font-weight: 600;
+  margin: 16px 0 6px;
+}
+
+.fld {
+  border: 1.5px solid var(--line);
+  padding: 12px 14px;
+  font-size: 0.95rem;
+  color: #a79c8b;
+  width: 100%;
+  background: var(--paper);
+  font-family: var(--ui);
+}
+
+.fld.on,
+.fld:focus {
+  color: var(--ink);
+  border-color: var(--ink);
+  outline: none;
+}
+
+.seg {
+  display: flex;
+  gap: 8px;
+}
+
+.seg button,
+.seg span {
+  flex: 1;
+  text-align: center;
+  border: 1.5px solid var(--line);
+  padding: 10px;
+  font-size: 0.93rem;
+  cursor: pointer;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--ui);
+}
+
+.seg .on,
+.seg button[aria-pressed="true"] {
+  background: var(--green);
+  color: #f3ebdb;
+  border-color: var(--green);
+}
+
+.sw {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sw i,
+.sw button {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-style: normal;
+  cursor: pointer;
+  border: 2px solid transparent;
+  padding: 0;
+}
+
+.sw .on,
+.sw button[aria-pressed="true"] {
+  border-color: var(--green);
+  box-shadow: 0 0 0 2px #fff inset;
+}
+
+.carou {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.carou .row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(74px, 1fr));
+  gap: 9px;
+  flex: 1;
+}
+
+.carou .row button {
+  background: var(--cream-2);
+  border: 1.6px solid var(--line);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  padding: 0;
+  overflow: hidden;
+}
+
+.carou .row button[aria-pressed="true"] {
+  border-color: var(--rose);
+  box-shadow: 0 0 0 2px rgb(178 69 60 / 17%);
+}
+
+.carou .row .lbl {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--mut);
+  padding: 4px 0 5px;
+}
+
+.live {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 640px) {
+  .live {
+    grid-template-columns: 1fr;
+  }
+}
+
+.live .av {
+  background: var(--cream-2);
+  display: grid;
+  place-items: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.live .av .tag {
+  position: absolute;
+  bottom: 9px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 0.7rem;
+  color: #7b6e59;
+}
+
+.disc {
+  border-top: 1px solid var(--line);
+  margin-top: 18px;
+  padding-top: 14px;
+  font-size: 0.92rem;
+  color: var(--green);
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  background: none;
+  border-left: 0;
+  border-right: 0;
+  border-bottom: 0;
+  font-family: var(--ui);
+}
+
+.count {
+  text-align: right;
+  font-size: 0.8rem;
+  color: var(--mut);
+  margin-top: 6px;
+}
+
+.warn {
+  font-size: 0.84rem;
+  color: #8c4a2f;
+  margin-top: 8px;
+}
+
+.coverbox {
+  background: var(--cream-2);
+  padding: 26px;
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+
+.coverbox .bk {
+  width: min(260px, 70%);
+  transform: rotate(-2deg);
+  box-shadow:
+    0 26px 36px -18px rgb(60 42 24 / 55%),
+    6px 0 0 -1px #efe4d4;
+}
+
+.pricetag {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  background: var(--green);
+  color: #f3ebdb;
+  border-radius: 50%;
+  width: 88px;
+  height: 88px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  font-size: 0.78rem;
+  line-height: 1.25;
+}
+
+.pricetag b {
+  display: block;
+  font-size: 1.2rem;
+  font-family: var(--display);
+}
+
+.ticks {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 18px;
+  margin: 18px 0 20px;
+  font-size: 0.92rem;
+  list-style: none;
+  padding: 0;
+}
+
+.ticks li::before {
+  content: "✓ ";
+  color: var(--green);
+  font-weight: 700;
+}
+
+.toggle {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+.toggle button {
+  border: 1.5px solid var(--line);
+  padding: 7px 16px;
+  font-size: 0.84rem;
+  cursor: pointer;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--ui);
+}
+
+.toggle button[aria-pressed="true"] {
+  background: var(--green);
+  color: #f3ebdb;
+  border-color: var(--green);
+}
+
+.spread {
+  display: grid;
+  gap: 3px;
+  box-shadow: 0 8px 18px -10px rgb(60 42 24 / 40%);
+}
+
+.cartbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+
+.cartbar .p {
+  font-family: var(--display);
+  font-size: 1.5rem;
+  color: var(--green);
+}
+
+.cartbar .btn {
+  width: auto;
+  padding: 15px 36px;
+}
+
+/* ── the basket ────────────────────────────────────────────────────────── */
+
+.basket {
+  max-width: 900px;
+  background: var(--cream);
+  width: 100%;
+  padding: 28px;
+}
+
+.basket .head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.basket .head h1 {
+  font-family: var(--display);
+  font-size: 1.5rem;
+  margin: 0;
+}
+
+.basket .head a {
+  color: var(--green);
+  font-size: 0.94rem;
+  text-decoration: none;
+}
+
+.basket .grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+
+@media (max-width: 760px) {
+  .basket .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.basket .line {
+  background: var(--paper);
+  padding: 20px;
+  display: flex;
+  gap: 18px;
+}
+
+.basket .line .thumb {
+  flex: 0 0 108px;
+}
+
+.basket .line .thumb .bk {
+  width: 100%;
+  transform: none;
+  box-shadow: 0 10px 18px -12px rgb(60 42 24 / 50%);
+}
+
+.basket .line .of {
+  flex: 1;
+  min-width: 0;
+}
+
+.basket .line .of .top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.basket .line .of b {
+  font-family: var(--display);
+  font-size: 1.1rem;
+}
+
+.basket .line .of .spec {
+  margin: 0.2em 0 10px;
+  color: var(--mut);
+  font-size: 0.92rem;
+}
+
+.basket .chose {
+  font-size: 0.88rem;
+  color: var(--mut);
+  padding: 10px 0 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 14px;
+  margin: 0;
+}
+
+.basket .chose dt {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.basket .chose dd {
+  margin: 0;
+}
+
+.basket .line .of .amount {
+  margin: 10px 0 0;
+  font-family: var(--display);
+  font-size: 1.2rem;
+  color: var(--green);
+}
+
+.basket .sum {
+  background: var(--paper);
+  padding: 22px;
+}
+
+.basket .sum h2 {
+  font-family: var(--display);
+  font-size: 1.15rem;
+  margin: 0 0 14px;
+}
+
+.basket .sum .row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.94rem;
+  padding: 6px 0;
+}
+
+.basket .sum .row.ruled {
+  border-bottom: 1px solid var(--line);
+}
+
+.basket .sum .total {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0 16px;
+  font-family: var(--display);
+  font-size: 1.25rem;
+}
+
+.basket .sum .total span:last-child {
+  color: var(--green);
+}
+
+.basket .sum .note {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  font-size: 0.86rem;
+  color: var(--mut);
+}
+
+.basket .sum .note b {
+  color: var(--ink);
+}
+
+.basket .later {
+  margin: 18px 0 0;
+  color: var(--mut);
+  font-size: 0.9rem;
+  text-align: center;
+}

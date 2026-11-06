@@ -82,28 +82,13 @@ export default function Preview() {
   return (
     <section aria-label="Your whole book">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <h2 className="text-2xl font-semibold">Your whole book</h2>
-        <div
-          className="flex rounded-full border-2 border-current/20 p-0.5 text-sm"
-          role="group"
-          aria-label="How many pages at a time"
-        >
-          <button
-            type="button"
-            onClick={() => setTwo(false)}
-            aria-pressed={!two}
-            data-testid="one-page"
-            className={`rounded-full px-3 py-1 font-medium ${!two ? "bg-[#2b1d14] text-[#efe9df]" : ""}`}
-          >
+        <h2 className="dsp text-2xl">Your whole book</h2>
+        {/* The artefact's own toggle, in the approved theme. */}
+        <div className="toggle" role="group" aria-label="How many pages at a time">
+          <button type="button" onClick={() => setTwo(false)} aria-pressed={!two} data-testid="one-page">
             One page
           </button>
-          <button
-            type="button"
-            onClick={() => setTwo(true)}
-            aria-pressed={two}
-            data-testid="two-page"
-            className={`rounded-full px-3 py-1 font-medium ${two ? "bg-[#2b1d14] text-[#efe9df]" : ""}`}
-          >
+          <button type="button" onClick={() => setTwo(true)} aria-pressed={two} data-testid="two-page">
             Two pages
           </button>
         </div>

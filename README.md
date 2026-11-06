@@ -1,4 +1,4 @@
-# Books
+# One Little Book
 
 Personalised printed books. A buyer names a child, picks a baby from a grid,
 reads **the whole book** before paying, and the finished book is downloaded as a
@@ -18,8 +18,13 @@ watermark, no account, no email — so `/preview` does exactly that.
 
 | | |
 |---|---|
-| **The Book of You** at `/` | the product: 24 interior pages and a cover, 12 looks, a buyer's photograph and dedication. [`templates/first-book.ts`](templates/first-book.ts) |
+| **When They Were Small** at `/books/when-they-were-small` | the product: 24 interior pages and a cover, 12 looks, a buyer's photograph and dedication. [`templates/first-book.ts`](templates/first-book.ts) |
 | **My Forever** at `/my-forever` | the single keepsake page the machinery was built on. Still here, still the clearest example of the format. [`templates/my-forever.ts`](templates/my-forever.ts) |
+
+The book's template `id` is still `the-book-of-you` and will never change — an
+order names it, and a reprint has to find the template that order was placed
+against. The address a customer sees is the shelf's own `slug`, in
+[`lib/shop/shelf.ts`](lib/shop/shelf.ts).
 
 They share one format, one renderer and one print path. A book is **a list of
 pages plus a looks axis** — see [`lib/book/types.ts`](lib/book/types.ts) — and
@@ -35,13 +40,33 @@ npm install
 npm run dev          # http://localhost:3000
 ```
 
-`/` is the shop: the cover, one line saying what it is, and **Step 1 of 1** — a
-name, a girl-or-boy question, and a grid of babies. `/preview` is every page of
-the book with the extras offered on the spreads they affect, a persistent bar
-of what is done, and one `Continue` into a confirm-the-spelling screen and a
-hosted Stripe Checkout Session. `/delivery`, `/getting-it-right`, `/privacy`
-and `/terms` are the policies; `/admin` is the owner's order list and is
-unreachable without `ADMIN_SECRET`.
+`/` is the landing page: the cover, one line saying what it is, and **a shelf
+that grows** — one title today and a tile saying the next is being made.
+Adding a second title is an entry in [`lib/shop/shelf.ts`](lib/shop/shelf.ts)
+and a template, and nothing else.
+
+`/books/when-they-were-small` is the book page. From it, seven screens:
+
+| | |
+|---|---|
+| `/make/how` | photograph or chosen look — and the photograph route says plainly that it is not built |
+| `/make/look` | the baby, the girl-or-boy question before it, and the name |
+| `/make/about` | who the book is from. Optional, and nothing stops here |
+| `/make/message` | the dedication, counted down against the slot's own limit |
+| `/make/cover` | softcover or hard, two real prices |
+| `/preview` | **every page**, no watermark, no account, no wall, with the extras on the spreads they affect |
+| `/basket` | what is in it, what was chosen, and one way to a hosted Stripe Checkout Session |
+
+The sequence is [`lib/shop/steps.ts`](lib/shop/steps.ts) and nothing else knows
+what comes next. `/delivery`, `/getting-it-right`, `/privacy` and `/terms` are
+the policies; `/admin` is the owner's order list and is unreachable without
+`ADMIN_SECRET`.
+
+The design is the three artefacts the captain approved, built rather than
+interpreted. [`app/shop.css`](app/shop.css) is their CSS, and it writes no
+colour and no font family: [`lib/theme.ts`](lib/theme.ts) holds the palette and
+the **one token** that decides the display face, because the choice between
+Fraunces and Instrument Serif is not final.
 
 `/my-forever` is the single-page editor; `/my-forever?guides=1` draws the trim
 and safe-area guides over it — a screen affordance only, so a trim mark cannot
@@ -184,16 +209,21 @@ lib/stripe/       form encoding, the Checkout Session, signature verification
 lib/email/        the one email a buyer keeps, and sending it
 lib/admin/        the owner's door — one shared secret, failing closed
 lib/policy/       the four policy pages, as data
+lib/shop/         the shop around the book: the shelf, the seven steps, the
+                  copy — all data, so a test can walk them
+lib/theme.ts      the approved palette and the one display-face token
 lib/product.ts    what the shop claims, and what it admits it cannot claim
 lib/brand.ts      the shop's name, domain and support address. Only here.
 lib/env.ts        whether an environment variable is really set
 lib/checkout.ts   whether this shop can take money
 templates/        pages and books, as data
 fixtures/         two hard-coded orders, and the photographs they use
-app/              the shop and the chooser, /preview and the whole book,
+app/              the landing page and its shelf, /books/[slug], the five
+                  /make screens, /preview and the whole book, /basket,
                   /my-forever, the four policy pages, /order/[ref], /admin,
                   /api/book/print, /api/print, /api/checkout,
                   /api/stripe/webhook, /api/admin/*
+app/shop.css      the approved design, taken across from the artefacts
 test/             the suite, including the pixel assertions
 docs/             the format, the print file, the upload contract, pricing
 data/             committed evidence

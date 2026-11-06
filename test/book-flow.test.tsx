@@ -1,5 +1,6 @@
 /**
- * **The buyer flow, rendered and read: one step, the whole book, and no wall.**
+ * **The buyer flow, rendered and read: the look screen, the whole book, and no
+ * wall.**
  *
  * `test/funnel.test.tsx` makes the argument for the single page and it is the
  * same one here — three claims are made about these screens that only a render
@@ -12,8 +13,12 @@
  * field", so it is asserted rather than remembered — every page of the book
  * reaches the markup, and none of the words a wall is built out of do.
  *
- * **The form says it is one step.** "Step 1 of 1" is Wonderbly's own label and
- * it removes the fear of a long form before the form starts.
+ * **The flow says where you are.** The captain approved a seven-screen flow —
+ * `/Users/sasha/firstmate/.lavish/flow.html` — which replaced the single
+ * *"Step 1 of 1"* form these tests were written against. The counter is derived
+ * from the step list's own length by `lib/shop/steps.ts`, so a screen added to
+ * that list renumbers every screen at once; this asserts the screen shows its
+ * own position rather than a number somebody typed.
  *
  * **The controls are on the pages they affect, and found by asking the
  * template.** Nothing in a component writes down which page carries the
@@ -32,12 +37,13 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { FIRST_BOOK } from "../templates/first-book";
 import BookProvider from "../app/_book/BookProvider";
-import Chooser from "../app/_book/Chooser";
+import LookScreen from "../app/_make/LookScreen";
 import Preview from "../app/_book/Preview";
 import Confirm from "../app/_book/Confirm";
 import { EDITIONS, priceOf } from "../lib/book/editions";
 import { pageSequence, pageWithSlot, tileIndexOf } from "../lib/book/derive";
 import { ASKS, SLOT } from "../lib/book/slots";
+import { next, position, stepFor } from "../lib/shop/steps";
 import { nameSlotFont } from "../lib/book/name";
 import { FACES } from "../lib/render/fonts";
 
@@ -47,47 +53,66 @@ function inProvider(node: React.ReactElement) {
   return renderToStaticMarkup(<BookProvider book={book}>{node}</BookProvider>);
 }
 
+/**
+ * The screen with the gender question already answered.
+ *
+ * Answered by **removing the question** rather than by driving the control,
+ * because effects do not run in `renderToStaticMarkup` and there is no DOM
+ * here. A book with no genders shows every look, which is the same branch the
+ * answered state takes.
+ */
+function answeredMarkup(): string {
+  return renderToStaticMarkup(
+    <BookProvider book={{ ...book, genders: [] }}>
+      <LookScreen closeTo="/books/when-they-were-small" />
+    </BookProvider>,
+  );
+}
+
 /** Every `data-testid` in a string of markup, in order. */
 function testIds(markup: string): string[] {
   return [...markup.matchAll(/data-testid="([^"]+)"/g)].map((m) => m[1]);
 }
 
-const chooser = inProvider(<Chooser />);
+/** The screen as a visitor with no order reaches it. */
+const look = inProvider(<LookScreen closeTo="/books/when-they-were-small" />);
 const preview = inProvider(<Preview />);
 
 // ---------------------------------------------------------------------------
 
-describe("step 1 of 1 — the only form there is", () => {
-  it("says so, in those words", () => {
-    expect(chooser).toContain("Step 1 of 1");
+describe("the look screen — the one form that decides what is drawn", () => {
+  it("names itself and says where it is in the flow", () => {
+    expect(look).toContain(stepFor("look")!.title);
+    // Counted from the list, never typed: the whole point of `position`.
+    expect(look).toContain(position("look"));
   });
 
   it("asks the question before the grid, and shows no grid until it is answered", () => {
     // The captain's decision of 6 November, reversing the brief. A fresh order
     // has no answer, so there is nothing to choose a baby from yet.
     for (const gender of book.genders ?? []) {
-      expect(testIds(chooser)).toContain(`gender-${gender.id}`);
+      expect(testIds(look)).toContain(`gender-${gender.id}`);
     }
-    expect(testIds(chooser)).not.toContain("look-grid");
-    for (const look of book.looks) expect(testIds(chooser)).not.toContain(`look-${look.id}`);
+    expect(testIds(look)).not.toContain("look-grid");
+    for (const one of book.looks) expect(testIds(look)).not.toContain(`look-${one.id}`);
   });
 
   it("shows every look of the answered gender once the question is answered", () => {
     // Rendered through the real filter rather than by constructing a list: how
     // many looks a gender has is data and nothing here counts them.
-    const answered = renderToStaticMarkup(
-      <BookProvider book={{ ...book, genders: [] }}>
-        <Chooser />
-      </BookProvider>,
-    );
+    const answered = answeredMarkup();
     const ids = testIds(answered);
     expect(ids).toContain("look-grid");
-    for (const look of book.looks) expect(ids).toContain(`look-${look.id}`);
+    for (const one of book.looks) expect(ids).toContain(`look-${one.id}`);
+    // And the skin-tone row the approved screen asks for, one swatch per look —
+    // never an axis that could compose a baby the interior cannot draw.
+    for (const one of book.looks) expect(ids).toContain(`skin-${one.id}`);
   });
 
   it("will not go on until there is a name and a baby", () => {
-    expect(chooser).toContain("Name them, and pick a baby");
-    expect(chooser).not.toContain('href="/preview"');
+    expect(look).toContain("Name them, and pick a baby");
+    // The way on is the next step in the list, and it is not a link yet.
+    expect(look).not.toContain(`href="${next("look")!.path}"`);
   });
 
   it("draws each tile from the declared tile page, not from page one", () => {
@@ -101,11 +126,7 @@ describe("step 1 of 1 — the only form there is", () => {
     const page = pageSequence(book)[tile];
     expect(page.art.kind === "drawn" && page.art.scene.babyless).toBeFalsy();
 
-    const answered = renderToStaticMarkup(
-      <BookProvider book={{ ...book, genders: [] }}>
-        <Chooser />
-      </BookProvider>,
-    );
+    const answered = answeredMarkup();
     // Each look's baby is drawn in its own colours, so the tiles differ. The
     // control is that this would fail on a babyless page, where every tile is
     // the same string.
