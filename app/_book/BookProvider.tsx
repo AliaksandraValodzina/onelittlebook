@@ -28,6 +28,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -74,6 +75,20 @@ export interface BookContext {
   /** True while a photograph is being decoded and resized. */
   busy: boolean;
   persistence: SaveResult | null;
+  /**
+   * **Write the order now, rather than on the debounce.**
+   *
+   * The save is debounced by 400 ms so that typing a dedication does not
+   * serialise the order on every keystroke. A **navigation outruns it**: the
+   * flow's screens are separate routes, and a buyer who types a message and
+   * presses *Next* inside that window would arrive at the next screen with the
+   * message gone — which looks exactly like the shop losing their words,
+   * because it is.
+   *
+   * So every way on calls this first. It reads the order out of a ref rather
+   * than out of the closure, so it cannot save a stale one.
+   */
+  flush: () => void;
   done: Record<AskId, boolean>;
   ready: boolean;
   fill: ReturnType<typeof toBookFill>;
@@ -120,10 +135,24 @@ export default function BookProvider({
     setTypedName(stored.name);
   }, [book]);
 
+  /**
+   * The order as it is right now, for `flush`.
+   *
+   * Assigned during render rather than in an effect: `flush` may be called from
+   * an event handler in the same commit as the state change that preceded it,
+   * and an effect-assigned ref would still be one render behind.
+   */
+  const latest = useRef(order);
+  latest.current = order;
+
   useEffect(() => {
     const id = setTimeout(() => setPersistence(saveOrder(store(), order)), 400);
     return () => clearTimeout(id);
   }, [order]);
+
+  const flush = useCallback(() => {
+    setPersistence(saveOrder(store(), latest.current));
+  }, []);
 
   const nameVerdict = useMemo(() => checkName(book, typedName), [book, typedName]);
 
@@ -230,6 +259,7 @@ export default function BookProvider({
       setNotice,
       busy,
       persistence,
+      flush,
       done: done(order, book),
       ready: isComplete(order, book),
       fill: toBookFill(order, book),
@@ -252,6 +282,7 @@ export default function BookProvider({
       notice,
       busy,
       persistence,
+      flush,
     ],
   );
 

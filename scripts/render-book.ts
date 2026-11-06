@@ -100,12 +100,16 @@ async function main() {
     ),
   ].sort((a, b) => a - b);
 
+  // Named from the book's own `id`, which is the one string about this book
+  // that is stable forever. The title is not: it changed when the shop was
+  // named, and three hard-coded filenames would have been three edits and a
+  // stale one.
   await writeFile(
-    path.join(out, "the-book-of-you.book.json"),
+    path.join(out, `${FIRST_BOOK.id}.book.json`),
     JSON.stringify(FIRST_BOOK, null, 2) + "\n",
   );
   await writeFile(
-    path.join(out, "the-book-of-you.fill.json"),
+    path.join(out, `${FIRST_BOOK.id}.fill.json`),
     JSON.stringify(FIXTURE_BOOK_FILL, null, 2) + "\n",
   );
 
@@ -127,7 +131,7 @@ async function main() {
     pages: interesting,
     onPage: (index, id) => console.log(`  pdf ${index}  ${id}`),
   });
-  await writeFile(path.join(out, "the-book-of-you-sample.pdf"), slice.pdf);
+  await writeFile(path.join(out, `${FIRST_BOOK.id}-sample.pdf`), slice.pdf);
   const perPage = (Date.now() - started) / slice.pages.length / 1000;
 
   console.log(

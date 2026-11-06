@@ -20,9 +20,12 @@ else, so the next rename is one edit. The many references to *Keepnook* in
 `lib/`, `docs/` and `test/` are citations of a different codebase's prior art,
 not branding: do not replace them.
 
-**Two titles, one machinery.** "The Book of You" (`templates/first-book.ts`) is
-the product at `/`; "My Forever" (`templates/my-forever.ts`) is the single
-keepsake page it was built on, at `/my-forever`. A book is a list of pages plus
+**Two titles, one machinery.** "When They Were Small" (`templates/first-book.ts`)
+is the product, at `/books/when-they-were-small`; "My Forever"
+(`templates/my-forever.ts`) is the single keepsake page it was built on, at
+`/my-forever`. The book's template `id` is still `the-book-of-you` and must
+stay — an order names it — so the **published address is the shelf's own
+`slug`**, never the id. A book is a list of pages plus
 a looks axis (`lib/book/types.ts`), and `lib/book/derive.ts` turns one of its
 pages into the `PageTemplate` the renderer has always drawn — **nothing
 downstream of `derive.ts` knows books exist.** Add a book capability there or
@@ -91,12 +94,40 @@ page size is declared data on the book, so the answer is an edit to
 size from anywhere else. `docs/print.md` § The square trim nobody has pinned
 down.
 
+## The shop around the book
+
+**The design is three approved artefacts, built rather than interpreted** —
+`landing.html`, `book-page.html` and `flow.html` under `~/firstmate/.lavish/`.
+`app/shop.css` is their CSS taken across, and it writes no colour and no font
+family: `lib/theme.ts` holds the palette and the **one token** that decides the
+display face, because the captain has not finally chosen between Fraunces and
+Instrument Serif. `test/theme.test.ts` fails if a second file names either.
+
+**The shelf is data** (`lib/shop/shelf.ts`) and **the flow is data**
+(`lib/shop/steps.ts`): a second title is an entry plus a template, and back,
+next, the counter and the route table all read the step list. The copy is data
+too (`lib/shop/copy.ts`) so that `test/shop-no-theatre.test.tsx` can walk every
+string the shop can say.
+
+**The captain's list of things that must not appear anywhere** — a struck-out
+price, a countdown, an invented review count or star rating, a Trustpilot
+badge, a paid queue jump, a shipping-protection fee, any hand-made claim — is
+that test, across every page and every copy string, each with its reason.
+Several are already unrepresentable in the types; the test is the other half.
+
 ## The buyer flow is a form, not an editor
 
-The shape is settled by research: one step that says so, straight into the
-whole book with **no watermark, no account and no wall**, the extras offered on
-the spread they affect, and one `Continue`. `test/book-flow.test.tsx` asserts
-the absence of the wall rather than trusting anybody to remember it.
+The shape is settled by research: **no watermark, no account and no wall**, the
+extras offered on the spread they affect, and one way on.
+`test/book-flow.test.tsx` asserts the absence of the wall rather than trusting
+anybody to remember it. The seven screens the captain approved are `/make/how`
+→ `/make/look` → `/make/about` → `/make/message` → `/make/cover` → `/preview` →
+`/basket`, and the **one** request that sends an order is `app/_book/till.ts`.
+
+**A navigation outruns the debounced save.** `BookProvider` writes the order
+400 ms after it changes and the flow's screens are separate routes, so every
+way on calls `flush` first — `test/shop-flow.test.tsx` reads the components and
+fails if one does not.
 
 **The opening spread is babyless on purpose.** It is the one spread identical
 across every look, which is exactly why it carries the buyer's photograph,
@@ -131,6 +162,9 @@ key.** A shop with a key and no webhook secret charges cards it can never
 confirm; with no bucket it takes money for a book nobody can print. Both refuse
 with 503 and name the empty rows. There is no pretend-success path for local
 work, deliberately.
+
+**One request sends an order.** `app/_book/till.ts` is the only `fetch` to
+`/api/checkout`; the basket is the only screen that calls it.
 
 **No `stripe` dependency and no AWS SDK.** Two form-encoded calls
 (`lib/stripe/`) and SigV4 over `fetch` (`lib/orders/r2.ts`), each behind a

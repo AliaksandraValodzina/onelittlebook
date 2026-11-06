@@ -1,5 +1,5 @@
 /**
- * **"The Book of You" — the first personalised baby book, as data.**
+ * **"When They Were Small" — the first personalised baby book, as data.**
  *
  * **Twenty-four interior pages and a cover**, which is twelve spreads. That
  * number is the captain's, settled on 6 November and overriding the brief's
@@ -535,8 +535,26 @@ const PLACEHOLDER_LOOKS: Look[] = [
 export const FIRST_BOOK: BookTemplate = {
   schema: 1,
   id: "the-book-of-you",
-  rev: "169f8740",
-  name: "The Book of You",
+  rev: "fb52f7f6",
+  /**
+   * **"When They Were Small".**
+   *
+   * The book was called *The Book of You* while the shop was being named. The
+   * shop is **One Little Book** and this is the title on the pages the captain
+   * approved, so it is the title here too — a shop that calls a book one thing
+   * on its landing page and another on its order confirmation has two books.
+   *
+   * **The `id` above does not follow it**, and must not: it is *"stable
+   * forever, never renamed, never reused — an order refers to it"*, so every
+   * order already placed names `the-book-of-you` and a reprint of one has to
+   * find this template. The published address a customer sees is the shelf's
+   * own `slug` — `lib/shop/shelf.ts` § Why the slug is here and not the book's
+   * `id`.
+   *
+   * Editing this restamps `rev`, which is what `npm run book` refuses until it
+   * is done and what keeps a year-old order from picking up an edited book.
+   */
+  name: "When They Were Small",
   blurb:
     "Twelve spreads of a day in their life, with their name through it, one of your own " +
     "photographs, and a dedication in the front.",

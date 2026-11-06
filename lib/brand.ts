@@ -15,10 +15,13 @@
  *
  * ## What is a brand string and what is not
  *
- * **"The Book of You" is not here.** That is the *product's* title and it
- * lives on the book template, where a reprint of a year-old order still finds
- * the title that order was placed against. A shop can be renamed without
- * renaming its books.
+ * **A book's title is not here.** That is the *product's* title and it lives
+ * on the book template — "When They Were Small" is `templates/first-book.ts` §
+ * `name` — where a reprint of a year-old order still finds the title that
+ * order was placed against. A shop can be renamed without renaming its books,
+ * and this one has been: the template's `id` is still `the-book-of-you`,
+ * because an order names it and an id is never renamed. The address a customer
+ * is shown is the shelf's own slug — `lib/shop/shelf.ts`.
  *
  * **The references to Keepnook in `lib/`, `docs/` and `test/` are not here
  * either**, and must not be removed: those are citations of a different

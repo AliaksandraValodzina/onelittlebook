@@ -1,5 +1,5 @@
 /**
- * One buyer's filling of "The Book of You", hard-coded.
+ * One buyer's filling of "When They Were Small", hard-coded.
  *
  * The same thing `./order.ts` is for the single page and for the same reason:
  * the evidence under `data/`, the pixel assertions and `npm run book` all need

@@ -62,7 +62,7 @@ export interface Confirmation {
   ref: string;
   /** The name exactly as it will print, shown large and alone. */
   name: string;
-  /** "The Book of You — Hardcover", and the price beside it. */
+  /** "When They Were Small — Hardcover", and the price beside it. */
   ordered: string;
   price: string;
   /** What Stripe actually took, when it has. */
