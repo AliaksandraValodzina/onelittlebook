@@ -26,21 +26,29 @@ import Home from "../app/page";
 import Shelf from "../app/_shop/Shelf";
 import { ShopFooter, ShopNav, Ribbon } from "../app/_shop/Chrome";
 import { BRAND, FORMER_NAMES } from "../lib/brand";
-import { POLICIES } from "../lib/policy/pages";
-import { EDITIONS, priceOf } from "../lib/book/editions";
+import { POLICY_LINKS } from "../lib/policy/pages";
+import { EDITIONS, cheapestIn, priceLabel } from "../lib/book/editions";
+import { DEFAULT_MARKET, MARKET_LIST, MARKETS } from "../lib/shop/market";
 import {
   AI_ANSWER,
   HERO,
   HOW,
-  LANDING_QUESTIONS,
   MADE,
   RENDER_CAPTION,
-  RIBBON,
-  TRUST,
+  landingQuestionsFor,
+  printedLine,
+  ribbonFor,
+  trustFor,
 } from "../lib/shop/copy";
+
+/**
+ * The market a route rendered outside a request is in — the default, the
+ * United States. `app/_shop/market.ts` § `currentMarket` says why.
+ */
+const market = DEFAULT_MARKET;
 import { SHELF, WHEN_THEY_WERE_SMALL, pathOf, titles, type ShelfEntry } from "../lib/shop/shelf";
 
-const landing = renderToStaticMarkup(<Home />);
+const landing = renderToStaticMarkup(await Home());
 
 /** Every `data-testid` in a string of markup, in order. */
 function testIds(markup: string): string[] {
@@ -91,7 +99,7 @@ describe("the shelf is the bit that grows", () => {
       line: "Whatever the next one turns out to be.",
       badge: undefined,
     };
-    const grown = renderToStaticMarkup(<Shelf shelf={[...SHELF, second]} />);
+    const grown = renderToStaticMarkup(<Shelf shelf={[...SHELF, second]} market={market} />);
     const ids = testIds(grown);
     expect(ids).toContain(`shelf-${WHEN_THEY_WERE_SMALL.slug}`);
     expect(ids).toContain("shelf-the-second-one");
@@ -102,7 +110,7 @@ describe("the shelf is the bit that grows", () => {
 
     // The paired negative: with the real list there is no second title, so the
     // assertion above is about the data and not about the markup.
-    const asShipped = testIds(renderToStaticMarkup(<Shelf />));
+    const asShipped = testIds(renderToStaticMarkup(<Shelf market={market} />));
     expect(asShipped).not.toContain("shelf-the-second-one");
   });
 
@@ -120,15 +128,21 @@ describe("the shelf is the bit that grows", () => {
     // first name is nowhere in it.
     const renamed = { ...book, name: "A Different Book" };
     const other = renderToStaticMarkup(
-      <Shelf shelf={[{ ...WHEN_THEY_WERE_SMALL, book: renamed }]} />,
+      <Shelf shelf={[{ ...WHEN_THEY_WERE_SMALL, book: renamed }]} market={market} />,
     );
     expect(other).toContain('aria-label="A Different Book — cover"');
     expect(other).not.toContain(`aria-label="${book.name} — cover"`);
   });
 
   it("states one price, from the module that owns money", () => {
-    const cheapest = EDITIONS.reduce((low, e) => (e.price.amount < low.price.amount ? e : low));
-    expect(landing).toContain(`From ${priceOf(cheapest.price)}`);
+    expect(landing).toContain(`From ${priceLabel(cheapestIn(market), market)}`);
+  });
+
+  it("prices in one currency — the market's — and never shows two at once", () => {
+    const others = MARKET_LIST.map((m) => m.currency).filter((c) => c !== market.currency);
+    for (const currency of new Set(others)) {
+      expect(landing, currency).not.toContain(`${currency} `);
+    }
   });
 });
 
@@ -146,9 +160,15 @@ describe("the bands the captain approved, in the order he approved them", () => 
   });
 
   it("carries the ribbon, the three reassurances and the four steps", () => {
-    expect(landing).toContain(RIBBON);
-    for (const item of TRUST) expect(landing, item.title).toContain(item.title);
+    expect(landing).toContain(ribbonFor(market));
+    for (const item of trustFor(market)) expect(landing, item.title).toContain(item.title);
     for (const step of HOW) expect(landing, step.heading).toContain(step.heading);
+  });
+
+  it("says where the book is printed, and it is not Australia any more", () => {
+    expect(landing).toContain(printedLine(market));
+    expect(landing.toLowerCase()).not.toContain("printed in australia");
+    expect(landing.toLowerCase()).not.toContain("designed and printed in australia");
   });
 
   it("says how the artwork is made, plainly, in the captain's own words", () => {
@@ -159,13 +179,12 @@ describe("the bands the captain approved, in the order he approved them", () => 
   });
 
   it("asks every question on the list and answers all of them", () => {
-    for (const question of LANDING_QUESTIONS) {
+    const questions = landingQuestionsFor(market);
+    for (const question of questions) {
       expect(text(landing), question.q).toContain(question.q);
       expect(text(landing), question.q).toContain(question.a);
     }
-    expect(testIds(landing).filter((id) => id === "question")).toHaveLength(
-      LANDING_QUESTIONS.length,
-    );
+    expect(testIds(landing).filter((id) => id === "question")).toHaveLength(questions.length);
   });
 
   it("reaches for the register without claiming a hand touched the artwork", () => {
@@ -178,8 +197,8 @@ describe("the bands the captain approved, in the order he approved them", () => 
 
 describe("the chrome", () => {
   const footer = renderToStaticMarkup(<ShopFooter />);
-  const nav = renderToStaticMarkup(<ShopNav />);
-  const ribbon = renderToStaticMarkup(<Ribbon />);
+  const nav = renderToStaticMarkup(<ShopNav market={market} />);
+  const ribbon = renderToStaticMarkup(<Ribbon market={market} />);
 
   it("names the shop from one module, everywhere", () => {
     for (const markup of [footer, nav, landing]) expect(markup).toContain(BRAND.name);
@@ -188,12 +207,12 @@ describe("the chrome", () => {
   });
 
   it("links every policy, which is the bug a footer of this shape once had", () => {
-    for (const policy of POLICIES) {
+    for (const policy of POLICY_LINKS) {
       expect(footer, policy.slug).toContain(`href="${policy.slug}"`);
       expect(footer).toContain(policy.nav);
     }
     expect(testIds(footer)).toEqual(
-      expect.arrayContaining(POLICIES.map((p) => `policy-${p.slug}`)),
+      expect.arrayContaining(POLICY_LINKS.map((p) => `policy-${p.slug}`)),
     );
   });
 

@@ -48,6 +48,31 @@ export interface Brand {
    * address differs.
    */
   support: string;
+  /**
+   * **Where the book is printed.** A fact about the *object*.
+   *
+   * It is the United States, for every buyer, in every market — the captain
+   * confirmed US production only. The site said "printed in Australia" in six
+   * places until this field existed, which is the argument for the field: a
+   * claim about where a thing is made is exactly the string that gets typed
+   * into a ribbon, a badge, a fact list, a spec table, an icon line and a
+   * policy page, and then becomes false all at once.
+   *
+   * Reads as "Printed in the USA", so it carries its own article.
+   */
+  printedIn: string;
+  /**
+   * **Where the business is.** A fact about the *seller*, and a different fact.
+   *
+   * The footer's `© One Little Book · Australia` names the country the entity
+   * trades from, which is true and has nothing to do with where the book is
+   * printed. The two were the same string once and are not any more, so they
+   * are two fields — and **this one must not be "corrected" to match
+   * `printedIn`.** A copyright line naming the wrong country is a statement
+   * about who is selling to you; `test/market.test.ts` asserts the
+   * distinction survives.
+   */
+  registeredIn: string;
 }
 
 export const BRAND: Brand = {
@@ -55,7 +80,17 @@ export const BRAND: Brand = {
   domain: "onelittlebook.com",
   site: "https://onelittlebook.com",
   support: "hello@onelittlebook.com",
+  printedIn: "the USA",
+  registeredIn: "Australia",
 };
+
+/**
+ * `Printed in the USA`. One phrasing, so six places cannot say six things.
+ *
+ * `lib/shop/copy.ts` § `printedLine` adds the shipped-worldwide half for a
+ * buyer outside the country it is printed in.
+ */
+export const PRINTED_IN = `Printed in ${BRAND.printedIn}`;
 
 /**
  * Names this shop has traded under and must not be shown as trading under now.

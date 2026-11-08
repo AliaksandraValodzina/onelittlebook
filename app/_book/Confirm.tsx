@@ -43,7 +43,8 @@
  * what is shown*, and stays testable.
  */
 
-import { priceOf, type Edition } from "../../lib/book/editions";
+import { priceLabel, type Edition } from "../../lib/book/editions";
+import type { Market } from "../../lib/shop/market";
 
 /**
  * **It takes what it shows rather than reading it out of context**, which is
@@ -61,6 +62,7 @@ export default function Confirm({
   name,
   face,
   edition,
+  market,
   onBack,
   onConfirm,
   busy = false,
@@ -71,6 +73,13 @@ export default function Confirm({
   /** The CSS family of the face it is set in, or undefined to use the page's. */
   face?: string;
   edition: Edition;
+  /**
+   * Which market the price on this screen is in — a prop like `name` and for
+   * the same reason this whole component takes props: this is the last screen
+   * before the card, and the one assertion worth making about it is that what
+   * it shows is what the till was told.
+   */
+  market: Market;
   onBack: () => void;
   /** Send the order to the till. `./Bar.tsx` owns the request. */
   onConfirm: () => void;
@@ -145,7 +154,7 @@ export default function Confirm({
           </span>
         ) : (
           <>
-            {edition.label}, {priceOf(edition.price)}. The card is typed on Stripe&rsquo;s own
+            {edition.label}, {priceLabel(edition, market)}. The card is typed on Stripe&rsquo;s own
             page — this site never sees it.
           </>
         )}

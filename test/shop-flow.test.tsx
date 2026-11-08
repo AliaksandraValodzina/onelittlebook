@@ -48,23 +48,26 @@ import {
   stepFor,
 } from "../lib/shop/steps";
 import { WHEN_THEY_WERE_SMALL, pathOf } from "../lib/shop/shelf";
-import { EDITIONS, differenceOf, priceOf } from "../lib/book/editions";
+import { EDITIONS, differenceOf, priceLabel } from "../lib/book/editions";
+import { DEFAULT_MARKET } from "../lib/shop/market";
 import { dedicationSlot, fromSlot, outstanding, emptyOrder } from "../lib/book/order";
 import { CHANGE_WINDOW_HOURS, DISPATCH_WINDOW } from "../lib/email/order";
 
 const book = FIRST_BOOK;
 const closeTo = pathOf(WHEN_THEY_WERE_SMALL);
+/** The market the flow is priced in here — the default, as a first visit is. */
+const market = DEFAULT_MARKET;
 
 function screen(id: (typeof MAKE_STEPS)[number]["id"]): string {
   return renderToStaticMarkup(
-    <BookProvider book={book}>
+    <BookProvider book={book} market={market}>
       <MakeScreen id={id as never} closeTo={closeTo} />
     </BookProvider>,
   );
 }
 
 const basket = renderToStaticMarkup(
-  <BookProvider book={book}>
+  <BookProvider book={book} market={market}>
     <Basket />
   </BookProvider>,
 );
@@ -206,7 +209,7 @@ describe("screen one — the fork, and the half that is not built", () => {
 describe("screen two — the look, and nothing the interior cannot draw", () => {
   it("offers one tile and one swatch per look, and no free axis", () => {
     const answered = renderToStaticMarkup(
-      <BookProvider book={{ ...book, genders: [] }}>
+      <BookProvider book={{ ...book, genders: [] }} market={market}>
         <MakeScreen id={"look" as never} closeTo={closeTo} />
       </BookProvider>,
     );
@@ -263,14 +266,14 @@ describe("screen five — the upgrade, offered once and with no theatre", () => 
   it("offers both editions as real prices", () => {
     for (const edition of EDITIONS) {
       expect(testIds(markup)).toContain(`edition-${edition.id}`);
-      expect(markup, edition.id).toContain(priceOf(edition.price));
+      expect(markup, edition.id).toContain(priceLabel(edition, market));
       expect(markup, edition.id).toContain(edition.note);
     }
   });
 
   it("states the upgrade as a difference, never as a discount", () => {
-    expect(markup).toContain(differenceOf(EDITIONS[0], EDITIONS[1]));
-    expect(markup).not.toMatch(/<s>|line-through|was AUD|RRP|% off|ends in/i);
+    expect(markup).toContain(differenceOf(EDITIONS[0], EDITIONS[1], market));
+    expect(markup).not.toMatch(/<s>|line-through|was (?:AUD|USD|GBP)|RRP|% off|ends in/i);
   });
 
   it("chooses and goes on in two gestures, so a debounced save cannot be lost", () => {
@@ -296,7 +299,7 @@ describe("the basket", () => {
 
   it("totals from the module that owns money and adds nothing to it", () => {
     const edition = EDITIONS[0];
-    expect(basket).toContain(priceOf(edition.price));
+    expect(basket).toContain(priceLabel(edition, market));
     expect(basket).toContain("Order summary");
     expect(basket).toContain("at checkout");
   });

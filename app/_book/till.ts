@@ -64,6 +64,17 @@ export function useTill(): Till {
         setProblem(`That order has already been paid for — it is ${ref}. Check your email.`);
         return;
       }
+      // **A market the shop cannot post to yet.** About this order rather than
+      // about the shop, and recoverable without leaving: the market control is
+      // in the masthead above this screen, so the buyer can change it and
+      // press again. Sending them to `/checkout` would show them a page about
+      // missing configuration, which is not their problem and not true.
+      const state = (answer as { state?: string } | null)?.state;
+      if (response.status === 409 && state === "market closed") {
+        const detail = (answer as { detail?: string } | null)?.detail;
+        setProblem(detail ?? "We cannot post to the market you have chosen yet.");
+        return;
+      }
       if (response.status === 422) {
         const problems = (answer as { problems?: Array<{ code?: string }> } | null)?.problems;
         setProblem(

@@ -23,101 +23,114 @@
 import { FIRST_BOOK } from "../../templates/first-book";
 import { trimBox } from "../template/defaults";
 import { photoFloor } from "./photo";
-import { EDITIONS, priceOf } from "./editions";
+import { EDITIONS, priceLabel } from "./editions";
+import { DEFAULT_MARKET, type Market } from "../shop/market";
+import { deliveryTimeLine } from "../shop/shipping";
+import { DISPATCH_WINDOW } from "../email/order";
 import type { Fact } from "../product";
 
 const b = FIRST_BOOK;
 const inches = (pt: number) => `${(pt / 72).toFixed(2).replace(/\.?0+$/, "")} in`;
 const trim = trimBox(b.page.canvas);
 
-export const BOOK_FACTS: Fact[] = [
-  {
-    label: "Pages",
-    confirmed: true,
-    value: `${b.pages.length} inside, plus a cover — ${b.pages.length / 2} spreads`,
-    source: "templates/first-book.ts; the count is the page list's own length",
-  },
-  {
-    label: "Print file",
-    confirmed: true,
-    value: `${b.page.print.pixels.width} × ${b.page.print.pixels.height} px a page, ${Math.round(
-      (b.page.print.pixels.width / b.page.canvas.width) * 72,
-    )} DPI, sRGB`,
-    source: "read out of the PNG header by test/book-print.test.ts",
-  },
-  {
-    label: "Artboard",
-    confirmed: true,
-    value: `${inches(b.page.canvas.width)} square, bleed included`,
-    source: "templates/first-book.ts",
-  },
-  {
-    label: "Your photograph",
-    confirmed: true,
-    value: `printed ${photoFloor(b).inches.toFixed(0)} in square, at least ${photoFloor(b).minEdge} px`,
-    source: "derived from the photo slot and minPhotoDpi by lib/book/photo.ts",
-  },
-  {
+export function bookFacts(market: Market): Fact[] {
+  return [
+    {
+      label: "Pages",
+      confirmed: true,
+      value: `${b.pages.length} inside, plus a cover — ${b.pages.length / 2} spreads`,
+      source: "templates/first-book.ts; the count is the page list's own length",
+    },
+    {
+      label: "Print file",
+      confirmed: true,
+      value: `${b.page.print.pixels.width} × ${b.page.print.pixels.height} px a page, ${Math.round(
+        (b.page.print.pixels.width / b.page.canvas.width) * 72,
+      )} DPI, sRGB`,
+      source: "read out of the PNG header by test/book-print.test.ts",
+    },
+    {
+      label: "Artboard",
+      confirmed: true,
+      value: `${inches(b.page.canvas.width)} square, bleed included`,
+      source: "templates/first-book.ts",
+    },
+    {
+      label: "Your photograph",
+      confirmed: true,
+      value: `printed ${photoFloor(b).inches.toFixed(0)} in square, at least ${photoFloor(b).minEdge} px`,
+      source: "derived from the photo slot and minPhotoDpi by lib/book/photo.ts",
+    },
+    {
+      /**
+       * **The trim is settled; the file's relationship to it is not.**
+       *
+       * 8 × 8 in is the captain's decision and it is the only square size
+       * Printify's softcover photo book comes in, so this is a number the page
+       * may state. It is derived from the template rather than typed, which is
+       * what keeps it true: `trimBox` takes the declared bleed off the declared
+       * artboard, so the claim moves when the page size does.
+       */
+      label: "Finished page",
+      confirmed: true,
+      value: `${inches(trim.width)} square, trimmed`,
+      source: "templates/first-book.ts — the artboard less the declared bleed, by trimBox",
+    },
+    {
+      /**
+       * What is still open is **Printify's stated print-area pixel size**, which
+       * is published only inside their signed-in Product Creator. It does not
+       * stop a file being made — 3600 px over-covers 8 in at 300 DPI by half
+       * again — but it is the difference between supplying what they ask for and
+       * supplying something they will rescale, and nobody has read it yet.
+       */
+      label: "Printify's asked-for file size",
+      confirmed: false,
+      needs:
+        "the print-area pixels Printify states for the 8 × 8 photo book, which only shows inside " +
+        `their signed-in Product Creator. This file is ${b.page.print.pixels.width} px, which is ` +
+        `${Math.round((b.page.print.pixels.width / trim.width) * 72)} DPI across the trim — above ` +
+        "any figure they are likely to ask for, so it downscales rather than upscales either way. " +
+        "See docs/print.md.",
+    },
+    {
+      label: "Paper and binding",
+      confirmed: false,
+      needs:
+        "nobody has held one. The target products are named and their page counts match, but the " +
+        "stock, the finish and the binding are claims only an ordered sample can confirm.",
+    },
     /**
-     * **The trim is settled; the file's relationship to it is not.**
+     * **The price, and why it may be written here at all.**
      *
-     * 8 × 8 in is the captain's decision and it is the only square size
-     * Printify's softcover photo book comes in, so this is a number the page
-     * may state. It is derived from the template rather than typed, which is
-     * what keeps it true: `trimBox` takes the declared bleed off the declared
-     * artboard, so the claim moves when the page size does.
+     * `lib/product.ts` exists to make inventing a number impossible, and that
+     * guard is untouched: the `confirmed: true` arm requires a `source`, and this
+     * one's is a decision rather than a guess — the captain settled AUD 59 and
+     * AUD 69 on 6 November against landed costs read off their own Printify
+     * catalogue, and set the US, UK and rest-of-world prices with the move to US
+     * printing. `lib/book/editions.ts` holds the twelve numbers, and the reason
+     * none of them is computed from another.
+     *
+     * **There is no "was" price and no deadline here**, and there is nowhere in
+     * the type to put one. The launch offer the captain intends is real but has no
+     * end date yet, and an offer with no stated end is the misleading-price
+     * mechanic the register explicitly rejects — so it is absent rather than
+     * approximated.
      */
-    label: "Finished page",
-    confirmed: true,
-    value: `${inches(trim.width)} square, trimmed`,
-    source: "templates/first-book.ts — the artboard less the declared bleed, by trimBox",
-  },
-  {
-    /**
-     * What is still open is **Printify's stated print-area pixel size**, which
-     * is published only inside their signed-in Product Creator. It does not
-     * stop a file being made — 3600 px over-covers 8 in at 300 DPI by half
-     * again — but it is the difference between supplying what they ask for and
-     * supplying something they will rescale, and nobody has read it yet.
-     */
-    label: "Printify's asked-for file size",
-    confirmed: false,
-    needs:
-      "the print-area pixels Printify states for the 8 × 8 photo book, which only shows inside " +
-      `their signed-in Product Creator. This file is ${b.page.print.pixels.width} px, which is ` +
-      `${Math.round((b.page.print.pixels.width / trim.width) * 72)} DPI across the trim — above ` +
-      "any figure they are likely to ask for, so it downscales rather than upscales either way. " +
-      "See docs/print.md.",
-  },
-  {
-    label: "Paper and binding",
-    confirmed: false,
-    needs:
-      "nobody has held one. The target products are named and their page counts match, but the " +
-      "stock, the finish and the binding are claims only an ordered sample can confirm.",
-  },
-  /**
-   * **The price, and why it may be written here at all.**
-   *
-   * `lib/product.ts` exists to make inventing a number impossible, and that
-   * guard is untouched: the `confirmed: true` arm requires a `source`, and this
-   * one's is a decision rather than a guess — the captain settled AUD 59 and
-   * AUD 69 on 6 November against landed costs read off their own Printify
-   * catalogue. `lib/book/editions.ts` holds the numbers and the reasoning.
-   *
-   * **There is no "was" price and no deadline here**, and there is nowhere in
-   * the type to put one. The launch offer the captain intends is real but has no
-   * end date yet, and an offer with no stated end is the misleading-price
-   * mechanic the register explicitly rejects — so it is absent rather than
-   * approximated.
-   */
-  {
-    label: "Price",
-    confirmed: true,
-    value: EDITIONS.map((e) => `${e.label} ${priceOf(e.price)}`).join(" · "),
-    source: "lib/book/editions.ts — the captain's settled prices of 6 November",
-  },
-];
+    {
+      label: "Price",
+      confirmed: true,
+      value: EDITIONS.map((e) => `${e.label} ${priceLabel(e, market)}`).join(" · "),
+      source: `lib/book/editions.ts — the captain's set price for ${market.label}`,
+    },
+  ];
+}
+
+/**
+ * The facts in the default market, for a caller that is only reading the
+ * unconfirmed ones. Which facts are open does not depend on the market.
+ */
+export const BOOK_FACTS: Fact[] = bookFacts(DEFAULT_MARKET);
 
 /** Everything still waiting on a number, so the list can be handed over. */
 export const BOOK_UNCONFIRMED: Array<Extract<Fact, { confirmed: false }>> = BOOK_FACTS.filter(
@@ -133,9 +146,16 @@ export const BOOK_UNCONFIRMED: Array<Extract<Fact, { confirmed: false }>> = BOOK
  *
  * Two are load-bearing and easy to get wrong in the other direction:
  *
- * **"Not returnable" is stated plainly**, because there is no cooling-off right
- * for goods clearly personalised — and the quality remedies survive in full
- * regardless, which is why the next line exists and is unconditional.
+ * **"We do not take change-of-mind returns" is stated plainly, as something the
+ * shop does rather than something the law allows it.** The old wording rested
+ * on there being no cooling-off right for goods clearly personalised, which is
+ * an Australian and European reading and does not transfer to the United
+ * States — consumer law there is state by state and has no equivalent blanket
+ * exclusion. The reason the shop gives is the commercial one, which is true
+ * everywhere: a book with one child's name through it cannot be resold. The
+ * quality remedies survive in full regardless, which is why the next line
+ * exists and is unconditional. `lib/policy/pages.ts` makes the same move at
+ * length.
  *
  * **The 24-hour window is honest precisely because fulfilment is by hand.**
  * There is a real gap between an order and a file going to a printer, and
@@ -148,10 +168,19 @@ export const BOOK_UNCONFIRMED: Array<Extract<Fact, { confirmed: false }>> = BOOK
  * means it must not appear in any string that reaches the page.
  */
 export const BOOK_PROMISES: string[] = [
-  "Dispatched in 2–4 working days. Shipping time is on top of that and depends where you are.",
+  // The dispatch window is derived rather than typed, and the sentence about
+  // what happens afterwards comes out of `lib/shop/shipping.ts` so that this
+  // page and the delivery policy cannot promise two different things. Neither
+  // half is a delivery date, which is the one thing an international order
+  // makes it impossible to honestly give.
+  deliveryTimeLine(DISPATCH_WINDOW),
   "We have not printed it yet when you order — tell us within 24 hours and we will fix anything, free.",
   "Anything wrong with the object itself is reprinted free.",
-  "Because it is printed with your child's name in it, it cannot be returned for a change of mind.",
+  // **A policy and not a legal claim**, deliberately. See `lib/policy/pages.ts`
+  // § Changing your mind: the shop says what it does, rather than telling a
+  // customer what they are not entitled to.
+  "Because it is printed with your child's name in it, we cannot resell it, so we do not take " +
+    "change-of-mind returns.",
 ];
 
 /** What is true of every order regardless of the open questions. */

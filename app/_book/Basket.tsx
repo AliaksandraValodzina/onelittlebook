@@ -38,7 +38,7 @@
  */
 
 import { useState } from "react";
-import { editionOf, priceOf } from "../../lib/book/editions";
+import { editionOf, priceLabel } from "../../lib/book/editions";
 import { outstanding } from "../../lib/book/order";
 import { nameSlotFont } from "../../lib/book/name";
 import { trimInches } from "../../lib/shop/copy";
@@ -54,7 +54,7 @@ import { useTill } from "./till";
 const step = stepFor("basket")!;
 
 export default function Basket() {
-  const { book, order, fill, ready } = useBook();
+  const { book, market, order, fill, ready } = useBook();
   const { buy, busy, problem } = useTill();
   const [confirming, setConfirming] = useState(false);
   const edition = editionOf(order.editionId);
@@ -82,6 +82,7 @@ export default function Basket() {
               name={fill.name}
               face={FACES[nameSlotFont(book)]?.family}
               edition={edition}
+              market={market}
               onBack={() => setConfirming(false)}
               onConfirm={() => void buy()}
               busy={busy}
@@ -156,7 +157,7 @@ export default function Basket() {
                   Edit the book
                 </a>
               </p>
-              <p className="amount">{priceOf(edition.price)}</p>
+              <p className="amount">{priceLabel(edition, market)}</p>
             </div>
           </div>
 
@@ -164,7 +165,7 @@ export default function Basket() {
             <h2 className="dsp">Order summary</h2>
             <div className="row">
               <span>Book</span>
-              <span>{priceOf(edition.price)}</span>
+              <span>{priceLabel(edition, market)}</span>
             </div>
             <div className="row ruled">
               <span>Shipping</span>
@@ -172,7 +173,7 @@ export default function Basket() {
             </div>
             <div className="total">
               <span>Total</span>
-              <span>{priceOf(edition.price)}</span>
+              <span>{priceLabel(edition, market)}</span>
             </div>
 
             {ready ? (

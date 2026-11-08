@@ -41,6 +41,7 @@
 import { createHash } from "node:crypto";
 import type { BookFill } from "../book/types";
 import type { Money } from "../book/editions";
+import { isMarketId, MARKET_LIST, type MarketId } from "../shop/market";
 
 /**
  * Where an order is, as far as the money is concerned.
@@ -103,6 +104,22 @@ export interface OrderRecord {
   fill: BookFill;
   /** Softcover or the one hardcover upgrade — an id from `EDITIONS`. */
   editionId: string;
+  /**
+   * **Which market priced this order** — an id from `lib/shop/market.ts`.
+   *
+   * Stored even though `asked.currency` is right there, because the currency
+   * does not determine the market: USD is both the United States and
+   * everywhere else, and those two have different country lists. What the
+   * captain needs months later is *which price list this order was taken
+   * against*, which is this field and not a currency code.
+   *
+   * It is on the record and **not** in the `BookFill`, for the same reason
+   * `editionId` is: it changes nothing that is drawn, so a fill carrying it
+   * would make the next price-list change restamp every earlier order as
+   * stale. `test/order-reprint.test.ts` is the assertion that a reprint needs
+   * only the fill.
+   */
+  market: MarketId;
   /** The listed price at the moment the session was created. The shop's intention. */
   asked: Money;
   /** What Stripe says was taken, or null while nothing has been. */
@@ -202,7 +219,7 @@ export function summaryOf(record: OrderRecord): OrderSummary {
   };
 }
 
-/** `AUD 59`, from whatever Stripe said. One formatting, like `priceOf`. */
+/** `USD 49`, from whatever Stripe said. One formatting, like `priceOf`. */
 export function chargedAs(charge: Charge | null): string | null {
   if (!charge) return null;
   const major = charge.minorUnits / 100;
@@ -241,6 +258,7 @@ export function readRecord(value: unknown): OrderRecord | null {
     fingerprint: typeof v.fingerprint === "string" ? v.fingerprint : "",
     fill: fill as BookFill,
     editionId: v.editionId,
+    market: readMarket(v.market, asked),
     asked,
     charged: readCharge(v.charged),
     payment: v.payment === "paid" ? "paid" : "awaiting",
@@ -260,12 +278,38 @@ function str(value: unknown): string | null {
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
+/**
+ * A listed price, in one of the currencies the shop has set prices in.
+ *
+ * It used to admit `"AUD"` and nothing else. Widening it is not a loosening:
+ * `Currency` is still a closed union and a record naming a currency the shop
+ * does not price in is still refused, which is what keeps a hand-edited or
+ * next-year's-build object from becoming an order.
+ */
 function readMoney(value: unknown): Money | null {
   if (!value || typeof value !== "object") return null;
   const v = value as Partial<Money>;
-  if (v.currency !== "AUD") return null;
+  if (!CURRENCIES.has(v.currency as string)) return null;
   if (typeof v.amount !== "number" || !Number.isFinite(v.amount)) return null;
-  return { currency: "AUD", amount: v.amount };
+  return { currency: v.currency as Money["currency"], amount: v.amount };
+}
+
+/** Every currency any market prices in. Derived, so a new market is covered. */
+const CURRENCIES = new Set<string>(MARKET_LIST.map((market) => market.currency));
+
+/**
+ * The market an order was priced in.
+ *
+ * **A record written before this field existed has no market on it**, and the
+ * stated meaning of its absence is "whichever market prices in the currency
+ * this order was asked in" — which for every order placed before today is
+ * Australia, because AUD was the only currency the shop had. Guessing the
+ * current default instead would relabel the shop's entire history as American.
+ */
+function readMarket(value: unknown, asked: Money): MarketId {
+  if (isMarketId(value)) return value;
+  const byCurrency = MARKET_LIST.find((market) => market.currency === asked.currency);
+  return byCurrency ? byCurrency.id : "us";
 }
 
 function readCharge(value: unknown): Charge | null {

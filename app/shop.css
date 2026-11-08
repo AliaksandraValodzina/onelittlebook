@@ -120,6 +120,72 @@ nav.shop .sp {
   font-size: 0.9rem;
 }
 
+/*
+  The market control — the country pill, as a `<details>` and a form.
+
+  `app/_shop/Chrome.tsx` § `MarketControl` carries the argument for why it is
+  markup a browser can work with scripting off. This is the whole of its
+  styling and it names no colour and no family, only the custom properties
+  `lib/theme.ts` emits: `test/theme.test.ts` reads this file hardest.
+*/
+.mkt {
+  position: relative;
+}
+.mkt > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 4px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.mkt > summary::-webkit-details-marker {
+  display: none;
+}
+.mkt > summary:hover {
+  border-color: var(--green);
+}
+.mkt .mkt-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 7px);
+  z-index: 30;
+  min-width: 15rem;
+  display: flex;
+  flex-direction: column;
+  padding: 7px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+}
+.mkt .mkt-head {
+  padding: 3px 8px 6px;
+  font-size: 0.76rem;
+  color: var(--mut);
+}
+.mkt .mkt-menu button {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  text-align: left;
+  font: inherit;
+  color: var(--ink);
+  cursor: pointer;
+}
+.mkt .mkt-menu button:hover {
+  background: var(--cream);
+}
+.mkt .mkt-menu button[aria-current="true"] {
+  background: var(--cream);
+  font-weight: 600;
+}
+.mkt .mkt-menu .cur {
+  color: var(--mut);
+}
+
 .crumb {
   font-size: 0.84rem;
   color: var(--mut);

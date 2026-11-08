@@ -16,6 +16,7 @@ import { FIRST_BOOK } from "../../templates/first-book";
 import { pageTitle } from "../../lib/brand";
 import BookProvider from "../_book/BookProvider";
 import { Ribbon, ShopFooter, ShopNav } from "../_shop/Chrome";
+import { currentMarket } from "../_shop/market";
 
 export const metadata: Metadata = {
   title: pageTitle(`Make ${FIRST_BOOK.name}`),
@@ -23,7 +24,11 @@ export const metadata: Metadata = {
     "Pick the baby, type the name, write your message — then read every page before you pay.",
 };
 
-export default function MakeLayout({ children }: { children: React.ReactNode }) {
+export default async function MakeLayout({ children }: { children: React.ReactNode }) {
+  // Read here and handed to the provider, so every screen of the flow and the
+  // basket beyond it price against the same market the masthead is showing.
+  const market = await currentMarket();
+
   return (
     <>
       {/*
@@ -32,9 +37,11 @@ export default function MakeLayout({ children }: { children: React.ReactNode }) 
         at once; a buyer on one of them is still in a shop and needs the way
         back to it.
       */}
-      <Ribbon />
-      <ShopNav />
-      <BookProvider book={FIRST_BOOK}>{children}</BookProvider>
+      <Ribbon market={market} />
+      <ShopNav market={market} />
+      <BookProvider book={FIRST_BOOK} market={market}>
+        {children}
+      </BookProvider>
       <ShopFooter />
     </>
   );

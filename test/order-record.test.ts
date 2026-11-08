@@ -31,6 +31,7 @@ import {
   type OrderRecord,
 } from "../lib/orders/record";
 import { FIXTURE_BOOK_FILL } from "../fixtures/book-order";
+import { MARKET_LIST } from "../lib/shop/market";
 import { orderFingerprint } from "../lib/book/print";
 
 const fingerprint = orderFingerprint(FIXTURE_BOOK_FILL);
@@ -43,6 +44,7 @@ function record(overrides: Partial<OrderRecord> = {}): OrderRecord {
     fingerprint,
     fill: FIXTURE_BOOK_FILL,
     editionId: "softcover",
+    market: "au",
     asked: { currency: "AUD", amount: 59 },
     charged: null,
     payment: "awaiting",
@@ -154,11 +156,45 @@ describe("reading a record back", () => {
   });
 
   it("refuses a price in a currency this shop does not take", () => {
-    const back = readRecord({
-      ...JSON.parse(JSON.stringify(record())),
-      asked: { currency: "USD", amount: 59 },
-    });
-    expect(back).toBeNull();
+    // The shop prices in three currencies now and that is still a closed set:
+    // `lib/shop/market.ts` § Currency. A record naming anything else is a
+    // record from somewhere this code does not price, and it is refused.
+    for (const currency of ["EUR", "NZD", "JPY", "", "aud"]) {
+      const back = readRecord({
+        ...JSON.parse(JSON.stringify(record())),
+        asked: { currency, amount: 59 },
+      });
+      expect(back, currency).toBeNull();
+    }
+  });
+
+  it("takes every currency a market actually prices in, so the check above is not a wall", () => {
+    for (const market of MARKET_LIST) {
+      const back = readRecord({
+        ...JSON.parse(JSON.stringify(record())),
+        market: market.id,
+        asked: { currency: market.currency, amount: 49 },
+      });
+      expect(back?.asked.currency, market.id).toBe(market.currency);
+      expect(back?.market, market.id).toBe(market.id);
+    }
+  });
+
+  /**
+   * **A record written before markets existed has no market on it.**
+   *
+   * `lib/orders/record.ts` § `readMarket` states the meaning of its absence:
+   * whichever market prices in the currency the order was asked in. Every
+   * order placed before this change was in AUD, so every one of them reads
+   * back as Australia — and not as the new default, which would relabel the
+   * shop's entire history as American.
+   */
+  it("reads an order from before markets existed as the market its currency names", () => {
+    const stored = JSON.parse(JSON.stringify(record())) as Record<string, unknown>;
+    delete stored.market;
+    const back = readRecord(stored);
+    expect(back?.asked.currency).toBe("AUD");
+    expect(back?.market).toBe("au");
   });
 });
 

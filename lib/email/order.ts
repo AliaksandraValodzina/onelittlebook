@@ -79,7 +79,12 @@ export function confirmation(record: OrderRecord, bookName: string): Confirmatio
     ref: record.ref,
     name: record.fill.name,
     ordered: `${bookName} — ${edition.label}`,
-    price: priceOf(edition.price),
+    // **`record.asked` and not the current price list.** The shop now prices
+    // per market, so `editionOf(...)` alone cannot say what this buyer was
+    // quoted — and even in one market a confirmation that re-read the list
+    // would restate a price that had changed since the order. `asked` is what
+    // the shop meant to charge for this order, written when it was taken.
+    price: priceOf(record.asked),
     charged: chargedAs(record.charged),
     dispatchWindow: DISPATCH_WINDOW,
     address: addressLines(record.address),

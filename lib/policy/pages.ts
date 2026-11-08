@@ -12,10 +12,48 @@
  *
  * **Every fact is derived where a fact exists to derive.** The dispatch window
  * comes from `lib/email/order.ts`, the change window from the same place, the
- * prices from `EDITIONS`, and the countries from `SHIPS_TO` — the list the
- * Checkout Session is actually created with. So the delivery page cannot
- * promise to post to a country the till refuses, and a price change does not
- * leave a stale number on a legal page.
+ * prices and the currency from `EDITIONS` in the market being read, the
+ * countries from `shipsTo` — the list the Checkout Session is actually created
+ * with — and what postage costs from `lib/shop/shipping.ts`. So the delivery
+ * page cannot promise to post to a country the till refuses, and a price
+ * change does not leave a stale number on a legal page.
+ *
+ * ## Four policies per market, which is why these are functions
+ *
+ * A policy page states a price, a currency, a list of countries and one
+ * sentence about consumer law, and all four of those depend on which market
+ * the reader is buying in. So `policiesFor(market)` builds them and there is
+ * no module-level `DELIVERY` to import by accident. The **slugs and the nav
+ * labels do not vary**, which is why `POLICY_LINKS` exists for the footers:
+ * a footer needs a list of links, not four market-specific drafts.
+ *
+ * ## The returns page states a policy, never an entitlement
+ *
+ * This is the load-bearing change the move to the United States forced and it
+ * is worth reading before editing a word of `RETURNS`. The old page rested on
+ * Australian and European law: goods made to a customer's specification carry
+ * no cooling-off right, so a personalised book is not returnable. **That
+ * reasoning does not transfer to the United States**, where consumer
+ * protection is state by state and there is no equivalent blanket exclusion.
+ *
+ * Writing US consumer law is not this repository's job and a guess at it would
+ * be worse than nothing, so the page does not try. It says what the *shop*
+ * does and why, which is true in every market and is a promise the business is
+ * choosing to make:
+ *
+ * - **a policy**: *because each book is printed with one child's name we cannot
+ *   resell it, so we do not take change-of-mind returns — and anything wrong
+ *   with the book is reprinted free.*
+ * - **a legal claim, and it must not appear**: *you have no right to cancel.*
+ *
+ * The one sentence about law that survives is `Market.statutory`, and every
+ * variant of it only ever gives rights away — *nothing here limits what you are
+ * already entitled to* — which is safe to say anywhere because it claims
+ * nothing about what those entitlements are. `docs/pricing.md` keeps the
+ * Australian Consumer Law reasoning that produced the no-fake-discount rule,
+ * which the US market makes more load-bearing rather than less.
+ *
+ * **These pages still need a lawyer** — see § These are first drafts.
  *
  * **No brand string is typed here.** The shop's name, domain and support
  * address come from `lib/brand.ts`, because the shop has already been renamed
@@ -38,12 +76,22 @@
  * here claims otherwise, and nothing here invents a fact the repository does
  * not have — a retention period nobody has decided is described as what the
  * code does, which is to keep the order until the owner deletes it.
+ *
+ * **Selling into the United States raises the stakes on that sentence, not
+ * lowers them.** All four pages, and this one and privacy especially, want a
+ * professional read against US federal and state law before real money flows:
+ * returns and refunds, how a personalised good is treated, what a privacy
+ * notice has to say to a Californian reader, and who the seller is. What is
+ * here is honest and derived from what the code does, and that is a different
+ * thing from being advised.
  */
 
 import { BRAND } from "../brand";
-import { EDITIONS, priceOf } from "../book/editions";
-import { SHIPS_TO } from "../stripe/session";
+import { EDITIONS, priceLabel } from "../book/editions";
+import { shipsTo } from "../stripe/session";
 import { CHANGE_WINDOW_HOURS, DISPATCH_WINDOW } from "../email/order";
+import { DEFAULT_MARKET, MARKETS, type Market } from "../shop/market";
+import { deliveryCostLine, deliveryTimeLine } from "../shop/shipping";
 
 export interface PolicySection {
   heading: string;
@@ -63,222 +111,298 @@ export interface Policy {
   sections: PolicySection[];
 }
 
-const COUNTRIES: Record<string, string> = { AU: "Australia" };
-const shipsTo = SHIPS_TO.map((code) => COUNTRIES[code] ?? code).join(", ");
-const prices = EDITIONS.map((e) => `${e.label.toLowerCase()} ${priceOf(e.price)}`).join(", ");
-
-export const DELIVERY: Policy = {
-  slug: "/delivery",
-  title: "Delivery",
-  nav: "Delivery",
-  lede: "What happens after you order, and when the book turns up.",
-  sections: [
-    {
-      heading: "Printing and dispatch",
-      body: [
-        `Your book is printed in Australia and dispatched within ${DISPATCH_WINDOW} of your ` +
-          "order. There is a person between your order and the press — that is what makes the " +
-          "change window below possible — so the days are working days.",
-        "Delivery time is on top of the dispatch window and depends on where you are. We do " +
-          "not quote a delivery date, because the carrier sets it and we would be guessing.",
-      ],
-    },
-    {
-      heading: "What it costs to get it to you",
-      body: [
-        `Nothing extra. The price you see is the price you pay — ${prices} — and no postage ` +
-          "is added at the till.",
-      ],
-    },
-    {
-      heading: "Where we post to",
-      body: [
-        `${shipsTo}, for now. The checkout will only accept an address there, which is ` +
-          "deliberate: we are not going to take money for a delivery time we have not " +
-          "checked. If you are somewhere else and want one, write to us and we will find out " +
-          "properly before saying yes.",
-      ],
-    },
-    {
-      heading: "If it does not arrive",
-      body: [
-        `Tell us at ${BRAND.support} and we will chase the carrier, and reprint and resend ` +
-          "the book if it is lost. You do not pay twice for one book.",
-      ],
-    },
-  ],
+/**
+ * The names of the countries a market posts to, for a sentence a human reads.
+ *
+ * Keyed by the same two-letter codes the Checkout Session is created with, so
+ * the page and the till cannot name different places. A code with no name here
+ * is printed as the code rather than dropped — being told "we post to JP" is
+ * worse writing and better information than being told nothing.
+ */
+const COUNTRIES: Record<string, string> = {
+  US: "the United States",
+  AU: "Australia",
+  GB: "the United Kingdom",
 };
 
-export const RETURNS: Policy = {
-  slug: "/getting-it-right",
-  title: "Getting it right",
-  nav: "Getting it right",
-  lede: "What we do when something is wrong, and the one thing we cannot undo.",
-  sections: [
-    {
-      heading: `The first ${CHANGE_WINDOW_HOURS} hours`,
-      body: [
-        `We have not printed it yet when you order. For ${CHANGE_WINDOW_HOURS} hours after ` +
-          `you order, write to ${BRAND.support} with your order reference and we will change ` +
-          "anything in the book — the spelling, the dedication, the from-line, the " +
-          "photograph, the cover — and it costs nothing.",
-        "This is not a grudging concession. It is the honest consequence of the book being " +
-          "made by a person rather than a machine, and it is the best moment to catch " +
-          "anything, because after it the book exists as an object.",
-      ],
-    },
-    {
-      heading: "Anything wrong with the book itself",
-      body: [
-        "If the printing is poor, the binding is wrong, a page is missing or the book arrives " +
-          "damaged, we reprint it and send it again, free, and you do not send the first one " +
-          `back unless we ask. Send a photograph of the problem and your order reference to ` +
-          `${BRAND.support}.`,
-        "This is unconditional and it is not limited by anything below. Your rights under the " +
-          "Australian Consumer Law are not affected by anything on this page.",
-      ],
-    },
-    {
-      heading: "Changing your mind",
-      body: [
-        "A personalised book cannot be returned for a change of mind. It is printed with one " +
-          "child's name through it and there is nobody else it can be sold to, which is why " +
-          "goods made to a customer's specification carry no cooling-off right.",
-        `That is also why the ${CHANGE_WINDOW_HOURS}-hour window above exists and why every ` +
-          "page of the book is shown to you, personalised and unwatermarked, before you are " +
-          "asked for any money. You see exactly what you are buying first.",
-      ],
-    },
-    {
-      heading: "How to reach us",
-      body: [
-        `Reply to your order confirmation email, or write to ${BRAND.support}, quoting your ` +
-          "order reference. It is the fastest way, because the reference is what we look the " +
-          "order up by.",
-      ],
-    },
-  ],
-};
+function namesOf(market: Market): string {
+  return shipsTo(market)
+    .map((code) => COUNTRIES[code] ?? code)
+    .join(", ");
+}
 
-export const PRIVACY: Policy = {
-  slug: "/privacy",
-  title: "Privacy",
-  nav: "Privacy",
-  lede: `What ${BRAND.name} collects, who holds it, and for how long.`,
-  sections: [
-    {
-      heading: "Your photograph stays in your browser until you order",
-      body: [
-        "While you are making the book, the photograph you choose is resized and held in your " +
-          "own browser. It is not uploaded, and nothing on our side has a copy of it. Closing " +
-          "the tab without ordering leaves us with nothing, because there was never anything " +
-          "to leave.",
-        "When you place the order, the photograph is sent to us and stored so the book can be " +
-          "printed. It is kept in private storage that only the shop's own credentials can " +
-          "read — it is never published at a public address and it is never used for anything " +
-          "but printing your book.",
-      ],
-    },
-    {
-      heading: "What we hold about an order",
-      body: [
-        "The name as it will be printed, the dedication and from-line you wrote, which look " +
-          "and cover you chose, your photograph, which edition you bought, the amount charged, " +
-          "the delivery address and the email address you gave at the checkout. That is the " +
-          "whole of it, and all of it exists to print and send one book.",
-        "There is no account, no password and no tracking of you between visits. We do not " +
-          "sell anything to anybody and we do not send marketing email.",
-      ],
-    },
-    {
-      heading: "Who else holds something",
-      body: [
-        "Stripe takes the payment. Your card number is typed on Stripe's own page and never " +
-          "touches this site — we never see it, and there is nowhere in our records to put " +
-          "one. Stripe gives us back the amount, the delivery address and your email address, " +
-          "and keeps the payment record under its own privacy policy.",
-        "Cloudflare R2 stores the order and the photograph. Resend sends the confirmation " +
-          "email. Vercel hosts the site. Each of them handles the data only to do that job.",
-      ],
-    },
-    {
-      heading: "How long",
-      body: [
-        "The order and the photograph are kept while the book is being made and afterwards, " +
-          "so that a damaged or lost book can be reprinted from exactly the same file. " +
-          "Nothing is deleted automatically.",
-        `Ask us at ${BRAND.support} to delete your order and we will, including the ` +
-          "photograph — once it is gone we can no longer reprint that book, which is the only " +
-          "reason it is kept at all.",
-      ],
-    },
-    {
-      heading: "Seeing what we hold",
-      body: [
-        `Write to ${BRAND.support} with your order reference and we will tell you everything ` +
-          "we hold about the order, correct anything wrong, or delete it.",
-      ],
-    },
-  ],
-};
+/** `softcover USD 49, hardcover USD 59` — in the market being read. */
+function pricesIn(market: Market): string {
+  return EDITIONS.map((e) => `${e.label.toLowerCase()} ${priceLabel(e, market)}`).join(", ");
+}
 
-export const TERMS: Policy = {
-  slug: "/terms",
-  title: "Terms of sale",
-  nav: "Terms",
-  lede: `What you are buying from ${BRAND.name}, and when the sale becomes a sale.`,
-  sections: [
-    {
-      heading: "What you are buying",
-      body: [
-        "One printed, personalised book, made to the content you entered: the name, the " +
-          "dedication, the from-line, the photograph, the look and the cover shown to you in " +
-          "the preview. Every page is shown before you pay, so what you approved is what is " +
-          "printed.",
-        `The price is ${prices}, in Australian dollars, including delivery to an address we ` +
-          "post to.",
-      ],
-    },
-    {
-      heading: "When the contract is made",
-      body: [
-        "Putting a book together on this site is not an order and pressing the button is not " +
-          "a purchase: it takes you to Stripe's payment page, and until a payment there " +
-          "succeeds nothing has been ordered and nothing has been charged.",
-        "The contract is made when the payment succeeds and we send you an order confirmation " +
-          "with a reference on it. If we cannot make the book — a photograph that will not " +
-          "print, or anything else — we will say so and refund you in full.",
-      ],
-    },
-    {
-      heading: "What you are responsible for",
-      body: [
-        "The spelling, and the right to use the photograph you upload. The name is shown to " +
-          "you on its own, in the typeface it will be printed in, and you have to confirm it " +
-          `before the checkout opens — and you have ${CHANGE_WINDOW_HOURS} hours after ` +
-          "ordering to change anything.",
-        "We will not print content that is unlawful, or that infringes somebody else's " +
-          "rights. If we refuse an order on those grounds we refund it in full.",
-      ],
-    },
-    {
-      heading: "Changes, faults and refunds",
-      body: [
-        "Getting it right says what happens when something is wrong with the book and when it " +
-          "can be changed. Nothing on this page limits your rights under the Australian " +
-          "Consumer Law.",
-      ],
-    },
-    {
-      heading: "The book itself",
-      body: [
-        "The artwork and the story in the book remain ours. The book is yours: read it, give " +
-          "it, keep it. What you may not do is reproduce the artwork or the text separately " +
-          "from it.",
-      ],
-    },
-  ],
-};
+/**
+ * **Where we post to**, which is the one section that can say "nowhere yet".
+ *
+ * A market with no countries is not an error state and is not hidden: the
+ * price is set and the country list is not, and the page says which of those
+ * is true. See `lib/shop/market.ts` § Why "everywhere else" cannot check out
+ * yet. A page that implied the checkout would take an address it refuses would
+ * be the worst version of this — the buyer finds out at the till.
+ */
+function whereWePostTo(market: Market): PolicySection {
+  const names = namesOf(market);
+  return {
+    heading: "Where we post to",
+    body: names
+      ? [
+          `${names}, for this market. The checkout will only accept an address there, which ` +
+            "is deliberate: we are not going to take money for a delivery we have not " +
+            "checked. If you are somewhere else, change the market in the header to see what " +
+            "we can do — and if there is nothing there for you, write to us.",
+        ]
+      : [
+          "Not yet, and we would rather say so than take your money and find out. We need " +
+            `${market.shipsNeeds ?? "the shipping table"}`,
+          `Write to ${BRAND.support} and tell us where you are. We will find out properly and ` +
+            "come back to you, which is slower than a checkout button and is the honest " +
+            "version of one.",
+        ],
+  };
+}
+
+export function deliveryPolicy(market: Market): Policy {
+  return {
+    slug: "/delivery",
+    title: "Delivery",
+    nav: "Delivery",
+    lede: "What happens after you order, and when the book turns up.",
+    sections: [
+      {
+        heading: "Printing and dispatch",
+        body: [
+          `Your book is printed in ${BRAND.printedIn} and dispatched within ${DISPATCH_WINDOW} ` +
+            "of your order. There is a person between your order and the press — that is what " +
+            "makes the change window below possible — so the days are working days.",
+          // Both halves out of `lib/shop/shipping.ts`, so this page and the
+          // book page cannot come to different conclusions about whether a
+          // delivery date exists. Neither of them gives one.
+          deliveryTimeLine(DISPATCH_WINDOW),
+        ],
+      },
+      {
+        heading: "What it costs to get it to you",
+        body: [`${deliveryCostLine(market)} The price for this market is ${pricesIn(market)}.`],
+      },
+      whereWePostTo(market),
+      {
+        heading: "If it does not arrive",
+        body: [
+          `Tell us at ${BRAND.support} and we will chase the carrier, and reprint and resend ` +
+            "the book if it is lost. You do not pay twice for one book.",
+        ],
+      },
+    ],
+  };
+}
+
+export function returnsPolicy(market: Market): Policy {
+  return {
+    slug: "/getting-it-right",
+    title: "Getting it right",
+    nav: "Getting it right",
+    lede: "What we do when something is wrong, and the one thing we cannot undo.",
+    sections: [
+      {
+        heading: `The first ${CHANGE_WINDOW_HOURS} hours`,
+        body: [
+          `We have not printed it yet when you order. For ${CHANGE_WINDOW_HOURS} hours after ` +
+            `you order, write to ${BRAND.support} with your order reference and we will change ` +
+            "anything in the book — the spelling, the dedication, the from-line, the " +
+            "photograph, the cover — and it costs nothing.",
+          "This is not a grudging concession. It is the honest consequence of the book being " +
+            "made by a person rather than a machine, and it is the best moment to catch " +
+            "anything, because after it the book exists as an object.",
+        ],
+      },
+      {
+        heading: "Anything wrong with the book itself",
+        body: [
+          "If the printing is poor, the binding is wrong, a page is missing or the book arrives " +
+            "damaged, we reprint it and send it again, free, and you do not send the first one " +
+            "back unless we ask. Send a photograph of the problem and your order reference to " +
+            `${BRAND.support}.`,
+          // The statutory sentence only ever gives rights away. See this
+          // module's docblock § The returns page states a policy.
+          `This is unconditional and it is not limited by anything below. ${market.statutory}`,
+        ],
+      },
+      {
+        /**
+         * **A policy, stated as one, and not a claim about anybody's rights.**
+         *
+         * Every sentence here is something the shop does or cannot do. There
+         * is no "you have no right to cancel" and nothing that reads as one —
+         * the page says why the shop will not resell a book with a child's
+         * name in it, which is a fact about the object, and what it does
+         * instead, which is the window above and the reprint beside it. The
+         * module's docblock has the full argument and the reason the old
+         * Australian-and-European phrasing had to go.
+         */
+        heading: "Changing your mind",
+        body: [
+          "We do not take change-of-mind returns. Each book is printed with one child's name " +
+            "through it, which means there is nobody else it can be sold to — so a returned " +
+            "book is a book that gets thrown away, and that is the whole of our reason.",
+          `That is also why the ${CHANGE_WINDOW_HOURS}-hour window above exists and why every ` +
+            "page of the book is shown to you, personalised and unwatermarked, before you are " +
+            "asked for any money. You see exactly what you are buying first.",
+          "If something is wrong with the book, that is the section above and it is not limited " +
+            `by this one. ${market.statutory}`,
+        ],
+      },
+      {
+        heading: "How to reach us",
+        body: [
+          `Reply to your order confirmation email, or write to ${BRAND.support}, quoting your ` +
+            "order reference. It is the fastest way, because the reference is what we look the " +
+            "order up by.",
+        ],
+      },
+    ],
+  };
+}
+
+export function privacyPolicy(market: Market): Policy {
+  return {
+    slug: "/privacy",
+    title: "Privacy",
+    nav: "Privacy",
+    lede: `What ${BRAND.name} collects, who holds it, and for how long.`,
+    sections: [
+      {
+        heading: "Your photograph stays in your browser until you order",
+        body: [
+          "While you are making the book, the photograph you choose is resized and held in your " +
+            "own browser. It is not uploaded, and nothing on our side has a copy of it. Closing " +
+            "the tab without ordering leaves us with nothing, because there was never anything " +
+            "to leave.",
+          "When you place the order, the photograph is sent to us and stored so the book can be " +
+            "printed. It is kept in private storage that only the shop's own credentials can " +
+            "read — it is never published at a public address and it is never used for anything " +
+            "but printing your book.",
+        ],
+      },
+      {
+        heading: "What we hold about an order",
+        body: [
+          "The name as it will be printed, the dedication and from-line you wrote, which look " +
+            "and cover you chose, your photograph, which edition you bought, the amount charged, " +
+            "the delivery address and the email address you gave at the checkout. That is the " +
+            "whole of it, and all of it exists to print and send one book.",
+          "There is no account, no password and no tracking of you between visits. We do not " +
+            "sell anything to anybody and we do not send marketing email.",
+        ],
+      },
+      {
+        /**
+         * The market is named here and nowhere else in this policy, because
+         * "where does my data go" is the one privacy question whose answer
+         * genuinely moves with where the buyer is: the book is printed in one
+         * country and sent from it, whoever is reading.
+         */
+        heading: "Who else holds something",
+        body: [
+          "Stripe takes the payment. Your card number is typed on Stripe's own page and never " +
+            "touches this site — we never see it, and there is nowhere in our records to put " +
+            "one. Stripe gives us back the amount, the delivery address and your email address, " +
+            "and keeps the payment record under its own privacy policy.",
+          "Cloudflare R2 stores the order and the photograph. Resend sends the confirmation " +
+            "email. Vercel hosts the site. Each of them handles the data only to do that job.",
+          `The book is printed in ${BRAND.printedIn}, so your delivery address and the name on ` +
+            `the book reach a printer there${
+              market.id === "us" ? "" : ", which is outside the country you are reading this in"
+            }.`,
+        ],
+      },
+      {
+        heading: "How long",
+        body: [
+          "The order and the photograph are kept while the book is being made and afterwards, " +
+            "so that a damaged or lost book can be reprinted from exactly the same file. " +
+            "Nothing is deleted automatically.",
+          `Ask us at ${BRAND.support} to delete your order and we will, including the ` +
+            "photograph — once it is gone we can no longer reprint that book, which is the only " +
+            "reason it is kept at all.",
+        ],
+      },
+      {
+        heading: "Seeing what we hold",
+        body: [
+          `Write to ${BRAND.support} with your order reference and we will tell you everything ` +
+            "we hold about the order, correct anything wrong, or delete it.",
+        ],
+      },
+    ],
+  };
+}
+
+export function termsPolicy(market: Market): Policy {
+  return {
+    slug: "/terms",
+    title: "Terms of sale",
+    nav: "Terms",
+    lede: `What you are buying from ${BRAND.name}, and when the sale becomes a sale.`,
+    sections: [
+      {
+        heading: "What you are buying",
+        body: [
+          "One printed, personalised book, made to the content you entered: the name, the " +
+            "dedication, the from-line, the photograph, the look and the cover shown to you in " +
+            "the preview. Every page is shown before you pay, so what you approved is what is " +
+            "printed.",
+          // The currency is the market's own, named rather than implied by a
+          // symbol — "$49" is three currencies and a buyer should not have to
+          // guess which one their card will be charged in.
+          `The price is ${pricesIn(market)}, charged in ${market.currency}. ` +
+            deliveryCostLine(market),
+        ],
+      },
+      {
+        heading: "When the contract is made",
+        body: [
+          "Putting a book together on this site is not an order and pressing the button is not " +
+            "a purchase: it takes you to Stripe's payment page, and until a payment there " +
+            "succeeds nothing has been ordered and nothing has been charged.",
+          "The contract is made when the payment succeeds and we send you an order confirmation " +
+            "with a reference on it. If we cannot make the book — a photograph that will not " +
+            "print, or anything else — we will say so and refund you in full.",
+        ],
+      },
+      {
+        heading: "What you are responsible for",
+        body: [
+          "The spelling, and the right to use the photograph you upload. The name is shown to " +
+            "you on its own, in the typeface it will be printed in, and you have to confirm it " +
+            `before the checkout opens — and you have ${CHANGE_WINDOW_HOURS} hours after ` +
+            "ordering to change anything.",
+          "We will not print content that is unlawful, or that infringes somebody else's " +
+            "rights. If we refuse an order on those grounds we refund it in full.",
+        ],
+      },
+      {
+        heading: "Changes, faults and refunds",
+        body: [
+          "Getting it right says what happens when something is wrong with the book and when it " +
+            `can be changed. ${market.statutory}`,
+        ],
+      },
+      {
+        heading: "The book itself",
+        body: [
+          "The artwork and the story in the book remain ours. The book is yours: read it, give " +
+            "it, keep it. What you may not do is reproduce the artwork or the text separately " +
+            "from it.",
+        ],
+      },
+    ],
+  };
+}
 
 /**
  * The four, in the order the footer lists them.
@@ -286,10 +410,35 @@ export const TERMS: Policy = {
  * Delivery and getting-it-right first because they are what a buyer looks for;
  * privacy and terms after, because they are what a buyer is told to have.
  */
-export const POLICIES: readonly Policy[] = [DELIVERY, RETURNS, PRIVACY, TERMS] as const;
+export function policiesFor(market: Market): readonly Policy[] {
+  return [
+    deliveryPolicy(market),
+    returnsPolicy(market),
+    privacyPolicy(market),
+    termsPolicy(market),
+  ];
+}
 
-export function policyFor(slug: string): Policy | null {
-  return POLICIES.find((p) => p.slug === slug) ?? null;
+/**
+ * **What the footers link to**, which does not depend on the market.
+ *
+ * A slug and a label, taken off the default market's own pages so that there
+ * is still exactly one list and a fifth policy appears in both footers by
+ * being written once. A footer that built four full market-specific drafts to
+ * read four hrefs off them would be doing a page's work to draw a link.
+ */
+export const POLICY_LINKS: readonly { slug: string; nav: string }[] = policiesFor(
+  DEFAULT_MARKET,
+).map(({ slug, nav }) => ({ slug, nav }));
+
+/** The policy served at a path, in a market, or null — which a route turns into a 404. */
+export function policyFor(slug: string, market: Market = DEFAULT_MARKET): Policy | null {
+  return policiesFor(market).find((p) => p.slug === slug) ?? null;
+}
+
+/** Every policy in every market, for a test that walks all the copy there is. */
+export function everyPolicy(): readonly Policy[] {
+  return Object.values(MARKETS).flatMap((market) => policiesFor(market));
 }
 
 /** Every word of a policy as one string. For a test, and for nothing else. */

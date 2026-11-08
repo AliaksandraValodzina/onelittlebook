@@ -46,6 +46,7 @@ import {
 } from "../../lib/book/order";
 import { checkName, type NameVerdict } from "../../lib/book/name";
 import { isEdition } from "../../lib/book/editions";
+import type { Market } from "../../lib/shop/market";
 import { DEFAULT_VIEW, type PhotoView } from "../../lib/editor/view";
 import { checkPhoto } from "../../lib/book/photo";
 import { PhotoUnreadable, preparePhoto } from "../../lib/editor/photo";
@@ -53,6 +54,23 @@ import type { AskId } from "../../lib/book/slots";
 
 export interface BookContext {
   book: BookTemplate;
+  /**
+   * **The market every price in the flow is shown in.**
+   *
+   * Handed down from the server route that rendered the provider rather than
+   * read here, for two reasons. It is a **cookie**, and the server already has
+   * it — reading `document.cookie` in a client component would give the same
+   * answer one render later and disagree with the markup it is hydrating in the
+   * meantime. And it keeps `lib/` free of the browser: the market is decided by
+   * `lib/shop/market.ts` from a string, which is why it can be tested without
+   * one.
+   *
+   * It is **not** on the `Order` and so is not in `localStorage`. The market is
+   * a preference about the whole shop, not a property of this book — a buyer
+   * who switches it should see every price change, including on the landing
+   * page where there is no order at all.
+   */
+  market: Market;
   order: Order;
   /** Exactly what is in the name field, including what the book cannot print. */
   typedName: string;
@@ -113,9 +131,11 @@ function store(): Storage | null {
 
 export default function BookProvider({
   book,
+  market,
   children,
 }: {
   book: BookTemplate;
+  market: Market;
   children: ReactNode;
 }) {
   const [order, setOrder] = useState<Order>(() => emptyOrder(book));
@@ -242,6 +262,7 @@ export default function BookProvider({
   const value = useMemo<BookContext>(
     () => ({
       book,
+      market,
       order,
       typedName,
       nameVerdict,
@@ -266,6 +287,7 @@ export default function BookProvider({
     }),
     [
       book,
+      market,
       order,
       typedName,
       nameVerdict,

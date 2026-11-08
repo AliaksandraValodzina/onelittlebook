@@ -28,7 +28,8 @@ import BookPageRoute, { generateMetadata } from "../app/books/[slug]/page";
 import { trimBox } from "../lib/template/defaults";
 import { BOOK_UNCONFIRMED } from "../lib/book/product";
 import { PLACEHOLDER } from "../lib/product";
-import { EDITIONS, priceOf } from "../lib/book/editions";
+import { EDITIONS, priceLabel } from "../lib/book/editions";
+import { DEFAULT_MARKET, MARKET_LIST } from "../lib/shop/market";
 import { CHANGE_WINDOW_HOURS, DISPATCH_WINDOW } from "../lib/email/order";
 import { pageSequence } from "../lib/book/derive";
 import { BRAND, FORMER_NAMES } from "../lib/brand";
@@ -38,10 +39,20 @@ import {
   AI_ANSWER,
   PAGE_BOTTOM_QUESTIONS,
   PAGE_CTA,
-  PAGE_QUESTIONS,
   REVIEW_SLOT,
-  STRIP,
+  pageQuestionsFor,
+  printedLine,
+  stripFor,
 } from "../lib/shop/copy";
+
+/**
+ * The market a route rendered outside a request is in — the default.
+ *
+ * `app/_shop/market.ts` § `currentMarket` says why that is the right answer
+ * rather than a swallowed error, and it is what makes a page testable by
+ * calling it as the function it is.
+ */
+const market = DEFAULT_MARKET;
 
 const title = WHEN_THEY_WERE_SMALL;
 const book = title.book;
@@ -115,8 +126,25 @@ describe("every number on the page is derived from something that knows it", () 
   });
 
   it("states both prices, from the module that owns money", () => {
-    for (const edition of EDITIONS) expect(page, edition.id).toContain(priceOf(edition.price));
-    expect(page).toContain(`From ${priceOf(EDITIONS[0].price)}`);
+    for (const edition of EDITIONS) {
+      expect(page, edition.id).toContain(priceLabel(edition, market));
+    }
+    expect(page).toContain(`From ${priceLabel(EDITIONS[0], market)}`);
+  });
+
+  it("names the country the book is printed in, and never the old one", () => {
+    expect(page).toContain(printedLine(market));
+    expect(page.toLowerCase()).not.toContain("printed in australia");
+    // The flag beside it is a claim too, and it was the one most likely to be
+    // left behind — `lib/shop/copy.ts` § stripFor.
+    expect(page).not.toContain("🇦🇺");
+  });
+
+  it("prices in no currency but the market's, so a page cannot show two", () => {
+    const others = MARKET_LIST.map((m) => m.currency).filter((c) => c !== market.currency);
+    for (const currency of new Set(others)) {
+      expect(page, currency).not.toContain(`${currency} `);
+    }
   });
 
   it("draws five real pages beside the cover rather than five pictures", () => {
@@ -159,14 +187,14 @@ describe("the page the captain approved", () => {
   });
 
   it("carries the reassurance strip and the three screens", () => {
-    for (const item of STRIP) expect(page, item.line).toContain(item.line);
+    for (const item of stripFor(market)) expect(page, item.line).toContain(item.line);
     expect(page).toContain("Name them, pick the baby");
     expect(page).toContain("Read all of it");
     expect(page).toContain("Add your bit, then order");
   });
 
   it("answers both lists of questions, including how the artwork is made", () => {
-    for (const question of [...PAGE_QUESTIONS, ...PAGE_BOTTOM_QUESTIONS]) {
+    for (const question of [...pageQuestionsFor(market), ...PAGE_BOTTOM_QUESTIONS]) {
       expect(text(page), question.q).toContain(question.q);
       expect(text(page), question.q).toContain(question.a);
     }

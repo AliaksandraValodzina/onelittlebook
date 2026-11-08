@@ -18,6 +18,7 @@
 
 import type { AssetRef } from "../../lib/template/types";
 import { SHELF, fromPrice, pathOf, type ShelfEntry } from "../../lib/shop/shelf";
+import type { Market } from "../../lib/shop/market";
 import Cover from "./Cover";
 
 /** The name the hero and the shelf show on a cover with nobody's order behind it. */
@@ -26,9 +27,12 @@ export const SAMPLE_NAME = "Rosalind";
 export default function Shelf({
   shelf = SHELF,
   href,
+  market,
 }: {
   shelf?: readonly ShelfEntry[];
   href?: (ref: AssetRef) => string;
+  /** Which market the `From …` price on each tile is in. No default: see `fromPrice`. */
+  market: Market;
 }) {
   return (
     <div className="shelf" data-testid="shelf">
@@ -41,7 +45,7 @@ export default function Shelf({
             </div>
             <h3 className="dsp">{entry.book.name}</h3>
             <p>{entry.line}</p>
-            <p className="pr">{fromPrice()}</p>
+            <p className="pr">{fromPrice(market)}</p>
             <a className="btn" href={pathOf(entry)}>
               Personalise
             </a>

@@ -35,13 +35,13 @@
  */
 
 import { ASKS } from "../../lib/book/slots";
-import { editionOf, priceOf } from "../../lib/book/editions";
+import { editionOf, priceLabel } from "../../lib/book/editions";
 import { outstanding } from "../../lib/book/order";
 import { stepFor } from "../../lib/shop/steps";
 import { useBook } from "./BookProvider";
 
 export default function Bar() {
-  const { book, order, setCover, done, ready, persistence, flush } = useBook();
+  const { book, market, order, setCover, done, ready, persistence, flush } = useBook();
   const missing = outstanding(order, book);
   const edition = editionOf(order.editionId);
   const basket = stepFor("basket")!;
@@ -113,7 +113,7 @@ export default function Bar() {
           data-testid="continue"
           className="btn wide mt-3"
         >
-          {`Continue \u2014 ${edition.label.toLowerCase()}, ${priceOf(edition.price)}`}
+          {`Continue \u2014 ${edition.label.toLowerCase()}, ${priceLabel(edition, market)}`}
         </a>
       ) : (
         <span

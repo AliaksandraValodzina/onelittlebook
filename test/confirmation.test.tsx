@@ -27,7 +27,8 @@ import { BRAND, FORMER_NAMES } from "../lib/brand";
 import { claim, markPaid, memoryStore } from "../lib/orders/store";
 import { FIXTURE_BOOK_FILL } from "../fixtures/book-order";
 import { FIRST_BOOK } from "../templates/first-book";
-import { editionOf, priceOf } from "../lib/book/editions";
+import { editionOf, priceIn, priceOf } from "../lib/book/editions";
+import { MARKETS } from "../lib/shop/market";
 import type { OrderRecord } from "../lib/orders/record";
 
 const DAY = new Date("2026-11-07T04:00:00Z");
@@ -35,14 +36,17 @@ const LATER = new Date("2026-11-07T04:02:00Z");
 
 async function paidOrder(editionId = "hardcover"): Promise<OrderRecord> {
   const store = memoryStore();
-  const { record } = await claim(store, FIXTURE_BOOK_FILL, editionId, DAY);
+  const { record } = await claim(store, FIXTURE_BOOK_FILL, editionId, "us", DAY);
   const result = await markPaid(
     store,
     record.ref,
     {
       sessionId: "cs_test_1",
       paymentIntentId: "pi_test_1",
-      charged: { currency: "aud", minorUnits: editionOf(editionId).price.amount * 100 },
+      charged: {
+        currency: "usd",
+        minorUnits: priceIn(editionOf(editionId), MARKETS.us).amount * 100,
+      },
       address: {
         name: "A Buyer",
         line1: "1 Example St",
@@ -69,13 +73,13 @@ describe("what the confirmation says", () => {
     expect(c.ordered).toContain("Hardcover");
     expect(c.dispatchWindow).toBe(DISPATCH_WINDOW);
     expect(c.paid).toBe(true);
-    expect(c.charged).toBe("AUD 69");
+    expect(c.charged).toBe("USD 59");
     expect(c.address).toEqual(["A Buyer", "1 Example St", "Sydney NSW 2000", "AU"]);
   });
 
   it("shows what Stripe took rather than what the price list says", async () => {
     const store = memoryStore();
-    const { record } = await claim(store, FIXTURE_BOOK_FILL, "softcover", DAY);
+    const { record } = await claim(store, FIXTURE_BOOK_FILL, "softcover", "us", DAY);
     const paid = await markPaid(
       store,
       record.ref,
@@ -87,7 +91,7 @@ describe("what the confirmation says", () => {
 
   it("knows when the payment has not been confirmed yet", async () => {
     const store = memoryStore();
-    const { record } = await claim(store, FIXTURE_BOOK_FILL, "softcover", DAY);
+    const { record } = await claim(store, FIXTURE_BOOK_FILL, "softcover", "us", DAY);
     const c = confirmation(record, FIRST_BOOK.name);
     expect(c.paid).toBe(false);
     expect(c.charged).toBeNull();
@@ -187,7 +191,11 @@ describe("the email, which is the thing the buyer keeps", () => {
   it("prices it as it was actually charged", async () => {
     const record = await paidOrder("softcover");
     const text = emailFor({ record, bookName: FIRST_BOOK.name }).text;
-    expect(text).toContain(priceOf(editionOf("softcover").price));
+    // `record.asked` and not the price list — the two differ the moment the
+    // shop reprices, and the whole point of the field is that an old order's
+    // confirmation keeps saying what that order was quoted.
+    expect(text).toContain(priceOf(record.asked));
+    expect(record.asked).toEqual(priceIn(editionOf("softcover"), MARKETS.us));
   });
 });
 

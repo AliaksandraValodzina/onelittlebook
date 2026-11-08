@@ -21,8 +21,15 @@
 
 import { describe, expect, it } from "vitest";
 import { formEncode, formPairs } from "../lib/stripe/form";
-import { SHIPS_TO, createSession, minorUnits, sessionParams } from "../lib/stripe/session";
-import { EDITIONS, editionOf } from "../lib/book/editions";
+import {
+  createSession,
+  marketIsOpen,
+  minorUnits,
+  sessionParams,
+  shipsTo,
+} from "../lib/stripe/session";
+import { EDITIONS, editionOf, priceIn } from "../lib/book/editions";
+import { DEFAULT_MARKET, MARKETS, MARKET_LIST } from "../lib/shop/market";
 import { claim, memoryStore } from "../lib/orders/store";
 import { FIXTURE_BOOK_FILL } from "../fixtures/book-order";
 import { orderFingerprint } from "../lib/book/print";
@@ -31,7 +38,7 @@ const DAY = new Date("2026-11-07T04:00:00Z");
 const KEY = "sk_test_" + "k".repeat(24);
 
 async function order(editionId = "softcover") {
-  const { record } = await claim(memoryStore(), FIXTURE_BOOK_FILL, editionId, DAY);
+  const { record } = await claim(memoryStore(), FIXTURE_BOOK_FILL, editionId, "us", DAY);
   return record;
 }
 
@@ -57,24 +64,28 @@ describe("form encoding, which is the whole of why there is no SDK", () => {
 });
 
 describe("minor units", () => {
-  it("turns whole dollars into cents", () => {
+  it("turns whole units into hundredths", () => {
+    expect(minorUnits(49)).toBe(4900);
     expect(minorUnits(59)).toBe(5900);
-    expect(minorUnits(69)).toBe(6900);
+    expect(minorUnits(39)).toBe(3900);
   });
 });
 
 describe("the session this shop asks for", () => {
-  it("charges the edition's price, in Australian dollars, once", async () => {
+  it("charges the edition's price, in the default market's currency, once", async () => {
     for (const edition of EDITIONS) {
       const record = await order(edition.id);
       const params = sessionParams({
         record,
         edition,
+        market: DEFAULT_MARKET,
         successUrl: "https://example.test/order/X?session={CHECKOUT_SESSION_ID}",
         cancelUrl: "https://example.test/preview",
       });
-      expect(params["line_items[0][price_data][currency]"]).toBe("aud");
-      expect(params["line_items[0][price_data][unit_amount]"]).toBe(edition.price.amount * 100);
+      expect(params["line_items[0][price_data][currency]"]).toBe("usd");
+      expect(params["line_items[0][price_data][unit_amount]"]).toBe(
+        priceIn(edition, DEFAULT_MARKET).amount * 100,
+      );
       expect(params["line_items[0][quantity]"]).toBe(1);
       expect(params.mode).toBe("payment");
     }
@@ -86,7 +97,7 @@ describe("the session this shop asks for", () => {
     // charge of any kind.
     const record = await order();
     const body = formEncode(
-      sessionParams({ record, edition: editionOf("softcover"), successUrl: "https://e.test/s", cancelUrl: "https://e.test/c" }),
+      sessionParams({ record, edition: editionOf("softcover"), market: DEFAULT_MARKET, successUrl: "https://e.test/s", cancelUrl: "https://e.test/c" }),
     );
     expect(body).not.toContain("shipping_options");
     expect(body).not.toContain("line_items%5B1%5D");
@@ -94,16 +105,84 @@ describe("the session this shop asks for", () => {
 
   it("collects a shipping address, and only where this shop will post", async () => {
     const record = await order();
-    const params = sessionParams({ record, edition: editionOf("softcover"), successUrl: "https://e.test/s", cancelUrl: "https://e.test/c" });
-    expect(params["shipping_address_collection[allowed_countries]"]).toEqual([...SHIPS_TO]);
-    expect(formEncode(params)).toContain("shipping_address_collection%5Ballowed_countries%5D%5B0%5D=AU");
+    const params = sessionParams({ record, edition: editionOf("softcover"), market: DEFAULT_MARKET, successUrl: "https://e.test/s", cancelUrl: "https://e.test/c" });
+    expect(params["shipping_address_collection[allowed_countries]"]).toEqual([
+      ...shipsTo(DEFAULT_MARKET),
+    ]);
+    expect(formEncode(params)).toContain("shipping_address_collection%5Ballowed_countries%5D%5B0%5D=US");
+  });
+
+  /**
+   * **The currency and the countries follow the chosen market.**
+   *
+   * The whole of what "sells to Australia, the UK and the rest of the world"
+   * means on the wire, asserted per market rather than for one: the amount is
+   * the captain's set price for that market, the currency is that market's
+   * own, and the addresses Stripe will accept are that market's countries and
+   * nobody else's.
+   */
+  for (const market of MARKET_LIST.filter(marketIsOpen)) {
+    it(`charges ${market.currency} and posts only to ${market.ships.join(", ")} in ${market.id}`, async () => {
+      for (const edition of EDITIONS) {
+        const record = await order(edition.id);
+        const params = sessionParams({
+          record,
+          edition,
+          market,
+          successUrl: "https://e.test/s",
+          cancelUrl: "https://e.test/c",
+        });
+        expect(params["line_items[0][price_data][currency]"]).toBe(
+          market.currency.toLowerCase(),
+        );
+        expect(params["line_items[0][price_data][unit_amount]"]).toBe(
+          minorUnits(priceIn(edition, market).amount),
+        );
+        expect(params["shipping_address_collection[allowed_countries]"]).toEqual([
+          ...market.ships,
+        ]);
+        expect(params["metadata[market]"]).toBe(market.id);
+      }
+    });
+  }
+
+  it("prices each market from its own row and never by converting one", async () => {
+    // `lib/book/editions.ts` § The prices are set per market. The numbers are
+    // deliberately not in proportion, which is the property a conversion would
+    // destroy — so the assertion is that no single rate explains them all.
+    const record = await order();
+    const amountIn = (marketId: keyof typeof MARKETS) =>
+      Number(
+        sessionParams({
+          record,
+          edition: editionOf("softcover"),
+          market: MARKETS[marketId],
+          successUrl: "https://e.test/s",
+          cancelUrl: "https://e.test/c",
+        })["line_items[0][price_data][unit_amount]"],
+      );
+    const softRatio = amountIn("au") / amountIn("us");
+    const hardRatio =
+      priceIn(editionOf("hardcover"), MARKETS.au).amount /
+      priceIn(editionOf("hardcover"), MARKETS.us).amount;
+    expect(softRatio).not.toBeCloseTo(hardRatio, 2);
+  });
+
+  it("will not open a session for a market with no countries", () => {
+    // `lib/shop/market.ts` § Why "everywhere else" cannot check out yet. The
+    // till refuses before this is ever called — `app/api/checkout/route.ts` —
+    // and this is the fact that refusal rests on.
+    expect(marketIsOpen(MARKETS.row)).toBe(false);
+    for (const market of [MARKETS.us, MARKETS.au, MARKETS.gb]) {
+      expect(marketIsOpen(market), market.id).toBe(true);
+    }
   });
 
   it("carries the order's reference on the session and on the payment", async () => {
     // So the reference is findable from either side of Stripe's dashboard, and
     // so the webhook can tell which order an event is about.
     const record = await order();
-    const params = sessionParams({ record, edition: editionOf("softcover"), successUrl: "https://e.test/s", cancelUrl: "https://e.test/c" });
+    const params = sessionParams({ record, edition: editionOf("softcover"), market: DEFAULT_MARKET, successUrl: "https://e.test/s", cancelUrl: "https://e.test/c" });
     expect(params["metadata[ref]"]).toBe(record.ref);
     expect(params["payment_intent_data[metadata][ref]"]).toBe(record.ref);
     expect(params.client_reference_id).toBe(record.ref);
@@ -114,7 +193,7 @@ describe("the session this shop asks for", () => {
   it("names the book on the buyer's own statement", async () => {
     // A charge nobody recognises is a chargeback.
     const record = await order();
-    const params = sessionParams({ record, edition: editionOf("hardcover"), successUrl: "https://e.test/s", cancelUrl: "https://e.test/c" });
+    const params = sessionParams({ record, edition: editionOf("hardcover"), market: DEFAULT_MARKET, successUrl: "https://e.test/s", cancelUrl: "https://e.test/c" });
     expect(String(params["line_items[0][price_data][product_data][name]"])).toContain(FIXTURE_BOOK_FILL.name);
     expect(String(params["line_items[0][price_data][product_data][name]"])).toContain("Hardcover");
   });
@@ -124,6 +203,7 @@ describe("the session this shop asks for", () => {
     const params = sessionParams({
       record,
       edition: editionOf("softcover"),
+      market: DEFAULT_MARKET,
       successUrl: `https://e.test/order/${record.ref}?session={CHECKOUT_SESSION_ID}`,
       cancelUrl: "https://e.test/preview",
     });
@@ -133,7 +213,7 @@ describe("the session this shop asks for", () => {
 
   it("asks for no card details, because the card is typed on Stripe's page", async () => {
     const record = await order();
-    const body = formEncode(sessionParams({ record, edition: editionOf("softcover"), successUrl: "https://e.test/s", cancelUrl: "https://e.test/c" }));
+    const body = formEncode(sessionParams({ record, edition: editionOf("softcover"), market: DEFAULT_MARKET, successUrl: "https://e.test/s", cancelUrl: "https://e.test/c" }));
     for (const word of ["card_number", "number", "cvc", "exp_month", "payment_method_data"]) {
       expect(body, word).not.toContain(word);
     }
@@ -161,7 +241,7 @@ describe("creating the session", () => {
     const record = await order();
     const { calls, fetchLike } = recorder(200, { id: "cs_test_abc", url: "https://checkout.stripe.com/c/pay/cs_test_abc" });
     const result = await createSession(
-      sessionParams({ record, edition: editionOf("softcover"), successUrl: "https://e.test/s", cancelUrl: "https://e.test/c" }),
+      sessionParams({ record, edition: editionOf("softcover"), market: DEFAULT_MARKET, successUrl: "https://e.test/s", cancelUrl: "https://e.test/c" }),
       { secretKey: KEY, idempotencyKey: record.fingerprint, fetchLike },
     );
 
@@ -178,7 +258,7 @@ describe("creating the session", () => {
     const record = await order();
     const { fetchLike } = recorder(402, { error: { message: "Your card was declined." } });
     const result = await createSession(
-      sessionParams({ record, edition: editionOf("softcover"), successUrl: "https://e.test/s", cancelUrl: "https://e.test/c" }),
+      sessionParams({ record, edition: editionOf("softcover"), market: DEFAULT_MARKET, successUrl: "https://e.test/s", cancelUrl: "https://e.test/c" }),
       { secretKey: KEY, idempotencyKey: record.fingerprint, fetchLike },
     );
     expect(result.ok).toBe(false);
@@ -190,7 +270,7 @@ describe("creating the session", () => {
     const record = await order();
     const { fetchLike } = recorder(200, { id: "cs_1" });
     const result = await createSession(
-      sessionParams({ record, edition: editionOf("softcover"), successUrl: "https://e.test/s", cancelUrl: "https://e.test/c" }),
+      sessionParams({ record, edition: editionOf("softcover"), market: DEFAULT_MARKET, successUrl: "https://e.test/s", cancelUrl: "https://e.test/c" }),
       { secretKey: KEY, idempotencyKey: record.fingerprint, fetchLike },
     );
     expect(result.ok).toBe(false);
@@ -200,7 +280,7 @@ describe("creating the session", () => {
     const record = await order();
     const { fetchLike } = recorder(502, "<html>bad gateway</html>");
     const result = await createSession(
-      sessionParams({ record, edition: editionOf("softcover"), successUrl: "https://e.test/s", cancelUrl: "https://e.test/c" }),
+      sessionParams({ record, edition: editionOf("softcover"), market: DEFAULT_MARKET, successUrl: "https://e.test/s", cancelUrl: "https://e.test/c" }),
       { secretKey: KEY, idempotencyKey: record.fingerprint, fetchLike },
     );
     expect(result.ok).toBe(false);

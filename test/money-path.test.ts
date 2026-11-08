@@ -157,7 +157,7 @@ function completedEvent(ref: string, overrides: Record<string, unknown> = {}) {
 
 async function awaiting() {
   const store = memoryStore();
-  const { record } = await claim(store, FIXTURE_BOOK_FILL, "softcover", DAY);
+  const { record } = await claim(store, FIXTURE_BOOK_FILL, "softcover", "us", DAY);
   return { store, record };
 }
 

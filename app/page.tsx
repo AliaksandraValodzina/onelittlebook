@@ -38,14 +38,15 @@ import {
   HERO,
   HOW,
   HOW_HEADING,
-  LANDING_QUESTIONS,
   MADE,
   RENDER_CAPTION,
   SHELF_ASIDE,
   SHELF_HEADING,
-  TRUST,
+  landingQuestionsFor,
+  trustFor,
 } from "../lib/shop/copy";
 import { Ribbon, ShopFooter, ShopNav } from "./_shop/Chrome";
+import { currentMarket } from "./_shop/market";
 import Cover from "./_shop/Cover";
 import Icon from "./_shop/Icon";
 import Questions from "./_shop/Questions";
@@ -65,11 +66,16 @@ export const metadata: Metadata = {
   description: HERO.sub,
 };
 
-export default function Home() {
+export default async function Home() {
+  // The market decides the printing line and every price on this page. It is
+  // one cookie read — `./_shop/market.ts` says why that is the only input.
+  const market = await currentMarket();
+  const trust = trustFor(market);
+
   return (
     <>
-      <Ribbon />
-      <ShopNav />
+      <Ribbon market={market} />
+      <ShopNav market={market} />
 
       {/* ---- 1 and 2: the object, and one line about it ------------------ */}
       <header className="hero">
@@ -95,7 +101,7 @@ export default function Home() {
       {/* ---- 3: the three reassurances ----------------------------------- */}
       <div className="trust">
         <div className="wrap in">
-          {TRUST.map((item) => (
+          {trust.map((item) => (
             <div className="i" key={item.title}>
               <Icon name={item.icon} />
               <div>
@@ -119,7 +125,7 @@ export default function Home() {
             */}
             <span className="text-[0.95rem] text-[var(--mut)]">{SHELF_ASIDE}</span>
           </div>
-          <Shelf href={assetUrl} />
+          <Shelf href={assetUrl} market={market} />
         </div>
       </section>
 
@@ -162,7 +168,7 @@ export default function Home() {
       {/* ---- 6: the questions ------------------------------------------- */}
       <section className="shop">
         <div className="wrap" style={{ maxWidth: "860px" }}>
-          <Questions questions={LANDING_QUESTIONS} />
+          <Questions questions={landingQuestionsFor(market)} />
           <p className="mt-6 text-[0.86rem] text-[var(--mut)]">
             Still deciding?{" "}
             <a className="underline" href={pathOf(WHEN_THEY_WERE_SMALL)}>

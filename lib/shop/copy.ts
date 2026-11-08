@@ -29,12 +29,30 @@
  * things that must not appear anywhere names star ratings. The band itself is
  * kept exactly because it says, out loud, that nothing goes there until
  * somebody has written one.
+ *
+ * ## Why half of this is functions of a market
+ *
+ * A price and a printing claim are both things that differ by who is reading.
+ * So every constant here that carries one is a `…For(market)` function, and
+ * **every exported function in this module takes exactly one argument and that
+ * argument is a `Market`.** That is not a style rule, it is what keeps
+ * `test/shop-no-theatre.test.tsx` whole: it walks this module by reflection so
+ * that a string added tomorrow is covered the moment it exists, and it calls
+ * every one-argument export once per market. A function here with a different
+ * signature would be a page the forbidden-mechanics check silently stopped
+ * reading.
+ *
+ * The rest stay constants, because a sentence that says the same thing to
+ * everybody should not have to be asked twice.
  */
 
 import { FIRST_BOOK } from "../../templates/first-book";
+import { PRINTED_IN } from "../brand";
 import { trimBox } from "../template/defaults";
 import { CHANGE_WINDOW_HOURS, DISPATCH_WINDOW } from "../email/order";
-import { EDITIONS, priceOf, upgradeFrom, editionOf, differenceOf } from "../book/editions";
+import { EDITIONS, differenceOf, priceLabel, upgradeFrom } from "../book/editions";
+import { deliveryCostLine, deliveryTimeLine } from "./shipping";
+import type { Market } from "./market";
 
 const book = FIRST_BOOK;
 const trim = trimBox(book.page.canvas);
@@ -42,8 +60,33 @@ const trim = trimBox(book.page.canvas);
 /** `8` — whole inches where the number is whole, which this trim is. */
 export const trimInches = (trim.width / 72).toFixed(2).replace(/\.?0+$/, "");
 
-/** Where the book is made and how fast it leaves. One sentence, used twice. */
-export const RIBBON = `Designed and printed in Australia · dispatched in ${DISPATCH_WINDOW}`;
+/**
+ * **Where the book is printed, said so that it is true for whoever is reading.**
+ *
+ * It is printed in the United States, for everybody — `lib/brand.ts` §
+ * `printedIn` holds the country and says why it is a field. For a buyer in that
+ * country that is the whole sentence. For a buyer anywhere else the interesting
+ * half is that it still gets to them, so the line says so: *shipped worldwide*
+ * is a statement about this shop posting abroad and not a delivery estimate,
+ * which is the distinction `lib/shop/shipping.ts` exists to keep.
+ *
+ * It replaced "printed in Australia", which was in six places and became false
+ * in all of them on the same day. There is one of it now.
+ *
+ * **Where there is no room for the longer half, `PRINTED_IN` is used on its
+ * own** — the four-icon strip, the fact list beside the cover. That is not a
+ * different claim: it is the same sentence without the reassurance, which the
+ * ribbon at the top of the same page is already carrying. A four-icon strip
+ * with a subordinate clause in one of them is a strip that wraps.
+ */
+export function printedLine(market: Market): string {
+  return market.id === "us" ? PRINTED_IN : `${PRINTED_IN}, shipped worldwide`;
+}
+
+/** Where the book is made and how fast it leaves, above everything else. */
+export function ribbonFor(market: Market): string {
+  return `${printedLine(market)} · dispatched in ${DISPATCH_WINDOW}`;
+}
 
 // ---------------------------------------------------------------------------
 // The landing page
@@ -75,23 +118,31 @@ export interface TrustItem {
   line: string;
 }
 
-export const TRUST: readonly TrustItem[] = [
-  {
-    icon: "book",
-    title: "See the whole book first",
-    line: "Every page, unwatermarked, before anything is paid",
-  },
-  {
-    icon: "star",
-    title: "Your words and your photograph",
-    line: "A dedication and a picture of your own in the front",
-  },
-  {
-    icon: "van",
-    title: "Printed in Australia",
-    line: `Dispatched in ${DISPATCH_WINDOW}`,
-  },
-] as const;
+export function trustFor(market: Market): readonly TrustItem[] {
+  return [
+    {
+      icon: "book",
+      title: "See the whole book first",
+      line: "Every page, unwatermarked, before anything is paid",
+    },
+    {
+      icon: "star",
+      title: "Your words and your photograph",
+      line: "A dedication and a picture of your own in the front",
+    },
+    {
+      icon: "van",
+      // The claim is the heading and the reassurance is the line under it,
+      // which is the shape this band already has and is better than a heading
+      // with a comma in it.
+      title: PRINTED_IN,
+      line:
+        market.id === "us"
+          ? `Dispatched in ${DISPATCH_WINDOW}`
+          : `Shipped worldwide · dispatched in ${DISPATCH_WINDOW}`,
+    },
+  ];
+}
 
 export const SHELF_HEADING = "Our books";
 export const SHELF_ASIDE = "One for now — more on the way";
@@ -179,36 +230,46 @@ const TYPO_ANSWER =
   `Tell us within ${CHANGE_WINDOW_HOURS} hours and it is fixed free, because it will not ` +
   "have been printed yet.";
 
+/**
+ * **A policy, in the same words the policy page uses.**
+ *
+ * *We do not take change-of-mind returns*, with the shop's own reason — the
+ * book cannot be resold — and not a sentence about what a buyer is entitled
+ * to. `lib/policy/pages.ts` § The returns page states a policy has the full
+ * argument and why the old phrasing had to go when the shop started selling
+ * into the United States.
+ */
 const RETURN_ANSWER =
-  "A book printed with a particular child's name in it cannot be resold, so it cannot be " +
-  "returned for a change of mind. Anything actually wrong with the object is reprinted free.";
+  "A book printed with a particular child's name in it cannot be resold, so we do not take " +
+  "change-of-mind returns. Anything actually wrong with the object is reprinted free.";
 
-export const LANDING_QUESTIONS: readonly Question[] = [
-  {
-    q: "How is the book personalised?",
-    a:
-      "You choose which baby appears in it, type the name that goes on the cover and through " +
-      "the story, add one of your own photographs, and write a dedication for the first page. " +
-      "Nothing else is laid out by you — every page is already composed.",
-  },
-  {
-    q: "Can I see it before I pay?",
-    a:
-      "Yes, all of it. Every page, with your name and your picture in place, with no " +
-      "watermark and without making an account. That is deliberate: a book with somebody's " +
-      "child in it should not be bought sight unseen.",
-  },
-  { q: "What if I spell the name wrong?", a: TYPO_ANSWER },
-  {
-    q: "How much is it and how long does it take?",
-    a:
-      EDITIONS.map((e) => `${priceOf(e.price)} ${e.label.toLowerCase()}`).join(", ") +
-      `. Printed and dispatched in ${DISPATCH_WINDOW}; shipping time is on top and depends ` +
-      "where you are.",
-  },
-  { q: "How is the artwork made?", a: AI_ANSWER },
-  { q: "Can it be returned?", a: RETURN_ANSWER },
-] as const;
+export function landingQuestionsFor(market: Market): readonly Question[] {
+  return [
+    {
+      q: "How is the book personalised?",
+      a:
+        "You choose which baby appears in it, type the name that goes on the cover and through " +
+        "the story, add one of your own photographs, and write a dedication for the first page. " +
+        "Nothing else is laid out by you — every page is already composed.",
+    },
+    {
+      q: "Can I see it before I pay?",
+      a:
+        "Yes, all of it. Every page, with your name and your picture in place, with no " +
+        "watermark and without making an account. That is deliberate: a book with somebody's " +
+        "child in it should not be bought sight unseen.",
+    },
+    { q: "What if I spell the name wrong?", a: TYPO_ANSWER },
+    {
+      q: "How much is it and how long does it take?",
+      a:
+        EDITIONS.map((e) => `${priceLabel(e, market)} ${e.label.toLowerCase()}`).join(", ") +
+        `. ${deliveryTimeLine(DISPATCH_WINDOW)} ${deliveryCostLine(market)}`,
+    },
+    { q: "How is the artwork made?", a: AI_ANSWER },
+    { q: "Can it be returned?", a: RETURN_ANSWER },
+  ];
+}
 
 // ---------------------------------------------------------------------------
 // The book page
@@ -227,72 +288,93 @@ export interface PageFact {
  * the same reason: the trim is an open question and a typed "8 inches" is a
  * claim that would survive being answered.
  */
-export const PAGE_FACTS: readonly PageFact[] = [
-  { icon: "book", line: `${book.pages.length} pages inside, ${trimInches} inches square` },
-  { icon: "eye", line: "Read every page before you pay — no account, no watermark" },
-  { icon: "van", line: `Printed in Australia, dispatched in ${DISPATCH_WINDOW}` },
-  { icon: "heart", line: "Recommended as a gift for a new baby, 0–3" },
-] as const;
+export function pageFactsFor(market: Market): readonly PageFact[] {
+  return [
+    { icon: "book", line: `${book.pages.length} pages inside, ${trimInches} inches square` },
+    { icon: "eye", line: "Read every page before you pay — no account, no watermark" },
+    { icon: "van", line: `${PRINTED_IN}, dispatched in ${DISPATCH_WINDOW}` },
+    { icon: "heart", line: "Recommended as a gift for a new baby, 0–3" },
+  ];
+}
 
 export const PAGE_CTA = {
   action: "Preview the whole book",
   under: "Takes about three minutes. Nothing is paid until you have read it.",
 } as const;
 
-/** `From AUD 59 · hardcover AUD 69`, split so the second half can be small. */
-export const PRICE_LINE = {
-  main: `From ${priceOf(EDITIONS[0].price)}`,
-  aside: `· ${EDITIONS[1].label.toLowerCase()} ${priceOf(EDITIONS[1].price)}`,
-} as const;
+/** `From USD 49 · hardcover USD 59`, split so the second half can be small. */
+export function priceLineFor(market: Market): { main: string; aside: string } {
+  return {
+    main: `From ${priceLabel(EDITIONS[0], market)}`,
+    aside: `· ${EDITIONS[1].label.toLowerCase()} ${priceLabel(EDITIONS[1], market)}`,
+  };
+}
 
-export const PAGE_QUESTIONS: readonly Question[] = [
-  {
-    q: "How is the book personalised?",
-    a:
-      `You choose which of ${book.looks.length} babies appears throughout, type the name ` +
-      "that goes on the cover and into the story, add one photograph of your own and write a " +
-      "dedication for the opening spread. Nothing else is laid out by you — every page is " +
-      "already composed, so it cannot come out wrong.",
-  },
-  {
-    q: "What is the story?",
-    a:
-      "One ordinary, enormous day in a first year, told across twelve spreads: waking, " +
-      "breakfast, being carried, first steps, the bath, the cake. Written to be read aloud at " +
-      "bedtime and to still make sense in ten years.",
-  },
-  {
-    q: "Delivery and getting it right",
-    a:
-      `Dispatched in ${DISPATCH_WINDOW}; shipping is on top and depends where you are. ` +
-      `Nothing goes to the press for ${CHANGE_WINDOW_HOURS} hours after you order, so a typo ` +
-      "can be fixed free. Anything wrong with the book itself is reprinted free.",
-  },
-] as const;
+export function pageQuestionsFor(market: Market): readonly Question[] {
+  return [
+    {
+      q: "How is the book personalised?",
+      a:
+        `You choose which of ${book.looks.length} babies appears throughout, type the name ` +
+        "that goes on the cover and into the story, add one photograph of your own and write a " +
+        "dedication for the opening spread. Nothing else is laid out by you — every page is " +
+        "already composed, so it cannot come out wrong.",
+    },
+    {
+      q: "What is the story?",
+      a:
+        "One ordinary, enormous day in a first year, told across twelve spreads: waking, " +
+        "breakfast, being carried, first steps, the bath, the cake. Written to be read aloud at " +
+        "bedtime and to still make sense in ten years.",
+    },
+    {
+      q: "Delivery and getting it right",
+      a:
+        `${deliveryTimeLine(DISPATCH_WINDOW)} ${deliveryCostLine(market)} ` +
+        `Nothing goes to the press for ${CHANGE_WINDOW_HOURS} hours after you order, so a typo ` +
+        "can be fixed free. Anything wrong with the book itself is reprinted free.",
+    },
+  ];
+}
 
 /** The `Size & quality` disclosure, which is a table rather than a paragraph. */
-export const SPEC: readonly { term: string; value: string }[] = [
-  { term: "Pages", value: `${book.pages.length} inside, plus a cover` },
-  { term: "Size", value: `${trimInches} inches square` },
-  {
-    term: "Binding",
-    value: (() => {
-      const up = upgradeFrom(EDITIONS[0].id);
-      const base = EDITIONS[0].label;
-      return up
-        ? `${base}, or ${up.label.toLowerCase()} for ${differenceOf(editionOf(EDITIONS[0].id), up)} more`
-        : base;
-    })(),
-  },
-  { term: "Printing", value: "Full colour, printed in Australia" },
-] as const;
+export function specFor(market: Market): readonly { term: string; value: string }[] {
+  const base = EDITIONS[0];
+  const up = upgradeFrom(base.id);
+  return [
+    { term: "Pages", value: `${book.pages.length} inside, plus a cover` },
+    { term: "Size", value: `${trimInches} inches square` },
+    {
+      term: "Binding",
+      value: up
+        ? `${base.label}, or ${up.label.toLowerCase()} for ${differenceOf(base, up, market)} more`
+        : base.label,
+    },
+    {
+      term: "Printing",
+      // Only the first letter is lowered, not the line: "the USA" is an
+      // initialism, and `toLowerCase()` over the sentence makes it "usa".
+      value: `Full colour, p${PRINTED_IN.slice(1)}`,
+    },
+  ];
+}
 
-export const STRIP: readonly { icon: string; line: string }[] = [
-  { icon: "🎁", line: "Made for one child" },
-  { icon: "👀", line: "Read it all before paying" },
-  { icon: "🇦🇺", line: "Printed in Australia" },
-  { icon: "↩️", line: `${CHANGE_WINDOW_HOURS} hours to change anything` },
-] as const;
+/**
+ * The four-icon reassurance strip.
+ *
+ * The flag was 🇦🇺 beside "Printed in Australia" and is now the flag of the
+ * country the book is actually printed in. A flag is a claim like any other
+ * string — it was the one place the printing claim was made twice, once in
+ * words and once in a codepoint, and it would have been the one left behind.
+ */
+export function stripFor(market: Market): readonly { icon: string; line: string }[] {
+  return [
+    { icon: "🎁", line: "Made for one child" },
+    { icon: "👀", line: "Read it all before paying" },
+    { icon: "🇺🇸", line: PRINTED_IN },
+    { icon: "↩️", line: `${CHANGE_WINDOW_HOURS} hours to change anything` },
+  ];
+}
 
 export const THREE_MINUTES = {
   eyebrow: "Ready when you are",

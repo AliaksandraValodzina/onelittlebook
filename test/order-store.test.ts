@@ -239,7 +239,7 @@ describe("the requests the R2 store makes", () => {
   it("writes an order as JSON under orders/, signed, at the account's own host", async () => {
     const { calls, fetchLike } = recorder([{ status: 200 }]);
     const store = r2Store(CREDS, fetchLike);
-    const { record } = await claim(memoryStore(), FIXTURE_BOOK_FILL, "softcover", new Date("2026-11-07T04:00:00Z"));
+    const { record } = await claim(memoryStore(), FIXTURE_BOOK_FILL, "softcover", "us", new Date("2026-11-07T04:00:00Z"));
     await store.put(record);
 
     expect(calls).toHaveLength(1);
@@ -328,25 +328,82 @@ const LATER = new Date("2026-11-07T04:05:00Z");
 describe("claiming an order", () => {
   it("writes one, with the listed price and nothing paid", async () => {
     const store = memoryStore();
-    const { record, fresh } = await claim(store, FIXTURE_BOOK_FILL, "softcover", DAY);
+    const { record, fresh } = await claim(store, FIXTURE_BOOK_FILL, "softcover", "us", DAY);
     expect(fresh).toBe(true);
     expect(record.payment).toBe("awaiting");
     expect(record.charged).toBeNull();
-    expect(record.asked).toEqual({ currency: "AUD", amount: 59 });
+    expect(record.market).toBe("us");
+    expect(record.asked).toEqual({ currency: "USD", amount: 49 });
     expect(record.fingerprint).toBe(orderFingerprint(FIXTURE_BOOK_FILL));
     expect(record.ref).toBe(referenceFor(record.fingerprint, DAY));
     expect(store.size).toBe(1);
   });
 
   it("prices the upgrade as the upgrade", async () => {
-    const { record } = await claim(memoryStore(), FIXTURE_BOOK_FILL, "hardcover", DAY);
-    expect(record.asked).toEqual({ currency: "AUD", amount: 69 });
+    const { record } = await claim(memoryStore(), FIXTURE_BOOK_FILL, "hardcover", "us", DAY);
+    expect(record.asked).toEqual({ currency: "USD", amount: 59 });
+  });
+
+  /**
+   * **A buyer who changes the market and comes back is repriced.**
+   *
+   * `orderFingerprint` hashes the fill and neither the edition nor the market
+   * is in a fill, so the same book coming back to the till priced differently
+   * computes the *same* reference. Handing back the first record untouched
+   * would leave `asked` saying USD 49 while the buyer is looking at GBP 39 —
+   * and `asked` is the row the captain reads to see what the shop meant to
+   * charge. `lib/orders/store.ts` § Why an unpaid record is repriced.
+   */
+  it("reprices an unpaid order when the market or the edition has changed", async () => {
+    const store = memoryStore();
+    const first = await claim(store, FIXTURE_BOOK_FILL, "softcover", "us", DAY);
+    const again = await claim(store, FIXTURE_BOOK_FILL, "softcover", "gb", LATER);
+
+    // The same order — one record, one reference, not a second row.
+    expect(again.fresh).toBe(false);
+    expect(again.record.ref).toBe(first.record.ref);
+    expect(store.size).toBe(1);
+    // Priced as the buyer is now being shown.
+    expect(again.record.market).toBe("gb");
+    expect(again.record.asked).toEqual({ currency: "GBP", amount: 39 });
+    expect(again.record.updatedAt).toBe(LATER.toISOString());
+    expect(again.record.createdAt).toBe(DAY.toISOString());
+
+    // And the same for the upgrade, which has the identical problem.
+    const upgraded = await claim(store, FIXTURE_BOOK_FILL, "hardcover", "gb", LATER);
+    expect(upgraded.record.editionId).toBe("hardcover");
+    expect(upgraded.record.asked).toEqual({ currency: "GBP", amount: 45 });
+  });
+
+  it("leaves a paid order alone however it is claimed again", async () => {
+    // The paired negative, and the rule that outranks repricing: a paid record
+    // is the only document proving a customer is owed a book, and what it says
+    // was asked is what they were asked.
+    const store = memoryStore();
+    const { record } = await claim(store, FIXTURE_BOOK_FILL, "softcover", "us", DAY);
+    await markPaid(
+      store,
+      record.ref,
+      {
+        sessionId: "cs_1",
+        paymentIntentId: "pi_1",
+        charged: { currency: "usd", minorUnits: 4900 },
+        address: null,
+        email: "buyer@example.com",
+      },
+      DAY,
+    );
+    const again = await claim(store, FIXTURE_BOOK_FILL, "hardcover", "gb", LATER);
+    expect(again.record.payment).toBe("paid");
+    expect(again.record.market).toBe("us");
+    expect(again.record.editionId).toBe("softcover");
+    expect(again.record.asked).toEqual({ currency: "USD", amount: 49 });
   });
 
   it("is one order however many times the button is pressed", async () => {
     const store = memoryStore();
-    const first = await claim(store, FIXTURE_BOOK_FILL, "softcover", DAY);
-    const second = await claim(store, FIXTURE_BOOK_FILL, "softcover", LATER);
+    const first = await claim(store, FIXTURE_BOOK_FILL, "softcover", "us", DAY);
+    const second = await claim(store, FIXTURE_BOOK_FILL, "softcover", "us", LATER);
     expect(second.fresh).toBe(false);
     expect(second.record.ref).toBe(first.record.ref);
     expect(second.record.createdAt).toBe(first.record.createdAt);
@@ -355,18 +412,18 @@ describe("claiming an order", () => {
 
   it("is a different order for a different book", async () => {
     const store = memoryStore();
-    await claim(store, FIXTURE_BOOK_FILL, "softcover", DAY);
-    const other = await claim(store, { ...FIXTURE_BOOK_FILL, name: "Clementine" }, "softcover", DAY);
+    await claim(store, FIXTURE_BOOK_FILL, "softcover", "us", DAY);
+    const other = await claim(store, { ...FIXTURE_BOOK_FILL, name: "Clementine" }, "softcover", "us", DAY);
     expect(other.fresh).toBe(true);
     expect(store.size).toBe(2);
   });
 
   it("never overwrites an order that has been paid for", async () => {
     const store = memoryStore();
-    const { record } = await claim(store, FIXTURE_BOOK_FILL, "softcover", DAY);
+    const { record } = await claim(store, FIXTURE_BOOK_FILL, "softcover", "us", DAY);
     await markPaid(store, record.ref, { sessionId: "cs_1", paymentIntentId: "pi_1", charged: { currency: "aud", minorUnits: 5900 }, address: null, email: "a@example.com" }, LATER);
 
-    const again = await claim(store, FIXTURE_BOOK_FILL, "softcover", LATER);
+    const again = await claim(store, FIXTURE_BOOK_FILL, "softcover", "us", LATER);
     expect(again.fresh).toBe(false);
     expect(again.record.payment).toBe("paid");
     expect(again.record.charged).toEqual({ currency: "aud", minorUnits: 5900 });
@@ -377,7 +434,7 @@ describe("claiming an order", () => {
 describe("marking an order paid", () => {
   it("is the only thing that writes a payment, and it writes what Stripe said", async () => {
     const store = memoryStore();
-    const { record } = await claim(store, FIXTURE_BOOK_FILL, "hardcover", DAY);
+    const { record } = await claim(store, FIXTURE_BOOK_FILL, "hardcover", "us", DAY);
     expect(record.payment).toBe("awaiting");
 
     const result = await markPaid(
@@ -397,14 +454,14 @@ describe("marking an order paid", () => {
     expect(result?.already).toBe(false);
     expect(result?.record.payment).toBe("paid");
     expect(result?.record.charged).toEqual({ currency: "aud", minorUnits: 1234 });
-    expect(result?.record.asked).toEqual({ currency: "AUD", amount: 69 });
+    expect(result?.record.asked).toEqual({ currency: "USD", amount: 59 });
     expect(result?.record.paidAt).toBe(LATER.toISOString());
     expect(result?.record.address?.city).toBe("Sydney");
   });
 
   it("is idempotent, because Stripe retries", async () => {
     const store = memoryStore();
-    const { record } = await claim(store, FIXTURE_BOOK_FILL, "softcover", DAY);
+    const { record } = await claim(store, FIXTURE_BOOK_FILL, "softcover", "us", DAY);
     const facts = { sessionId: "cs_1", paymentIntentId: "pi_1", charged: { currency: "aud", minorUnits: 5900 }, address: null, email: "a@example.com" };
     await markPaid(store, record.ref, facts, LATER);
     const second = await markPaid(store, record.ref, { ...facts, charged: { currency: "aud", minorUnits: 1 } }, new Date("2026-11-09T00:00:00Z"));
@@ -424,7 +481,7 @@ describe("marking an order paid", () => {
 
   it("records whether the confirmation actually went", async () => {
     const store = memoryStore();
-    const { record } = await claim(store, FIXTURE_BOOK_FILL, "softcover", DAY);
+    const { record } = await claim(store, FIXTURE_BOOK_FILL, "softcover", "us", DAY);
     expect((await store.get(record.ref))?.emailed).toBe(false);
     await markEmailed(store, record.ref);
     expect((await store.get(record.ref))?.emailed).toBe(true);
@@ -434,7 +491,7 @@ describe("marking an order paid", () => {
 describe("dispatching", () => {
   it("refuses an order nobody has paid for", async () => {
     const store = memoryStore();
-    const { record } = await claim(store, FIXTURE_BOOK_FILL, "softcover", DAY);
+    const { record } = await claim(store, FIXTURE_BOOK_FILL, "softcover", "us", DAY);
     const result = await markDispatched(store, record.ref, "AP123", LATER);
     expect(result.ok).toBe(false);
     expect((await store.get(record.ref))?.dispatch).toBeNull();
@@ -442,7 +499,7 @@ describe("dispatching", () => {
 
   it("records the note against a paid order", async () => {
     const store = memoryStore();
-    const { record } = await claim(store, FIXTURE_BOOK_FILL, "softcover", DAY);
+    const { record } = await claim(store, FIXTURE_BOOK_FILL, "softcover", "us", DAY);
     await markPaid(store, record.ref, { sessionId: "cs_1", paymentIntentId: null, charged: null, address: null, email: null }, LATER);
     const result = await markDispatched(store, record.ref, "  AP123456789AU  ", LATER);
     expect(result.ok).toBe(true);
@@ -457,8 +514,8 @@ describe("dispatching", () => {
 describe("the list the captain reads", () => {
   it("is newest first, by the order's own date and not by when it was touched", async () => {
     const store = memoryStore();
-    const a = await claim(store, FIXTURE_BOOK_FILL, "softcover", new Date("2026-11-01T00:00:00Z"));
-    const b = await claim(store, { ...FIXTURE_BOOK_FILL, name: "Clementine" }, "softcover", new Date("2026-11-05T00:00:00Z"));
+    const a = await claim(store, FIXTURE_BOOK_FILL, "softcover", "us", new Date("2026-11-01T00:00:00Z"));
+    const b = await claim(store, { ...FIXTURE_BOOK_FILL, name: "Clementine" }, "softcover", "us", new Date("2026-11-05T00:00:00Z"));
     // The older one is modified last, which a bucket's own modified time would
     // put at the top.
     await attachSession(store, a.record, "cs_late", new Date("2026-11-09T00:00:00Z"));
@@ -470,7 +527,7 @@ describe("the list the captain reads", () => {
   it("stops at the limit it is given", async () => {
     const store = memoryStore();
     for (const name of ["Ada", "Bea", "Cal"]) {
-      await claim(store, { ...FIXTURE_BOOK_FILL, name }, "softcover", DAY);
+      await claim(store, { ...FIXTURE_BOOK_FILL, name }, "softcover", "us", DAY);
     }
     expect(await summaries(store, 2)).toHaveLength(2);
   });
@@ -479,7 +536,7 @@ describe("the list the captain reads", () => {
 describe("the photograph, back out of the store", () => {
   it("comes back when it is there", async () => {
     const store = memoryStore();
-    const { record } = await claim(store, FIXTURE_BOOK_FILL, "softcover", DAY);
+    const { record } = await claim(store, FIXTURE_BOOK_FILL, "softcover", "us", DAY);
     const asset = FIXTURE_BOOK_FILL.photo!.asset;
     const { readFile } = await import("node:fs/promises");
     const bytes = new Uint8Array(await readFile(`fixtures/assets/${asset.sha256}.png`));
@@ -491,13 +548,13 @@ describe("the photograph, back out of the store", () => {
 
   it("is empty when the store has not got it, rather than pretending", async () => {
     const store = memoryStore();
-    const { record } = await claim(store, FIXTURE_BOOK_FILL, "softcover", DAY);
+    const { record } = await claim(store, FIXTURE_BOOK_FILL, "softcover", "us", DAY);
     expect((await photoFor(store, record)).size).toBe(0);
   });
 
   it("throws rather than printing the wrong object under the right name", async () => {
     const store = memoryStore();
-    const { record } = await claim(store, FIXTURE_BOOK_FILL, "softcover", DAY);
+    const { record } = await claim(store, FIXTURE_BOOK_FILL, "softcover", "us", DAY);
     await store.putPhoto(FIXTURE_BOOK_FILL.photo!.asset, new Uint8Array([9, 9, 9]));
     await expect(photoFor(store, record)).rejects.toThrow(/does not match its digest/);
   });
