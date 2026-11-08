@@ -157,6 +157,19 @@ export const MARKET_LIST: readonly Market[] = [
 export const DEFAULT_MARKET_ID: MarketId = "us";
 export const DEFAULT_MARKET: Market = MARKETS[DEFAULT_MARKET_ID];
 
+/**
+ * Whether this market's checkout can be opened at all.
+ *
+ * False only while a market has no countries — see § Why "everywhere else"
+ * cannot check out yet. It lives here rather than beside the Checkout Session
+ * because it is a fact about a `Market` and because the **basket** needs it:
+ * telling a buyer at the till is telling them after three minutes of work, and
+ * a client component should not have to import the Stripe module to ask.
+ */
+export function marketIsOpen(market: Market): boolean {
+  return market.ships.length > 0;
+}
+
 export function isMarketId(value: unknown): value is MarketId {
   return typeof value === "string" && value in MARKETS;
 }

@@ -68,14 +68,14 @@ export const EVERY_SHIPPING_COUNTRY: readonly string[] = [
 /**
  * Whether this market's checkout can be opened at all.
  *
- * False only while a market has no countries — see `lib/shop/market.ts` §
- * `shipsNeeds`. `app/api/checkout/route.ts` refuses before writing an order
- * rather than letting Stripe refuse a session with an empty country list,
- * because the buyer deserves the real reason and not Stripe's.
+ * Defined in `lib/shop/market.ts` — a fact about a `Market`, and the basket
+ * asks it too — and re-exported here because this is the module that would
+ * otherwise create a session Stripe must refuse. `app/api/checkout/route.ts`
+ * refuses before writing an order rather than letting Stripe reject a session
+ * with an empty country list, because the buyer deserves the real reason and
+ * not Stripe's.
  */
-export function marketIsOpen(market: Market): boolean {
-  return market.ships.length > 0;
-}
+export { marketIsOpen } from "../shop/market";
 
 /**
  * **The postage options on the session, which there are none of yet.**
