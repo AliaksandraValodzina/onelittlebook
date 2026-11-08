@@ -45,6 +45,7 @@ import {
 } from "../lib/book/order";
 import { ASKS, SLOT } from "../lib/book/slots";
 import { DEFAULT_EDITION, EDITIONS, differenceOf, editionOf, upgradeFrom } from "../lib/book/editions";
+import { MARKETS } from "../lib/shop/market";
 import { photoSlotOf, pageFillFor, pageWithSlot } from "../lib/book/derive";
 import { validateBookFill } from "../lib/book/validate";
 import { blockingProblems } from "../lib/template/validate";
@@ -226,7 +227,11 @@ describe("the edition, which is a price and never a drawing", () => {
 
   it("states a real difference and never a struck-out total", () => {
     const [base, up] = EDITIONS;
-    expect(differenceOf(base, up)).toBe("AUD 10");
+    expect(differenceOf(base, up, MARKETS.au)).toBe("AUD 10");
+    // The difference is stated in the market being shown and is never the same
+    // arithmetic twice: USD 59 − USD 49 is not AUD 69 − AUD 59 converted.
+    expect(differenceOf(base, up, MARKETS.us)).toBe("USD 10");
+    expect(differenceOf(base, up, MARKETS.gb)).toBe("GBP 6");
     // Nothing in the type can express a "was" price, a percentage or an expiry,
     // which is the register the captain settled and the law the page sits under.
     expect(JSON.stringify(EDITIONS)).not.toMatch(/was|discount|rrp|expires|until/i);

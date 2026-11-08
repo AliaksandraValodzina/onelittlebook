@@ -18,18 +18,21 @@ import { stepFor } from "../../lib/shop/steps";
 import BookProvider from "../_book/BookProvider";
 import Basket from "../_book/Basket";
 import { Ribbon, ShopFooter, ShopNav } from "../_shop/Chrome";
+import { currentMarket } from "../_shop/market";
 
 export const metadata: Metadata = {
   title: pageTitle(stepFor("basket")!.title),
   description: "What is in your basket, what you chose, and what it costs.",
 };
 
-export default function BasketPage() {
+export default async function BasketPage() {
+  const market = await currentMarket();
+
   return (
     <>
-      <Ribbon />
-      <ShopNav basketCount={1} />
-      <BookProvider book={FIRST_BOOK}>
+      <Ribbon market={market} />
+      <ShopNav market={market} basketCount={1} />
+      <BookProvider book={FIRST_BOOK} market={market}>
         <Basket />
       </BookProvider>
       <ShopFooter />

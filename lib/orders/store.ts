@@ -54,7 +54,8 @@
 import { missingFrom, value } from "../env";
 import { sha256 } from "../assets/resolve";
 import { orderFingerprint } from "../book/print";
-import { editionOf } from "../book/editions";
+import { editionOf, priceIn } from "../book/editions";
+import { marketOf, type MarketId } from "../shop/market";
 import type { BookFill } from "../book/types";
 import type { AssetRef } from "../template/types";
 import { readRecord, referenceFor, summaryOf, type OrderRecord, type OrderSummary } from "./record";
@@ -130,8 +131,8 @@ export function storeFromEnv(env: Record<string, string | undefined>): StoreStat
  * Three outcomes, and the third is the one worth reading:
  *
  * - nothing there → write it and return `{ fresh: true }`
- * - the same order there → return it, `{ fresh: false }`, and the caller
- *   reuses its session rather than making a second one
+ * - the same order there → return it, `{ fresh: false }`, **repriced if the
+ *   buyer has changed the edition or the market since** — see below
  * - **the same reference, a different order** → forty bits of hash have
  *   collided, which happens once in a billion orders and must still not put
  *   one buyer's book under another buyer's reference. The suffixed references
@@ -140,11 +141,37 @@ export function storeFromEnv(env: Record<string, string | undefined>): StoreStat
  * An order that has already been **paid** is never overwritten, whatever the
  * fingerprint says. A paid record is the only document proving a customer is
  * owed a book.
+ *
+ * ## Why an unpaid record is repriced rather than handed back untouched
+ *
+ * `orderFingerprint` hashes the **fill**, and neither the edition nor the
+ * market is in a fill — on purpose, because neither changes what is drawn.
+ * The consequence is that one fill can come back to the till priced
+ * differently: a buyer who reaches the basket, abandons it, switches the
+ * market pill from the United States to the United Kingdom and presses
+ * checkout again computes the *same* reference. Handing back the first record
+ * untouched would leave `asked` saying USD 49 while the buyer is looking at
+ * GBP 39, and `asked` is the one row the captain reads to see what the shop
+ * meant to charge.
+ *
+ * So the edition, the market and the price are refreshed on an **unpaid**
+ * record. The paid arm is untouched and still returns before this happens.
+ * `app/api/checkout/route.ts` carries the other half: the Stripe idempotency
+ * key names the edition and the market too, so a genuinely repriced order
+ * opens a new session instead of replaying the first one at the old price.
  */
 export async function claim(
   store: OrderStore,
   fill: BookFill,
   editionId: string,
+  /**
+   * The market this order was priced in, which decides what `asked` says.
+   *
+   * An argument rather than a default, because `asked` is the shop's
+   * *intention* for this one order and a wrong currency in it is a record that
+   * disagrees with the customer's statement for the life of the order.
+   */
+  market: MarketId,
   now: Date,
 ): Promise<{ record: OrderRecord; fresh: boolean }> {
   const fingerprint = orderFingerprint(fill);
@@ -155,12 +182,28 @@ export async function claim(
     const ref = `${base}${suffix}`;
     const existing = await store.get(ref);
     if (existing) {
-      // The same order, whether it has been paid for or not: hand back what is
-      // there. A second press reuses the first press's session, and a paid
-      // record is never rewritten — it is the only document proving a customer
-      // is owed a book.
-      if (existing.fingerprint === fingerprint) return { record: existing, fresh: false };
-      continue;
+      if (existing.fingerprint !== fingerprint) continue;
+      // A paid record is never rewritten — it is the only document proving a
+      // customer is owed a book, and what it says was charged is what was.
+      if (existing.payment === "paid") return { record: existing, fresh: false };
+      const asked = priceIn(editionOf(editionId), marketOf(market));
+      const same =
+        existing.editionId === editionId &&
+        existing.market === market &&
+        existing.asked.currency === asked.currency &&
+        existing.asked.amount === asked.amount;
+      if (same) return { record: existing, fresh: false };
+      // Repriced: the same book, a different line on the order. See this
+      // function's docblock § Why an unpaid record is repriced.
+      const repriced: OrderRecord = {
+        ...existing,
+        editionId,
+        market,
+        asked,
+        updatedAt: stamp,
+      };
+      await store.put(repriced);
+      return { record: repriced, fresh: false };
     }
     const record: OrderRecord = {
       schema: 1,
@@ -168,7 +211,8 @@ export async function claim(
       fingerprint,
       fill,
       editionId,
-      asked: editionOf(editionId).price,
+      market,
+      asked: priceIn(editionOf(editionId), marketOf(market)),
       charged: null,
       payment: "awaiting",
       sessionId: null,

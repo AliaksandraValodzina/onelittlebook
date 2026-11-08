@@ -33,17 +33,18 @@ import {
   HELP,
   PAGE_BOTTOM_QUESTIONS,
   PAGE_CTA,
-  PAGE_FACTS,
-  PAGE_QUESTIONS,
-  PRICE_LINE,
   RENDER_CAPTION,
   REVIEW_SLOT,
-  SPEC,
-  STRIP,
   THREE_MINUTES,
+  pageFactsFor,
+  pageQuestionsFor,
+  priceLineFor,
+  specFor,
+  stripFor,
 } from "../../../lib/shop/copy";
 import { STEPS } from "../../../lib/shop/steps";
 import { Ribbon, ShopFooter, ShopNav } from "../../_shop/Chrome";
+import { currentMarket } from "../../_shop/market";
 import Cover from "../../_shop/Cover";
 import Icon from "../../_shop/Icon";
 import Questions from "../../_shop/Questions";
@@ -122,11 +123,15 @@ export default async function BookPageRoute(props: { params: Promise<{ slug: str
   if (!title) notFound();
   const book = title.book;
   const start = STEPS[0];
+  // Four facts, a price line, a spec table and a strip, all of which say
+  // something that depends on where the reader is buying.
+  const market = await currentMarket();
+  const price = priceLineFor(market);
 
   return (
     <>
-      <Ribbon />
-      <ShopNav />
+      <Ribbon market={market} />
+      <ShopNav market={market} />
 
       <div className="wrap">
         <p className="crumb">
@@ -149,7 +154,7 @@ export default async function BookPageRoute(props: { params: Promise<{ slug: str
           <p className="desc">{title.description}</p>
 
           <ul className="facts">
-            {PAGE_FACTS.map((fact) => (
+            {pageFactsFor(market).map((fact) => (
               <li key={fact.line}>
                 <Icon name={fact.icon} size={19} /> {fact.line}
               </li>
@@ -162,14 +167,14 @@ export default async function BookPageRoute(props: { params: Promise<{ slug: str
             in `lib/book/editions.ts` that could express one.
           */}
           <p className="price" data-testid="price">
-            {PRICE_LINE.main} <small>{PRICE_LINE.aside}</small>
+            {price.main} <small>{price.aside}</small>
           </p>
           <a className="btn wide" href={start.path} data-testid="start">
             {PAGE_CTA.action}
           </a>
           <p className="under">{PAGE_CTA.under}</p>
 
-          {PAGE_QUESTIONS.map((question, index) => (
+          {pageQuestionsFor(market).map((question, index) => (
             <details className="q" key={question.q} open={index === 0}>
               <summary>{question.q}</summary>
               <p>{question.a}</p>
@@ -179,7 +184,7 @@ export default async function BookPageRoute(props: { params: Promise<{ slug: str
           <details className="q">
             <summary>Size &amp; quality</summary>
             <dl>
-              {SPEC.map((row) => (
+              {specFor(market).map((row) => (
                 <div key={row.term} className="contents">
                   <dt>{row.term}</dt>
                   <dd>{row.value}</dd>
@@ -208,7 +213,7 @@ export default async function BookPageRoute(props: { params: Promise<{ slug: str
 
       <div className="strip">
         <div className="wrap in">
-          {STRIP.map((item) => (
+          {stripFor(market).map((item) => (
             <div className="c" key={item.line}>
               <span aria-hidden="true">{item.icon}</span>
               <b>{item.line}</b>

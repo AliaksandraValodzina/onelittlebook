@@ -26,6 +26,7 @@ import { COOKIE, allowed } from "../../../lib/admin/guard";
 import { storeFromEnv } from "../../../lib/orders/store";
 import { addressLines, chargedAs, isReference } from "../../../lib/orders/record";
 import { editionOf, priceOf } from "../../../lib/book/editions";
+import { marketOf } from "../../../lib/shop/market";
 import { FIRST_BOOK } from "../../../templates/first-book";
 import { lookOf } from "../../../lib/book/derive";
 import Gate from "../_Gate";
@@ -102,6 +103,12 @@ export default async function AdminOrder(props: { params: Promise<{ ref: string 
 
       <h2 className="mt-9 text-lg font-semibold">The money</h2>
       <dl className="mt-2 grid grid-cols-[11rem_1fr] border-t border-current/15 text-sm">
+        {/*
+          The market as well as the price, because the currency does not say
+          which price list this order was taken against — USD is both the
+          United States and everywhere else. `lib/orders/record.ts` § market.
+        */}
+        <Row label="Market">{marketOf(record.market).label}</Row>
         <Row label="Listed price">{priceOf(record.asked)}</Row>
         <Row label="Actually charged">{chargedAs(record.charged) ?? "nothing yet"}</Row>
         <Row label="Stripe session">{record.sessionId ?? "—"}</Row>

@@ -29,6 +29,22 @@
  * **Nothing here marks anything paid.** The buyer leaves for Stripe's page and
  * the only thing allowed to believe they paid is the signature-verified
  * webhook. `app/api/stripe/webhook/route.ts` carries that argument.
+ *
+ * ## The market comes off the request, not out of the body
+ *
+ * The currency and the allowed countries follow the market, and the market is
+ * read from **the same cookie the page the buyer is looking at was rendered
+ * from** rather than posted up with the order. Two reasons, and the first is
+ * the one that matters: the page and the till then cannot disagree, because
+ * there is one input and not two. The second is that a field in the body would
+ * be one more thing to validate for no gain — a crafted request can set a
+ * cookie just as easily as a field, and what actually bounds the arbitrage is
+ * that each market's checkout accepts an address in that market's countries
+ * only. Choosing the sterling price means delivering to the United Kingdom.
+ *
+ * A market whose countries nobody has named cannot be checked out, and it is
+ * refused **here**, before an order is written — not left to Stripe to reject a
+ * session with an empty country list. The buyer gets the real reason.
  */
 
 import { NextResponse } from "next/server";
@@ -38,7 +54,8 @@ import { printProblems } from "../../../lib/book/print";
 import { isEdition, editionOf } from "../../../lib/book/editions";
 import { SuppliedAssetRejected, verifySupplied } from "../../../lib/assets/supplied";
 import { attachSession, claim, storeFromEnv } from "../../../lib/orders/store";
-import { createSession, sessionParams } from "../../../lib/stripe/session";
+import { createSession, marketIsOpen, sessionParams } from "../../../lib/stripe/session";
+import { marketFromCookieHeader } from "../../../lib/shop/market";
 import type { BookFill } from "../../../lib/book/types";
 
 export const runtime = "nodejs";
@@ -137,10 +154,29 @@ export async function POST(request: Request) {
   }
   const store = storeState.store;
   const edition = editionOf(editionId as string);
+  const market = marketFromCookieHeader(request.headers.get("cookie"));
   const now = new Date();
 
+  if (!marketIsOpen(market)) {
+    // Priced but not postable. `lib/shop/market.ts` § shipsNeeds is the
+    // sentence saying whose fact is missing, and it goes back verbatim: the
+    // buyer is owed the reason, and the reason is that nobody has checked what
+    // it costs to get a book to them.
+    return NextResponse.json(
+      {
+        ok: false,
+        state: "market closed",
+        heading: `We cannot post to ${market.label} yet`,
+        detail:
+          `Nothing has been charged. We need ${market.shipsNeeds ?? "the shipping table"}`,
+        missing: [],
+      },
+      { status: 409 },
+    );
+  }
+
   try {
-    const { record } = await claim(store, asFill, editionId as string, now);
+    const { record } = await claim(store, asFill, editionId as string, market.id, now);
 
     // Already paid for. A second press of the button does not start a second
     // order and does not open a second till; it goes to the order that exists.
@@ -160,6 +196,7 @@ export async function POST(request: Request) {
       sessionParams({
         record,
         edition,
+        market,
         // The session id is **required** to read the order page back, so the
         // link Stripe returns to is the one thing that opens it. A reference
         // alone is short enough to be guessed at; `app/order/[ref]/page.tsx`
@@ -169,7 +206,17 @@ export async function POST(request: Request) {
       }),
       {
         secretKey: process.env.STRIPE_SECRET_KEY!.trim(),
-        idempotencyKey: record.fingerprint,
+        // **The fingerprint, the edition and the market.** The fingerprint
+        // alone is what the brief named and it is still what makes a
+        // double-click one charge: identical inputs produce an identical key
+        // and Stripe replays its first answer. But a fingerprint hashes the
+        // *fill*, and neither the edition nor the market is in a fill — so a
+        // buyer who switched the hardcover on, or moved the market pill, and
+        // pressed again would have been handed back the session created at the
+        // old price, in the old currency. Naming all three keeps the
+        // double-click idempotent and lets a genuinely repriced order open its
+        // own session. `lib/orders/store.ts` § claim has the other half.
+        idempotencyKey: `${record.fingerprint}-${edition.id}-${market.id}`,
       },
     );
     if (!session.ok) {

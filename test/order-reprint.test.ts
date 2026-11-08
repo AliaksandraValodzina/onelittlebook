@@ -98,7 +98,7 @@ describe("the photograph this test uses", () => {
 describe("re-rendering an order months later", () => {
   it("needs nothing but the record and the store", async () => {
     const store = memoryStore();
-    const { record } = await claim(store, FILL, "hardcover", DAY);
+    const { record } = await claim(store, FILL, "hardcover", "us", DAY);
     await store.putPhoto(minted.asset, minted.bytes);
 
     // Everything from here on is what a reprint in a year actually has: one
@@ -133,7 +133,7 @@ describe("re-rendering an order months later", () => {
     // The paired negative. Without it, this whole file would pass against a
     // renderer that quietly read the photograph from somewhere else.
     const store = memoryStore();
-    const { record } = await claim(store, FILL, "hardcover", DAY);
+    const { record } = await claim(store, FILL, "hardcover", "us", DAY);
     const supplied = await photoFor(store, record);
     expect(supplied.size).toBe(0);
     await expect(
@@ -143,7 +143,7 @@ describe("re-rendering an order months later", () => {
 
   it("keeps the template revision, so a reprint cannot pick up an edited book", async () => {
     const store = memoryStore();
-    const { record } = await claim(store, FILL, "softcover", DAY);
+    const { record } = await claim(store, FILL, "softcover", "us", DAY);
     const asStored = readRecord(JSON.parse(JSON.stringify(record)))!;
     expect(asStored.fill.bookRev).toBe(FIRST_BOOK.rev);
     expect(asStored.fill.bookId).toBe(FIRST_BOOK.id);
@@ -153,7 +153,7 @@ describe("re-rendering an order months later", () => {
     // Read off the record rather than described, so a field quietly dropped
     // from the type fails here.
     const store = memoryStore();
-    const { record } = await claim(store, FILL, "hardcover", DAY);
+    const { record } = await claim(store, FILL, "hardcover", "us", DAY);
     const asStored = readRecord(JSON.parse(JSON.stringify(record)))!;
 
     expect(asStored.ref).toMatch(/^BK-/);
@@ -164,7 +164,8 @@ describe("re-rendering an order months later", () => {
     expect(asStored.fill.photo?.asset.sha256).toBe(minted.asset.sha256);
     expect(asStored.editionId).toBe("hardcover");
     expect(asStored.fill.bookRev).toBe(FIRST_BOOK.rev);
-    expect(asStored.asked).toEqual({ currency: "AUD", amount: 69 });
+    expect(asStored.market).toBe("us");
+    expect(asStored.asked).toEqual({ currency: "USD", amount: 59 });
     expect(asStored.payment).toBe("awaiting");
     expect(asStored.createdAt).toBe(DAY.toISOString());
     expect(asStored.updatedAt).toBe(DAY.toISOString());

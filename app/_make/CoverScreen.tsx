@@ -27,7 +27,7 @@
  * button; keeping the softcover is the quiet one and is equally one press.
  */
 
-import { EDITIONS, differenceOf, editionOf, priceOf, upgradeFrom } from "../../lib/book/editions";
+import { EDITIONS, differenceOf, editionOf, priceLabel, upgradeFrom } from "../../lib/book/editions";
 import { next, stepFor } from "../../lib/shop/steps";
 import Cover from "../_shop/Cover";
 import { useBook } from "../_book/BookProvider";
@@ -36,7 +36,7 @@ import Screen from "./Screen";
 const step = stepFor("cover")!;
 
 export default function CoverScreen({ closeTo }: { closeTo: string }) {
-  const { book, order, fill, setEdition, flush } = useBook();
+  const { book, market, order, fill, setEdition, flush } = useBook();
   const onward = next("cover")!;
   const base = editionOf(EDITIONS[0].id);
   const upgrade = upgradeFrom(base.id);
@@ -48,7 +48,7 @@ export default function CoverScreen({ closeTo }: { closeTo: string }) {
         {upgrade ? (
           <div className="pricetag" data-testid="upgrade-difference">
             <span>
-              <b>+{differenceOf(base, upgrade)}</b>
+              <b>+{differenceOf(base, upgrade, market)}</b>
               {upgrade.label.toLowerCase()}
             </span>
           </div>
@@ -82,7 +82,7 @@ export default function CoverScreen({ closeTo }: { closeTo: string }) {
             data-testid={`edition-${edition.id}`}
           >
             {index === 0 ? `Keep ${edition.label.toLowerCase()}` : edition.label} ·{" "}
-            {priceOf(edition.price)}
+            {priceLabel(edition, market)}
           </button>
         ))}
       </div>

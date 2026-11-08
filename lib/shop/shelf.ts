@@ -35,7 +35,8 @@
 
 import type { BookTemplate } from "../book/types";
 import { FIRST_BOOK } from "../../templates/first-book";
-import { EDITIONS, priceOf } from "../book/editions";
+import { cheapestIn, priceIn, priceOf } from "../book/editions";
+import type { Market } from "./market";
 
 /** A title that can be bought today. */
 export interface ShelfTitle {
@@ -128,13 +129,14 @@ export function pathOf(title: ShelfTitle): string {
 }
 
 /**
- * `From AUD 59`.
+ * `From USD 49`, in the market being shown.
  *
  * The lowest of the editions, formatted by the module that owns the money. It
  * is "from" because there are two editions and the second is dearer — not
- * because anything was ever more expensive.
+ * because anything was ever more expensive. The market is an argument rather
+ * than a default so that a tile cannot quietly quote the wrong currency: a
+ * caller with no market to hand is a caller that has not decided yet.
  */
-export function fromPrice(): string {
-  const cheapest = EDITIONS.reduce((low, e) => (e.price.amount < low.price.amount ? e : low));
-  return `From ${priceOf(cheapest.price)}`;
+export function fromPrice(market: Market): string {
+  return `From ${priceOf(priceIn(cheapestIn(market), market))}`;
 }

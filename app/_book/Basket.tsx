@@ -38,7 +38,9 @@
  */
 
 import { useState } from "react";
-import { editionOf, priceOf } from "../../lib/book/editions";
+import { editionOf, priceLabel } from "../../lib/book/editions";
+import { marketIsOpen } from "../../lib/shop/market";
+import { ratesFor } from "../../lib/shop/shipping";
 import { outstanding } from "../../lib/book/order";
 import { nameSlotFont } from "../../lib/book/name";
 import { trimInches } from "../../lib/shop/copy";
@@ -54,7 +56,7 @@ import { useTill } from "./till";
 const step = stepFor("basket")!;
 
 export default function Basket() {
-  const { book, order, fill, ready } = useBook();
+  const { book, market, order, fill, ready } = useBook();
   const { buy, busy, problem } = useTill();
   const [confirming, setConfirming] = useState(false);
   const edition = editionOf(order.editionId);
@@ -82,6 +84,7 @@ export default function Basket() {
               name={fill.name}
               face={FACES[nameSlotFont(book)]?.family}
               edition={edition}
+              market={market}
               onBack={() => setConfirming(false)}
               onConfirm={() => void buy()}
               busy={busy}
@@ -156,7 +159,7 @@ export default function Basket() {
                   Edit the book
                 </a>
               </p>
-              <p className="amount">{priceOf(edition.price)}</p>
+              <p className="amount">{priceLabel(edition, market)}</p>
             </div>
           </div>
 
@@ -164,18 +167,52 @@ export default function Basket() {
             <h2 className="dsp">Order summary</h2>
             <div className="row">
               <span>Book</span>
-              <span>{priceOf(edition.price)}</span>
+              <span>{priceLabel(edition, market)}</span>
             </div>
+            {/*
+              **What this row says follows the rate table, not a guess.**
+
+              It read "at checkout" when there was one country and one
+              currency, which was a promise about where postage would be
+              charged. `lib/shop/shipping.ts` § `RATES` is null, so no postage
+              is charged anywhere and the row says so; it says "at checkout"
+              again the day a real table exists, with no edit here.
+            */}
             <div className="row ruled">
               <span>Shipping</span>
-              <span className="text-[var(--mut)]">at checkout</span>
+              <span className="text-[var(--mut)]">
+                {ratesFor(market) ? "at checkout" : "included"}
+              </span>
             </div>
             <div className="total">
               <span>Total</span>
-              <span>{priceOf(edition.price)}</span>
+              <span>{priceLabel(edition, market)}</span>
             </div>
 
-            {ready ? (
+            {/*
+              **A market the shop cannot post to is said here, not at the
+              till.**
+
+              `app/api/checkout/route.ts` refuses it too and that refusal is
+              the one that matters — it is the server, and it is what stops
+              money moving. But a buyer who has spent three minutes on a book
+              should not learn this by pressing the button: that is the "finds
+              out at the till" failure `lib/policy/pages.ts` names on the
+              delivery page. The way out is the market control in the masthead
+              directly above this, which is why the message points at it.
+            */}
+            {!marketIsOpen(market) ? (
+              <>
+                <span className="btn wide off" aria-disabled="true" data-testid="checkout">
+                  We cannot post to {market.label} yet
+                </span>
+                <p className="mt-2 text-center text-[0.8rem] text-[var(--mut)]" role="status">
+                  Nothing is lost — your book is saved. Change the market at the top of the page
+                  if one of the others is yours, or write to us and we will find out properly what
+                  it takes to reach you.
+                </p>
+              </>
+            ) : ready ? (
               <button
                 type="button"
                 className="btn wide"

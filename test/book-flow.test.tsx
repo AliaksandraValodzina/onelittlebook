@@ -40,7 +40,8 @@ import BookProvider from "../app/_book/BookProvider";
 import LookScreen from "../app/_make/LookScreen";
 import Preview from "../app/_book/Preview";
 import Confirm from "../app/_book/Confirm";
-import { EDITIONS, priceOf } from "../lib/book/editions";
+import { EDITIONS, priceLabel } from "../lib/book/editions";
+import { DEFAULT_MARKET } from "../lib/shop/market";
 import { pageSequence, pageWithSlot, tileIndexOf } from "../lib/book/derive";
 import { ASKS, SLOT } from "../lib/book/slots";
 import { next, position, stepFor } from "../lib/shop/steps";
@@ -50,7 +51,11 @@ import { FACES } from "../lib/render/fonts";
 const book = FIRST_BOOK;
 
 function inProvider(node: React.ReactElement) {
-  return renderToStaticMarkup(<BookProvider book={book}>{node}</BookProvider>);
+  return renderToStaticMarkup(
+    <BookProvider book={book} market={DEFAULT_MARKET}>
+      {node}
+    </BookProvider>,
+  );
 }
 
 /**
@@ -63,7 +68,7 @@ function inProvider(node: React.ReactElement) {
  */
 function answeredMarkup(): string {
   return renderToStaticMarkup(
-    <BookProvider book={{ ...book, genders: [] }}>
+    <BookProvider book={{ ...book, genders: [] }} market={DEFAULT_MARKET}>
       <LookScreen closeTo="/books/when-they-were-small" />
     </BookProvider>,
   );
@@ -225,7 +230,7 @@ describe("the extras sit on the page they affect", () => {
     expect(ids.indexOf("upgrade-control")).toBeGreaterThan(ids.indexOf("dedication-control"));
     expect(ids.indexOf("upgrade-control")).toBeLessThan(ids.indexOf("continue"));
     for (const edition of EDITIONS) {
-      expect(preview).toContain(priceOf(edition.price));
+      expect(preview).toContain(priceLabel(edition, DEFAULT_MARKET));
     }
   });
 
@@ -275,6 +280,7 @@ describe("confirm the spelling, which is where typos die", () => {
         name={name}
         face={FACES[nameSlotFont(book)]?.family}
         edition={edition}
+        market={DEFAULT_MARKET}
         onBack={() => {}}
         onConfirm={() => {}}
       />,

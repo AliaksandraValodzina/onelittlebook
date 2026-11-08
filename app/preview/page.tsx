@@ -5,11 +5,16 @@
  * route, now wearing the shop's chrome so that a buyer who arrives here from
  * the flow is still in the same shop.
  *
- * It is a **client page**, which is unusual in this repository and is the right
- * answer here for one reason: the book that is drawn depends entirely on an
- * order that lives in `localStorage`. A server render could only ever show an
- * empty book and then replace it, which is a flash of the wrong book on the one
- * screen the buyer is being asked to approve.
+ * **The book it draws comes entirely from an order in `localStorage`**, so the
+ * parts that draw it — `BookProvider`, `./_book/Preview.tsx`,
+ * `./_book/Downloads.tsx` — are client components, exactly as on `/basket`.
+ * The route itself is a **server** component, which it had to become when the
+ * shop gained markets: the chosen market is a cookie, only the server has it
+ * during the first render, and a client page would have shown the default
+ * currency in the masthead and in the upgrade card and then corrected itself —
+ * which is a flash of the wrong *price* on the screen before the basket.
+ * Nothing about the book's own rendering changed: that still happens on the
+ * client, after mount, from storage.
  *
  * There is no gate. A visitor who arrives here with no order sees the book with
  * no name in it and a bar saying what is still to do, which is the honest state
@@ -24,8 +29,6 @@
  * the constraint of the artefact removed.
  */
 
-"use client";
-
 import { FIRST_BOOK } from "../../templates/first-book";
 import { WHEN_THEY_WERE_SMALL, pathOf } from "../../lib/shop/shelf";
 import { previous, stepFor } from "../../lib/shop/steps";
@@ -33,14 +36,19 @@ import BookProvider from "../_book/BookProvider";
 import Preview from "../_book/Preview";
 import Downloads from "../_book/Downloads";
 import { Ribbon, ShopFooter, ShopNav } from "../_shop/Chrome";
+import { currentMarket } from "../_shop/market";
 
-export default function PreviewPage() {
+/** A cookie read makes this per-request, like every other page of the shop. */
+export const dynamic = "force-dynamic";
+
+export default async function PreviewPage() {
   const back = previous(stepFor("book")!.id);
+  const market = await currentMarket();
 
   return (
     <>
-      <Ribbon />
-      <ShopNav basketCount={1} />
+      <Ribbon market={market} />
+      <ShopNav market={market} basketCount={1} />
       <main className="mx-auto w-full max-w-[46rem] px-4 py-6 sm:px-6 sm:py-10">
         <p className="crumb">
           <a href={back ? back.path : pathOf(WHEN_THEY_WERE_SMALL)}>
@@ -48,7 +56,7 @@ export default function PreviewPage() {
           </a>
         </p>
 
-        <BookProvider book={FIRST_BOOK}>
+        <BookProvider book={FIRST_BOOK} market={market}>
           <div className="mt-4">
             <Preview />
           </div>

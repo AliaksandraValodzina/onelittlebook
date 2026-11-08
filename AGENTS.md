@@ -20,6 +20,13 @@ else, so the next rename is one edit. The many references to *Keepnook* in
 `lib/`, `docs/` and `test/` are citations of a different codebase's prior art,
 not branding: do not replace them.
 
+**The book is printed in the United States and Australia is only where the
+business is.** `lib/brand.ts` holds those as two fields — `printedIn` and
+`registeredIn` — because they were one string until the day they diverged, and
+"printed in Australia" was then false in six places at once. A claim about the
+object reads `printedIn`; the footer's `© … · Australia` names the seller and
+must not be "corrected". `test/market.test.tsx` holds both halves.
+
 **Two titles, one machinery.** "When They Were Small" (`templates/first-book.ts`)
 is the product, at `/books/when-they-were-small`; "My Forever"
 (`templates/my-forever.ts`) is the single keepsake page it was built on, at
@@ -109,6 +116,12 @@ next, the counter and the route table all read the step list. The copy is data
 too (`lib/shop/copy.ts`) so that `test/shop-no-theatre.test.tsx` can walk every
 string the shop can say.
 
+**Half of that copy is a function of a market, and the rule is mechanical:
+every exported function in `lib/shop/copy.ts` takes exactly one argument and
+that argument is a `Market`.** The no-theatre test walks the module by
+reflection and calls every one-argument export once per market; a different
+signature there is a page the forbidden-mechanics check silently stops reading.
+
 **The captain's list of things that must not appear anywhere** — a struck-out
 price, a countdown, an invented review count or star rating, a Trustpilot
 badge, a paid queue jump, a shipping-protection fee, any hand-made claim — is
@@ -141,6 +154,37 @@ a gesture becomes a `PhotoView`, `cropFor` turns it into the `Crop` the format
 already defines, and an untouched photograph writes **no crop field at all** —
 which is what keeps `orderFingerprint` stable and a reprint of an old order the
 same document.
+
+## Four markets, one of which cannot check out
+
+**`lib/shop/market.ts` decides the currency, the shipping countries and the one
+sentence a policy says about consumer law.** The United States is the default
+and the main market; Australia and the United Kingdom have their own prices;
+"everywhere else" has a price and **no countries**, which closes its till on
+purpose — the Printify shipping table does not exist yet and this repository
+represents an unknown fact as missing rather than guessed.
+
+**Prices are a market-keyed table of set prices** (`lib/book/editions.ts`) and
+**never a conversion.** Twelve numbers, twelve decisions, deliberately not in
+proportion — `test/market.test.tsx` asserts the absence of proportion, so
+replacing the table with a rate fails the gate. The type still has nowhere for
+a "was", a percentage or an expiry; `docs/pricing.md` says why the US market
+makes that doubly load-bearing.
+
+**The chosen market is a cookie and the cookie is the only input a render
+reads.** `proxy.ts` turns the edge's country hint into that cookie on the first
+request and nothing downstream consults the hint again — which is what makes
+the choice visible and changeable (the pill in `app/_shop/Chrome.tsx` §
+`MarketControl`) rather than a price set by an IP address. It is also what keeps
+a server render and its hydration from disagreeing. Server components read it
+through `app/_shop/market.ts` § `currentMarket`, which answers the default
+outside a request so a route stays testable by calling it as a function.
+
+**Shipping is a structured gap.** `lib/shop/shipping.ts` § `RATES` is `null`,
+which means *nobody has supplied these* and not *free*: while it is null the
+listed price includes delivery and the Checkout Session carries no shipping
+option. Filling it in turns the copy, the policy page and the session options
+on with no other edit. No page anywhere quotes a delivery date.
 
 ## The money path
 
@@ -177,10 +221,22 @@ repository's usual "inert rather than broken". `test/admin-guard.test.ts` reads
 every file under `app/admin/` and `app/api/admin/` and fails if one does not
 call `lib/admin/guard.ts` before doing any work.
 
-**Policies are data** (`lib/policy/pages.ts`) and the footer's links come out of
-the same list, because the footer used to link to pages nothing served. Every
-fact in them is derived — the dispatch window from the email, the countries from
-the list the Checkout Session is created with, the prices from `EDITIONS`.
+**Policies are data** (`lib/policy/pages.ts`), one set per market, and the
+footers' links come out of `POLICY_LINKS` — a slug and a label, which do not
+vary — because the footer used to link to pages nothing served. Every fact in
+them is derived: the dispatch window from the email, the countries from the list
+the Checkout Session is created with, the prices and the currency from
+`EDITIONS` in the market being read.
+
+**The returns page states a policy and never an entitlement.** *"We cannot
+resell it, so we do not take change-of-mind returns"* is a promise the business
+makes; *"you have no right to cancel"* is a legal claim about law this
+repository has not had read. The old Australian-and-European cooling-off
+reasoning does not transfer to the United States, and `test/policy.test.tsx`
+refuses the phrasings that read as it across every market. The only sentence
+about law is `Market.statutory`, and every variant only gives rights away.
+**All four policies still want a lawyer against US law before real money
+flows.**
 
 ## Two things that will bite
 

@@ -35,7 +35,7 @@ import { useMemo, useRef, useState } from "react";
 import { acceptLines, explainLines } from "../../lib/editor/lines";
 import { dedicationSlot, fromSlot } from "../../lib/book/order";
 import { photoFloor } from "../../lib/book/photo";
-import { EDITIONS, differenceOf, editionOf, priceOf, upgradeFrom } from "../../lib/book/editions";
+import { EDITIONS, differenceOf, editionOf, priceLabel, upgradeFrom } from "../../lib/book/editions";
 import { FACES } from "../../lib/render/fonts";
 import CropSurface from "./CropSurface";
 import { useBook } from "./BookProvider";
@@ -335,7 +335,7 @@ export function DedicationControl({ pageIndex }: { pageIndex: number }) {
  * so a third edition would appear here without this component changing.
  */
 export function UpgradeControl() {
-  const { order, setEdition } = useBook();
+  const { market, order, setEdition } = useBook();
   const current = editionOf(order.editionId);
   const up = upgradeFrom(EDITIONS[0].id);
   if (!up) return null;
@@ -361,7 +361,7 @@ export function UpgradeControl() {
           >
             <span className="flex items-baseline justify-between gap-2">
               <span className="font-semibold">{edition.label}</span>
-              <span className="tabular-nums">{priceOf(edition.price)}</span>
+              <span className="tabular-nums">{priceLabel(edition, market)}</span>
             </span>
             <span className="mt-1 block text-[0.78rem] opacity-70">{edition.note}</span>
           </button>
@@ -369,8 +369,8 @@ export function UpgradeControl() {
       </div>
       <p className="mt-2 text-[0.78rem] opacity-60" role="status">
         {upgraded
-          ? `Hardcover it is. ${differenceOf(base, up)} more than the softcover.`
-          : `The hardcover is ${differenceOf(base, up)} more. It is the one that survives being read every night.`}
+          ? `Hardcover it is. ${differenceOf(base, up, market)} more than the softcover.`
+          : `The hardcover is ${differenceOf(base, up, market)} more. It is the one that survives being read every night.`}
       </p>
     </Panel>
   );
