@@ -27,8 +27,8 @@ import Shelf from "../app/_shop/Shelf";
 import { ShopFooter, ShopNav, Ribbon } from "../app/_shop/Chrome";
 import { BRAND, FORMER_NAMES } from "../lib/brand";
 import { POLICY_LINKS } from "../lib/policy/pages";
-import { EDITIONS, cheapestIn, priceLabel } from "../lib/book/editions";
-import { DEFAULT_MARKET, MARKET_LIST, MARKETS } from "../lib/shop/market";
+import { cheapestIn, priceLabel } from "../lib/book/editions";
+import { DEFAULT_MARKET, MARKET_LIST } from "../lib/shop/market";
 import {
   AI_ANSWER,
   HERO,

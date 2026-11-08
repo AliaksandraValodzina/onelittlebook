@@ -52,7 +52,7 @@ import { shipsTo } from "../lib/stripe/session";
 import { EDITIONS, priceLabel } from "../lib/book/editions";
 import { CHANGE_WINDOW_HOURS, DISPATCH_WINDOW } from "../lib/email/order";
 import { BRAND, FORMER_NAMES } from "../lib/brand";
-import { DEFAULT_MARKET, MARKET_LIST, MARKETS, type Market } from "../lib/shop/market";
+import { DEFAULT_MARKET, MARKET_LIST, MARKETS } from "../lib/shop/market";
 import SiteFooter from "../app/_components/SiteFooter";
 import PolicyPage from "../app/_components/PolicyPage";
 
