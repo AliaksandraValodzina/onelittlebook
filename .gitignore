@@ -8,3 +8,13 @@ next-env.d.ts
 .env.*.local
 .DS_Store
 .vercel
+
+# PER-ORDER ARTWORK IS NEVER COMMITTED. The regenerated pages the captain
+# uploads against one order are a picture of one family's child, this
+# repository is public, and git history is permanent — a file committed by
+# mistake and deleted in the next commit is still there, still fetchable, for
+# good. `lib/artwork/store.ts` § DEFAULT_ARTWORK_DIR writes here and
+# `test/order-artwork.test.ts` asserts this rule, because a gitignore line is a
+# one-line thing to lose in a merge and this is the one whose loss cannot be
+# undone. ORDER_ARTWORK_DIR may point anywhere outside the tree instead.
+.artwork/

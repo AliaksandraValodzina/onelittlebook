@@ -2,9 +2,18 @@
  * **One order, everything the captain needs to make the book, and the file.**
  *
  * The brief's three asks for this page, in the order they are used: see
- * everything that was chosen, download the print-ready PDF, mark it dispatched
- * with a tracking note. Nothing else — there is no editing, because an order
- * is what the customer approved and the way to change one is to talk to them.
+ * everything that was chosen, download the files that make the book, mark it
+ * dispatched with a tracking note. Nothing else — there is no editing, because
+ * an order is what the customer approved and the way to change one is to talk
+ * to them.
+ *
+ * **There are three downloads and the order of them is the whole point.**
+ * Printify takes one raster per print area, so the prominent one is the
+ * twenty-five finished pages as a ZIP; the PDF is secondary and is for reading.
+ * The third is the artwork with **no text on it**, which is the file that goes
+ * into an image tool for the photo path — and it has to be a separate download
+ * because text must never make a round trip through an image model.
+ * `lib/book/artwork.ts` carries that argument.
  *
  * **Behind `allowed()` before anything else**, like every other admin entry
  * point, and the file links below are behind it too: `app/api/admin/print/`
@@ -24,6 +33,10 @@ import { notFound } from "next/navigation";
 import { pageTitle } from "../../../lib/brand";
 import { COOKIE, allowed } from "../../../lib/admin/guard";
 import { storeFromEnv } from "../../../lib/orders/store";
+import { artworkStoreFromEnv } from "../../../lib/artwork/store";
+import { cleanArtworkPages } from "../../../lib/book/artwork";
+import { artworkPageIds } from "../../../lib/book/order-art";
+import { pageCount } from "../../../lib/book/derive";
 import { addressLines, chargedAs, isReference } from "../../../lib/orders/record";
 import { editionOf, priceOf } from "../../../lib/book/editions";
 import { marketOf } from "../../../lib/shop/market";
@@ -47,7 +60,10 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-export default async function AdminOrder(props: { params: Promise<{ ref: string }> }) {
+export default async function AdminOrder(props: {
+  params: Promise<{ ref: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { ref } = await props.params;
   const access = allowed({ env: process.env, cookie: (await cookies()).get(COOKIE)?.value });
   if (!access.ok) return <Gate access={access} next={`/admin/${ref}`} />;
@@ -57,6 +73,16 @@ export default async function AdminOrder(props: { params: Promise<{ ref: string 
   if (storeState.kind !== "ready") notFound();
   const record = await storeState.store.get(ref);
   if (!record) notFound();
+
+  // The per-order artwork for the photo path. A separate store from the order's
+  // own, because the thing it holds is a family's child and
+  // `lib/artwork/store.ts` names the hosting decision the captain still owes.
+  const artworkStore = artworkStoreFromEnv(process.env);
+  const artworkVersions = await artworkStore.versions(record.ref);
+  const currentArtwork = artworkVersions[artworkVersions.length - 1] ?? null;
+  const justUploaded = (await props.searchParams).artwork;
+  const cleanCount = cleanArtworkPages(FIRST_BOOK, "right").length;
+  const everyPage = pageCount(FIRST_BOOK);
 
   const edition = editionOf(record.editionId);
   const look = lookOf(FIRST_BOOK, record.fill.lookId);
@@ -124,22 +150,142 @@ export default async function AdminOrder(props: { params: Promise<{ ref: string 
         {address.length ? address.join("\n") : "Stripe has not sent an address for this order yet."}
       </p>
 
-      <h2 className="mt-9 text-lg font-semibold">The print file</h2>
+      {/*
+        **The pages are the primary download and the PDF is not.** Printify
+        takes one raster per print area, so the thing the captain actually
+        uploads is twenty-five images — a PDF has to be taken apart again,
+        twenty-five times, in order, by hand, before any of it can be used.
+        `lib/book/print.ts` § renderBookPagesZip carries the argument.
+      */}
+      <h2 className="mt-9 text-lg font-semibold">The files for the printer</h2>
       <p className="mt-2 text-sm opacity-75">
-        The whole book as one PDF at {FIRST_BOOK.page.print.pixels.width} ×{" "}
-        {FIRST_BOOK.page.print.pixels.height} a page, rendered from this order — about half a
-        minute. It is the same renderer that drew the preview the buyer approved, and it can be
-        made again from this record at any time.
+        All {everyPage} finished pages — {everyPage - 1} interiors and the cover — as PNGs at{" "}
+        {FIRST_BOOK.page.print.pixels.width} × {FIRST_BOOK.page.print.pixels.height} each, numbered
+        in reading order and named with this order&apos;s reference. This is the file that goes to
+        Printify: one image per print area, with the baby and the words on them. About half a
+        minute to render, roughly ten megabytes.
+        {currentArtwork
+          ? ` Drawn with this order's own artwork, version ${currentArtwork.version}.`
+          : ""}
       </p>
       <p className="mt-3">
         <a
           className="inline-block rounded-lg bg-[#2b1d14] px-5 py-3 font-semibold text-[#efe9df]"
-          href={`/api/admin/print/${record.ref}`}
-          data-testid="print-link"
+          href={`/api/admin/pages/${record.ref}`}
+          data-testid="pages-link"
         >
-          Download the print-ready PDF
+          Download all {everyPage} pages (ZIP)
         </a>
       </p>
+      <p className="mt-3 text-sm">
+        <a className="underline opacity-80" href={`/api/admin/print/${record.ref}`} data-testid="print-link">
+          Or the whole book as one PDF
+        </a>{" "}
+        <span className="opacity-60">— for reading it, not for uploading it.</span>
+      </p>
+
+      {/*
+        TEXT NEVER MAKES A ROUND TRIP THROUGH AN IMAGE MODEL. The download
+        above has the child's name rendered onto the page; a model asked to
+        swap the character redraws the lettering as a garbled near-word, which
+        is the failure the captain's own artwork survey found twenty-five times.
+        So the file that goes *into* a tool is a different file, and it is this
+        one. `lib/book/artwork.ts` is the whole argument.
+      */}
+      <h2 className="mt-9 text-lg font-semibold">Artwork for a character swap</h2>
+      <p className="mt-2 text-sm opacity-75">
+        The artwork pages for this order <b>with no text drawn on them</b> — no name, no
+        dedication, no story, no photograph. These are the files to put into an image tool to
+        replace the child. <b>Never use the download above for that</b>: it has the name rendered
+        on it, and a model asked to redraw a page redraws the lettering too, which comes back as a
+        garbled near-word in a handwritten face.
+      </p>
+      <p className="mt-3">
+        <a
+          className="inline-block rounded-lg border-2 border-current/25 px-5 py-3 font-semibold"
+          href={`/api/admin/artwork/${record.ref}`}
+          data-testid="clean-artwork-link"
+        >
+          Download the clean artwork ({cleanCount} right-hand pages, ZIP)
+        </a>
+      </p>
+      <p className="mt-3 text-sm opacity-75">
+        The right-hand page of each spread is the only page the child is on, so the other pages are
+        not worth regenerating. If you need them:{" "}
+        <a className="underline" href={`/api/admin/artwork/${record.ref}?pages=all`} data-testid="clean-all-link">
+          all {cleanArtworkPages(FIRST_BOOK, "all").length} interior pages
+        </a>{" "}
+        or{" "}
+        <a
+          className="underline"
+          href={`/api/admin/artwork/${record.ref}?pages=everything`}
+          data-testid="clean-everything-link"
+        >
+          those and the cover
+        </a>
+        .
+      </p>
+
+      <h2 className="mt-9 text-lg font-semibold">The regenerated artwork for this order</h2>
+      {justUploaded ? (
+        <p className="mt-2 text-sm font-medium" data-testid="artwork-uploaded">
+          Stored as {String(justUploaded)}. Download the pages above to see it drawn.
+        </p>
+      ) : null}
+      <p className="mt-2 text-sm opacity-75">
+        Upload the pages that came back from the image tool. They are checked against the same
+        contract the twelve looks are — {FIRST_BOOK.page.print.pixels.width} ×{" "}
+        {FIRST_BOOK.page.print.pixels.height} exactly, PNG, sRGB, 8 bits per channel, no alpha
+        channel — and every problem is reported at once. Name each file for the page it replaces:{" "}
+        <code>page-006.png</code> or <code>spread-03-right.png</code>, or leave the names the
+        download gave them.
+      </p>
+      <p className="mt-2 text-sm opacity-75">
+        A re-upload adds a version and keeps the last one, so a bad swap found later can be rolled
+        back. Nothing here is ever committed to the repository — it is one family&apos;s child and
+        git history is permanent. Stored in {artworkStore.describe}.
+      </p>
+      <form
+        method="post"
+        action={`/api/admin/artwork/${record.ref}`}
+        encType="multipart/form-data"
+        className="mt-3"
+      >
+        <label className="block text-sm font-medium" htmlFor="pages">
+          The regenerated pages
+        </label>
+        <input
+          id="pages"
+          name="pages"
+          type="file"
+          multiple
+          accept="image/png"
+          data-testid="artwork-files"
+          className="mt-1 block w-full rounded-lg border-2 border-current/20 bg-transparent px-3 py-2 text-sm"
+        />
+        <button
+          type="submit"
+          data-testid="artwork-upload"
+          className="mt-3 rounded-xl border-2 border-current/25 px-5 py-3 font-semibold"
+        >
+          {currentArtwork ? "Replace this order's artwork" : "Upload this order's artwork"}
+        </button>
+      </form>
+      {artworkVersions.length ? (
+        <ul className="mt-3 text-sm" data-testid="artwork-versions">
+          {[...artworkVersions].reverse().map((version) => (
+            <li key={version.version} className="py-0.5">
+              <b>v{version.version}</b> · {version.at.slice(0, 16).replace("T", " ")} ·{" "}
+              {version.pages.length} page(s): {artworkPageIds(FIRST_BOOK, version).join(", ")}
+              {version.version === currentArtwork?.version ? " · in use" : " · kept"}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-3 text-sm opacity-70" data-testid="artwork-none">
+          Nothing uploaded for this order. The pages above are drawn with the look the buyer chose.
+        </p>
+      )}
 
       <h2 className="mt-9 text-lg font-semibold">Dispatch</h2>
       {record.payment === "paid" ? (

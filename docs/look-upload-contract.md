@@ -324,7 +324,38 @@ reprint.
 
 ---
 
-## 7. Handing it over
+## 7. The same contract, for one order
+
+Everything above is about the **twelve pre-made looks**: a public product, the
+same twenty-four pictures for every buyer, imported into the repository with
+`npm run looks:import`.
+
+There is a second way artwork arrives, and **it is held to section 2 exactly**.
+On the photo path the captain downloads this book's artwork with no text on it,
+has an image tool replace the child with one resembling the buyer's own, and
+uploads the result back **against one order**. The pages are checked by the same
+function as a folder of looks — `lib/book/upload.ts` § `pageAgainstContract` —
+so there is one answer to "is this a printable page" and not two.
+
+What is different, and only this:
+
+| | |
+|---|---|
+| **It is per order, not per look** | The artwork replaces what the order's chosen look points at, for that order alone. `lib/book/order-art.ts` keeps the look id, the book id and the book revision: repainting an order must not rename it, and the reference is a hash of the fill. |
+| **A partial upload is normal** | The clean-artwork download defaults to the **right-hand page of each spread**, because that is the only half of a spread the child is on. The other pages keep the artwork they had. |
+| **Your own filenames are accepted** | `spread-03-right.png` as well as `page-006.png`, and the name the download handed over. The mapping is derived from the book's own spread pairing, so it follows a page that moves. |
+| **Nothing is overwritten** | A re-upload is a new version and the previous one stays readable. A character swap that looks right in a thumbnail and wrong at 3600 px is found *after* the replacement, and a model will not regenerate the earlier pages identically. |
+| **None of it is ever committed** | A look is a public product; a regenerated child is one family's private document, this repository is public and git history is permanent. `lib/artwork/store.ts` says where it goes and names the storage decision that is still the captain's. |
+
+**There is one thing the artwork cannot do for the photo path today, and it is
+worth knowing before it is promised.** While the buyer is reading the book their
+child does not exist, so the pages they are on hold the place with a glowing
+silhouette — and on an uploaded page the look's own child is *in the pixels* and
+cannot be taken out from under it. A babyless variant of each spread's
+child-bearing half would solve that, and it is not in this contract because
+nobody has asked for the photo path to sell at volume yet.
+
+## 8. Handing it over
 
 Drop the folders anywhere and run the checker. When it is clean:
 

@@ -170,6 +170,57 @@ export function isCover(index: number): boolean {
 }
 
 /**
+ * Which spread a page is a half of, and which side of it the page is.
+ *
+ * **Derived from `spreads` and never counted out by hand**, which is the only
+ * reason the two can agree. The spread number is one-based and skips the
+ * cover's own group — the cover is not a half of anything — so `page-001` is
+ * spread one's left page and `page-024` is spread twelve's right page, which
+ * is the spelling the captain uses for their own files
+ * (`spread-12-right.png`). `lib/book/order-upload.ts` maps that spelling onto
+ * a page id with this and nothing else, so moving a page in the book moves the
+ * name with it.
+ *
+ * Null for the cover, and for a trailing odd page there is no right-hand side
+ * to be: `spreads` returns a group of one rather than padding, so the last
+ * page of an odd-length book is a left with nothing facing it.
+ */
+export function spreadSideOf(
+  book: BookTemplate,
+  index: number,
+): { spread: number; side: "left" | "right" } | null {
+  const groups = spreads(book);
+  for (const [at, group] of groups.entries()) {
+    const within = group.indexOf(index);
+    if (within < 0) continue;
+    // Group 0 is the cover on its own; the spreads the captain numbers start
+    // at the next one.
+    if (at === 0) return null;
+    return { spread: at, side: within === 0 ? "left" : "right" };
+  }
+  return null;
+}
+
+/**
+ * The right-hand page of every spread, as indices into `pageSequence`.
+ *
+ * **The pages the child is drawn on**, in the artwork the captain is making:
+ * each of their twelve spreads is one 2.000:1 scene cut down the middle, with
+ * the baby on one half and the quiet half taking the words. The right-hand
+ * halves are therefore the only pages a character swap has to touch, and
+ * `lib/book/artwork.ts` makes them the default of the clean-artwork download
+ * for exactly that reason.
+ *
+ * It is **twelve** for this book and nothing says twelve: it is one per spread,
+ * counted from the page list.
+ */
+export function rightHandPages(book: BookTemplate): number[] {
+  return spreads(book)
+    .slice(1)
+    .flatMap((group) => (group.length > 1 ? [group[1]] : []));
+}
+
+/**
  * The index into `pageSequence` that the chooser's tiles draw.
  *
  * `BookTemplate.tilePage` says why this is declared and not the first page.
@@ -195,6 +246,20 @@ function artLayer(book: BookTemplate, page: BookPage, chosen: Chosen): Layer {
   const { canvas } = book.page;
   const frame = { x: 0, y: 0, width: canvas.width, height: canvas.height };
   const look = lookOf(book, chosen.lookId);
+  if (!look) {
+    // A book with **no looks at all**. `lookOf` falls back to the first one and
+    // there is no first one, so this is the one case where the fallback has
+    // nothing to fall back to. It is a refusal of the same kind as missing
+    // artwork rather than a `TypeError`, because `validateBook` already reports
+    // `looks.empty` for exactly this book and derives every page to find the
+    // rest of its problems — and a crash there would hide the whole report
+    // behind "cannot read properties of undefined".
+    throw new BookArtMissing(
+      page.id,
+      chosen.lookId,
+      "the book declares no looks at all; validateBook reports this as looks.empty",
+    );
+  }
 
   if (page.art.kind === "asset") {
     const asset = page.art.byLook[look.id];

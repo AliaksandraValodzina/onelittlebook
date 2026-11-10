@@ -225,7 +225,7 @@ export function checkUpload(book: BookTemplate, upload: Upload): Problem[] {
 
     for (const file of [...(cover ? [cover] : []), ...numbered.values()]) {
       const where = `${look.look}/${file.name}`;
-      problems.push(...pageProblems(file, where, size));
+      problems.push(...pageAgainstContract(file, where, size));
 
       const d = digest(file.bytes);
       const twin = withinLook.get(d);
@@ -265,8 +265,15 @@ export function checkUpload(book: BookTemplate, upload: Upload): Problem[] {
  * Read out of the IHDR rather than trusted to a filename or a tool's report.
  * `docs/print.md`'s *"a claim about a file is not the file"* is the rule, and
  * here the file is somebody else's.
+ *
+ * **Exported because the per-order artwork upload is the same contract.**
+ * `./order-upload.ts` takes regenerated pages for one order and has to hold
+ * them to exactly these rules — 3600 × 3600 exactly, PNG, sRGB, 8-bit, no
+ * alpha, not interlaced. A second set of rules written there would be a second
+ * opinion about what a printable page is, and the one that is wrong is the one
+ * nobody is reading when a book comes back with a white edge.
  */
-function pageProblems(file: UploadedFile, where: string, size: number): Problem[] {
+export function pageAgainstContract(file: UploadedFile, where: string, size: number): Problem[] {
   const out: Problem[] = [];
   const say = (code: string, detail: string) => out.push({ code, where, detail });
 

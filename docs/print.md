@@ -40,6 +40,29 @@ The committed example is `data/bk-first-book-buyer-flow/`.
 
 The committed example is `data/bk-spine-template-and-print/`.
 
+### Which of them is the one that gets uploaded
+
+**Printify takes one raster per print area**, so the artefact the captain
+actually ships is **the twenty-five pages as PNGs in one ZIP** — twenty-four
+interiors and the cover, numbered so they sort into reading order and named with
+the order's reference. That is the prominent download on `/admin/[ref]`;
+`lib/book/print.ts` § `renderBookPagesZip` builds it and `lib/zip.ts` is the
+container, written by hand and stored rather than deflated because a PNG is a
+deflate stream already.
+
+**The PDF is secondary and is for reading a book**, not for feeding a
+print-area form: a single PDF has to be taken apart again, twenty-five times, in
+order, by hand, before any of it can be uploaded.
+
+**There is a third file and it is not a print file at all.** On the photo path
+the captain downloads the artwork **with no text drawn on it** and puts it into
+an image tool to replace the child — `lib/book/artwork.ts`. It is a separate
+download from the two above and has to be, because *text never makes a round
+trip through an image model*: a model asked to redraw a page redraws the
+lettering as a garbled near-word, and a printed book with a mangled name on the
+cover is unsellable. Clean pages out, regenerated art back, the renderer draws
+the words afterwards.
+
 ---
 
 ## Does Printify want bleed?

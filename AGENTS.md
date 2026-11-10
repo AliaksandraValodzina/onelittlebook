@@ -48,7 +48,9 @@ meaning for its absence, never by adding a branch in a component.
 output and `lib/render/raster.ts` rasterises the same string.
 `test/one-renderer.test.ts` fails on any `if (forPrint)`. If the screen needs
 something the print file must not have, it is an *option on the render call*
-that the print path does not pass — `guides` is the only example.
+that the print path does not pass — there are exactly two, `guides` and
+`ghost`, and `renderPrintSvg` takes no options object at all, which is what
+makes "it cannot print" structural rather than checked.
 
 **Nothing reads an optional field directly.** `lib/template/defaults.ts` holds
 the tolerant readers. A stored template or fill can come from a newer publisher
@@ -237,6 +239,62 @@ refuses the phrasings that read as it across every market. The only sentence
 about law is `Market.statutory`, and every variant only gives rights away.
 **All four policies still want a lawyer against US law before real money
 flows.**
+
+## The photo path
+
+**The captain sells two ways and the second one is hand-made.** *Choose a look*
+picks one of twelve finished folders. *Upload a photograph* means the captain
+takes this book's artwork into an image tool, replaces the child with one
+resembling the buyer's, and uploads the result back against one order. Four
+pieces serve it and each has its own file-level reasoning.
+
+**TEXT NEVER MAKES A ROUND TRIP THROUGH AN IMAGE MODEL.** `lib/book/artwork.ts`
+is the clean-artwork download — the pages with **no text slot and no photo slot
+in the derived template at all**, plus a fill with nothing in it. The ordinary
+download has the child's name on it, and a model asked to swap a character
+redraws the lettering as a garbled near-word; the captain's own artwork survey
+found roughly twenty-five pieces in that state. Clean pages out, regenerated art
+back, the renderer draws the words afterwards. `test/clean-artwork.test.ts`
+reads the pixels of the name's own box, paired against the render that does
+carry it. The default is **the right-hand page of each spread** — one per spread,
+counted out of `spreads()` and never written down — because that is the half the
+captain's artwork puts the child on.
+
+**The file the captain actually ships is the pages, not the PDF.** Printify
+takes one raster per print area, so `lib/book/print.ts` § `renderBookPagesZip`
+is the primary download on `/admin/[ref]` and the PDF is secondary and for
+reading. `lib/zip.ts` writes the container by hand — stored, never deflated,
+and with a fixed 1980 timestamp so a download is reproducible.
+
+**Per-order artwork is never committed and the storage choice is still open.**
+`lib/artwork/store.ts` is one interface, five operations, with a
+local-filesystem implementation; it names the two candidates (private Vercel
+Blob, or the R2 content origin under a private prefix) and chooses neither,
+because that is the captain's call and being wrong is a migration. A re-upload
+**adds a version and keeps the last**, so a bad swap found at 3600 px is
+recoverable. `.gitignore` excludes `.artwork/` and `test/order-artwork.test.ts`
+asserts the rule — it is one family's child and git history is permanent.
+`lib/book/order-upload.ts` holds an upload to the same contract the twelve looks
+are held to, by calling `lib/book/upload.ts` § `pageAgainstContract`, and
+accepts the captain's `spread-NN-left|right` spelling by **deriving** it from
+`spreadSideOf`.
+
+**The custom look is the order's own look, repainted.** `lib/book/order-art.ts`
+keeps `lookId`, `id` and `rev` and changes which pixels the look points at —
+a new look id would change `orderFingerprint`, which is the order's reference
+and Stripe's idempotency key. The derived book declares one look and one cover
+because `validateBook` rightly refuses uploaded artwork missing for a look the
+book offers, and a cover choice that changes nothing.
+
+**The ghost is preview-only and structurally so.** On the photo path the child
+does not exist yet, so the pages they are on carry a soft white pearlescent
+glowing silhouette and *"Your little one will appear here"* —
+`lib/render/ghost.ts` for the treatment and why the felt figure lost,
+`lib/book/ghost.ts` for which pages. It is a **render option**, so the print
+path cannot express one; `test/ghost.test.ts` also reads the import graph off
+disk. The funnel does not sell the route — `/make/how` still says plainly that
+it is not here — and the affordance is `/preview?character=photograph`, exactly
+as `/my-forever?guides=1` is.
 
 ## Two things that will bite
 

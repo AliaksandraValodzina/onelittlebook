@@ -41,9 +41,25 @@ import { currentMarket } from "../_shop/market";
 /** A cookie read makes this per-request, like every other page of the shop. */
 export const dynamic = "force-dynamic";
 
-export default async function PreviewPage() {
+export default async function PreviewPage(props: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const back = previous(stepFor("book")!.id);
   const market = await currentMarket();
+  /**
+   * `?character=photograph` draws the **photo path's** preview: the child is
+   * made by hand from the buyer's photograph after the order, so there is no
+   * artwork of them yet and their place is held on every page they are on.
+   *
+   * A query parameter and not a step of the flow, exactly as
+   * `/my-forever?guides=1` is: it is a screen affordance for a route the funnel
+   * does not sell yet. `app/_make/HowScreen.tsx` still says plainly that the
+   * photograph route is not here, because it is not — what is built is the
+   * rendering, the clean-artwork download and the per-order artwork upload
+   * behind it. `lib/render/ghost.ts` says why nothing this turns on can reach a
+   * print file.
+   */
+  const photoPath = (await props.searchParams).character === "photograph";
 
   return (
     <>
@@ -58,7 +74,7 @@ export default async function PreviewPage() {
 
         <BookProvider book={FIRST_BOOK} market={market}>
           <div className="mt-4">
-            <Preview />
+            <Preview photoPath={photoPath} />
           </div>
           <Downloads />
         </BookProvider>

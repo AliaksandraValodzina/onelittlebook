@@ -19,6 +19,14 @@
  *
  * **The controls are on the pages they affect** — see `./Controls.tsx`, which
  * asks the template which page carries which slot rather than being told.
+ *
+ * **`photoPath` draws the other route's preview.** On the photo path the child
+ * is drawn by hand after the order, so their place is held by a glowing
+ * silhouette — `lib/book/ghost.ts`. It is a prop rather than a thing read off
+ * the order because the funnel does not sell that route yet; the affordance
+ * that turns it on is `/preview?character=photograph`, exactly as
+ * `/my-forever?guides=1` turns on the trim guides, and like the guides it is a
+ * screen affordance that the print path cannot express.
  */
 
 import { useState } from "react";
@@ -38,7 +46,7 @@ function nameOf(id: string): string {
   return id === "cover" ? "Cover" : `Page ${Number(id.replace("page-", ""))}`;
 }
 
-export default function Preview() {
+export default function Preview({ photoPath = false }: { photoPath?: boolean }) {
   const { book } = useBook();
   const [two, setTwo] = useState(true);
   const sequence = pageSequence(book);
@@ -95,7 +103,14 @@ export default function Preview() {
       </div>
 
       <p className="mt-1 text-sm opacity-65">
-        All {sequence.length} pages, exactly as they will print. No watermark, no account.
+        {photoPath ? (
+          <>
+            All {sequence.length} pages. Your little one is drawn by hand after you order, so their
+            place is held on every page they are on. No watermark, no account.
+          </>
+        ) : (
+          <>All {sequence.length} pages, exactly as they will print. No watermark, no account.</>
+        )}
       </p>
 
       <ol className="mt-5 space-y-8" data-testid="pages">
@@ -107,7 +122,12 @@ export default function Preview() {
               }`}
             >
               {group.map((index) => (
-                <BookPage key={index} index={index} label={nameOf(sequence[index].id)} />
+                <BookPage
+                  key={index}
+                  index={index}
+                  label={nameOf(sequence[index].id)}
+                  photoPath={photoPath}
+                />
               ))}
             </div>
             <p className="mt-1.5 text-[0.72rem] uppercase tracking-wide opacity-50">

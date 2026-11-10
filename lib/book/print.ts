@@ -41,6 +41,7 @@ import { canonicalJson } from "../template/rev";
 import { blockingProblems, type Problem } from "../template/validate";
 import { renderPrintPixels, renderPrintPng, type PrintResult, type SuppliedBytes } from "../render/raster";
 import { buildPdf, type PdfPage } from "../render/pdf";
+import { buildZip, type ZipEntry } from "../zip";
 import { pageCount, pageFillFor, pageSequence, pageTemplateFor } from "./derive";
 import { validateBook, validateBookFill } from "./validate";
 import type { BookFill, BookTemplate } from "./types";
@@ -103,9 +104,23 @@ export function printFileName(
 ): string {
   const { width, height } = book.page.print.pixels;
   const which = page === undefined ? "" : `-${pageSequence(book)[page]?.id ?? `page-${page}`}`;
+  return `${orderFileStem(book, fill)}${which}-${width}x${height}.${ext}`;
+}
+
+/**
+ * Everything in a download's name that identifies **which order** it is.
+ *
+ * Extracted because there are now four artefacts an order produces — the whole
+ * book as a PDF, one page as a PNG, the finished pages as a ZIP and the clean
+ * artwork as a ZIP — and a second naming scheme for any of them would be a
+ * folder on a desk where two files from the same order do not sort together.
+ * Everything that decides what is *inside* the file is still appended by the
+ * caller, which is what keeps two orders from the same buyer distinguishable.
+ */
+export function orderFileStem(book: BookTemplate, fill: BookFill): string {
   return (
     `${book.id}-${book.rev}-${slug(fill.lookId, 16)}-${slug(fill.coverId, 16)}-` +
-    `${slug(fill.name)}-${orderFingerprint(fill)}${which}-${width}x${height}.${ext}`
+    `${slug(fill.name)}-${orderFingerprint(fill)}`
   );
 }
 
@@ -204,4 +219,84 @@ export async function renderBookPagePng(
   const template = pageTemplateFor(book, index, { lookId: fill.lookId, coverId: fill.coverId });
   const result = await renderPrintPng(template, pageFillFor(book, index, fill), supplied);
   return { ...result, filename: printFileName(book, fill, "png", index) };
+}
+
+// ---------------------------------------------------------------------------
+// The file the captain actually ships
+// ---------------------------------------------------------------------------
+
+export interface BookPagesZipResult {
+  zip: Uint8Array;
+  /** The pages in the archive, as indices into `pageSequence`. */
+  pages: number[];
+  filename: string;
+}
+
+/**
+ * **Every finished page of the book as a PNG, in one ZIP. This is the upload.**
+ *
+ * The captain uploads to Printify by hand and **Printify takes one raster per
+ * print area** — twenty-four interior pages and a cover, each its own image. A
+ * single PDF is therefore the wrong shape for the one job this file exists to
+ * do: it has to be taken apart again before anything can be uploaded, by hand,
+ * twenty-five times, in order, without a mistake. So the primary download is
+ * the pages, and `renderBookPdf` stays as the secondary one — a PDF is the
+ * right thing for *reading* a book and the wrong thing for feeding a print-area
+ * form.
+ *
+ * **Finished pages, which means the baby and the words.** This is the opposite
+ * end of the photo path from `./artwork.ts`, whose whole point is that it
+ * carries no text: that one goes *into* an image model, this one goes *to the
+ * press*. Nothing is stripped here and nothing is added — it is
+ * `renderBookPagePng` for every page of the book, which is the same
+ * `renderPageSvg` the buyer approved.
+ *
+ * **Numbered, so they sort.** `00-cover`, then `01-page-001` … `24-page-024`.
+ * Zero-padded for `docs/look-upload-contract.md` § 1's reason — `page-9` sorts
+ * after `page-10` in half the tools that will touch it — and the order's own
+ * reference goes in front of every entry name, so a page extracted onto a desk
+ * beside another order's page still says which order it belongs to.
+ *
+ * **What it costs.** Twenty-five pages at 3600 × 3600 is about half a minute
+ * of CPU and of the order of ten megabytes, which is this module's opening
+ * paragraph and is why the route that serves it says so rather than discovering
+ * it. The entries are **stored** rather than deflated: a PNG is a deflate
+ * stream already — see `lib/zip.ts`.
+ */
+export async function renderBookPagesZip(
+  book: BookTemplate,
+  fill: BookFill,
+  options: {
+    supplied?: SuppliedBytes;
+    /** The order's reference, put in front of every entry name when given. */
+    ref?: string;
+    onPage?: (index: number, id: string, total: number) => void;
+  } = {},
+): Promise<BookPagesZipResult> {
+  const problems = printProblems(book, fill);
+  if (problems.length) throw new BookNotPrintable(problems);
+
+  const sequence = pageSequence(book);
+  const total = pageCount(book);
+  const prefix = options.ref ? `${options.ref}-` : "";
+  const entries: ZipEntry[] = [];
+  const pages: number[] = [];
+
+  for (let index = 0; index < total; index++) {
+    options.onPage?.(index, sequence[index].id, total);
+    const template = pageTemplateFor(book, index, { lookId: fill.lookId, coverId: fill.coverId });
+    const page = await renderPrintPng(template, pageFillFor(book, index, fill), options.supplied);
+    entries.push({
+      name: `${prefix}${String(index).padStart(2, "0")}-${sequence[index].id}.png`,
+      bytes: page.png,
+    });
+    pages.push(index);
+  }
+
+  const { width, height } = book.page.print.pixels;
+  return {
+    zip: buildZip(entries),
+    pages,
+    filename: `${prefix}${orderFileStem(book, fill)}-${total}pages-${width}x${height}.zip`,
+  };
 }
