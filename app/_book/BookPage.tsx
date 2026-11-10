@@ -22,6 +22,7 @@
 
 import { useMemo } from "react";
 import { pageFillFor, pageTemplateFor } from "../../lib/book/derive";
+import { ghostPreviewOf } from "../../lib/book/ghost";
 import { renderPageSvg } from "../../lib/render/svg";
 import type { AssetRef } from "../../lib/template/types";
 import { useBook } from "./BookProvider";
@@ -30,25 +31,42 @@ export default function BookPage({
   index,
   label,
   className = "",
+  photoPath = false,
 }: {
   index: number;
   /** For a test and for a tooltip. The SVG carries its own `aria-label`. */
   label?: string;
   className?: string;
+  /**
+   * Draw this page as the **photo path** shows it: the child's place held by a
+   * glowing silhouette rather than a baby.
+   *
+   * A prop and not something read from the order, because the photo path is not
+   * something the funnel sells yet — `/preview?character=photograph` is the
+   * screen affordance that turns it on, the same arrangement
+   * `/my-forever?guides=1` has. `lib/book/ghost.ts` decides which pages get one
+   * and `lib/render/ghost.ts` says why a ghost cannot reach a print file.
+   */
+  photoPath?: boolean;
 }) {
   const { book, order, fill } = useBook();
   const dataUrl = order.photo?.dataUrl;
   const digest = order.photo?.asset.sha256;
 
   const svg = useMemo(() => {
-    const template = pageTemplateFor(book, index, {
-      lookId: fill.lookId,
-      coverId: fill.coverId,
-    });
+    const chosen = { lookId: fill.lookId, coverId: fill.coverId };
+    // One call for both paths. On the look path `ghost` is null and the
+    // template is `pageTemplateFor`'s own, character for character.
+    const page = photoPath
+      ? ghostPreviewOf(book, index, chosen)
+      : { template: pageTemplateFor(book, index, chosen), ghost: null };
     const href = (ref: AssetRef) =>
       ref.sha256 === digest && dataUrl ? dataUrl : `/api/assets/${ref.sha256}.png`;
-    return renderPageSvg(template, pageFillFor(book, index, fill), { href });
-  }, [book, index, fill, dataUrl, digest]);
+    return renderPageSvg(page.template, pageFillFor(book, index, fill), {
+      href,
+      ...(page.ghost ? { ghost: page.ghost } : {}),
+    });
+  }, [book, index, fill, dataUrl, digest, photoPath]);
 
   return (
     <div

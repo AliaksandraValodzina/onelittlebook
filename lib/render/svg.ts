@@ -54,6 +54,7 @@ import {
 } from "../template/defaults";
 import { centreOf, maskPath, placePhoto, r, roundedRectPath } from "../template/geometry";
 import { drawArt, shadowFilter } from "./decoration";
+import { ghostOverlay, type GhostOptions } from "./ghost";
 import { familyOf } from "./fonts";
 
 /**
@@ -76,6 +77,20 @@ export interface RenderOptions {
    * wanting to see where the guillotine goes.
    */
   guides?: boolean;
+  /**
+   * Hold the place of a child who has not been drawn yet.
+   *
+   * **Never set for a print file**, for the same structural reason `guides` is
+   * never set: `renderPrintSvg` takes no options object at all, so the print
+   * path cannot express either of them. This is the second — and the only
+   * other — thing the screen can draw that the press must never see, and
+   * `./ghost.ts` carries the whole argument for why a glowing void in a printed
+   * book is the worst failure this product has.
+   *
+   * Absent is the normal state: a book drawn with one of the twelve looks has
+   * its child already, and showing that artwork is the point.
+   */
+  ghost?: GhostOptions;
 }
 
 function esc(s: string): string {
@@ -348,6 +363,13 @@ export function renderPageSvg(
     if (part.body) body.push(part.body);
   }
 
+  // Over every layer and under nothing, because it stands where the child
+  // stands. It is **not** a layer: see `RenderOptions.ghost` and `./ghost.ts`
+  // for why the thing the print file must never carry is an argument the print
+  // path cannot supply rather than a layer kind it would have to refuse.
+  const ghost = opts.ghost ? ghostOverlay("ghost", canvas, opts.ghost) : null;
+  if (ghost?.defs) defs.push(ghost.defs);
+
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ` +
     `viewBox="0 0 ${r(canvas.width)} ${r(canvas.height)}" ` +
@@ -355,6 +377,7 @@ export function renderPageSvg(
     (defs.length ? `<defs>${defs.join("")}</defs>` : "") +
     `<rect x="0" y="0" width="${r(canvas.width)}" height="${r(canvas.height)}" fill="${canvas.background}"/>` +
     body.join("") +
+    (ghost ? ghost.body : "") +
     (opts.guides ? guideOverlay(canvas) : "") +
     `</svg>`
   );

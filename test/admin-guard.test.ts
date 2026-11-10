@@ -121,6 +121,15 @@ async function routes() {
     print: (await import("../app/api/admin/print/[ref]/route")).GET,
     photo: (await import("../app/api/admin/photo/[ref]/route")).GET,
     dispatch: (await import("../app/api/admin/dispatch/route")).POST,
+    // The two downloads the photo path added. The finished pages are the file
+    // the captain ships — a child's name, a dedication and a family's
+    // photograph at print resolution — and the clean artwork is the same book
+    // without the words. Both are named here as well as covered by the
+    // structural check below, because a download is the thing with the
+    // customer in it.
+    pages: (await import("../app/api/admin/pages/[ref]/route")).GET,
+    artwork: (await import("../app/api/admin/artwork/[ref]/route")).GET,
+    upload: (await import("../app/api/admin/artwork/[ref]/route")).POST,
   };
 }
 
@@ -143,13 +152,22 @@ function withEnv<T>(env: Record<string, string | undefined>, body: () => Promise
 describe("the files behind the door", () => {
   it("hand back nothing to a request with no secret", async () => {
     await withEnv({ ADMIN_SECRET: SECRET }, async () => {
-      const { print, photo, dispatch } = await routes();
+      const { print, photo, dispatch, pages, artwork, upload } = await routes();
       const params = Promise.resolve({ ref: REF });
 
       for (const [name, response] of [
         ["the print file", await print(new Request(`https://e.test/api/admin/print/${REF}`), { params })],
         ["the photograph", await photo(new Request(`https://e.test/api/admin/photo/${REF}`), { params })],
         ["dispatch", await dispatch(new Request("https://e.test/api/admin/dispatch", { method: "POST" }))],
+        ["the finished pages", await pages(new Request(`https://e.test/api/admin/pages/${REF}`), { params })],
+        ["the clean artwork", await artwork(new Request(`https://e.test/api/admin/artwork/${REF}`), { params })],
+        [
+          "the artwork upload",
+          await upload(
+            new Request(`https://e.test/api/admin/artwork/${REF}`, { method: "POST" }),
+            { params },
+          ),
+        ],
       ] as const) {
         expect(response.status, name).toBe(401);
         expect(response.headers.get("content-type"), name).toContain("application/json");
@@ -199,6 +217,22 @@ describe("the files behind the door", () => {
       expect(printed.status).toBe(503);
       expect(pictured.status).toBe(503);
       expect(await printed.json()).toMatchObject({ detail: "no order store" });
+
+      const { pages, artwork, upload } = await routes();
+      for (const [name, response] of [
+        ["the finished pages", await pages(new Request(`https://e.test/api/admin/pages/${REF}`, { headers }), { params })],
+        ["the clean artwork", await artwork(new Request(`https://e.test/api/admin/artwork/${REF}`, { headers }), { params })],
+        [
+          "the artwork upload",
+          await upload(
+            new Request(`https://e.test/api/admin/artwork/${REF}`, { method: "POST", headers }),
+            { params },
+          ),
+        ],
+      ] as const) {
+        expect(response.status, name).toBe(503);
+        expect(await response.json(), name).toMatchObject({ detail: "no order store" });
+      }
     });
   });
 
@@ -206,11 +240,24 @@ describe("the files behind the door", () => {
     await withEnv({ ADMIN_SECRET: SECRET }, async () => {
       const { print } = await routes();
       const headers = { authorization: `Bearer ${SECRET}` };
+      const { pages, artwork, upload } = await routes();
       for (const bad of ["../../etc/passwd", "orders/BK-ABCDEFG", "", "BK-ABC"]) {
-        const response = await print(new Request("https://e.test/api/admin/print/x", { headers }), {
-          params: Promise.resolve({ ref: bad }),
-        });
-        expect(response.status, bad).toBe(400);
+        const params = Promise.resolve({ ref: bad });
+        for (const [name, response] of [
+          ["print", await print(new Request("https://e.test/api/admin/print/x", { headers }), { params })],
+          ["pages", await pages(new Request("https://e.test/api/admin/pages/x", { headers }), { params })],
+          ["artwork", await artwork(new Request("https://e.test/api/admin/artwork/x", { headers }), { params })],
+          [
+            "upload",
+            await upload(new Request("https://e.test/api/admin/artwork/x", { method: "POST", headers }), {
+              params,
+            }),
+          ],
+        ] as const) {
+          // A reference becomes a path segment in the artwork store, so this is
+          // not only about the bucket: `../../` would be a directory outside it.
+          expect(response.status, `${name} ${bad}`).toBe(400);
+        }
       }
     });
   });
@@ -241,7 +288,7 @@ describe("every admin entry point calls the guard", () => {
   const files = [...filesUnder("app/admin"), ...filesUnder("app/api/admin")];
 
   it("finds the admin files at all, so the check below is not vacuous", () => {
-    expect(files.length).toBeGreaterThanOrEqual(5);
+    expect(files.length).toBeGreaterThanOrEqual(7);
   });
 
   it("calls allowed() or allowedFor() in every page and every route", () => {

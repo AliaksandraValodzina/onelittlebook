@@ -70,7 +70,10 @@ Fraunces and Instrument Serif is not final.
 
 `/my-forever` is the single-page editor; `/my-forever?guides=1` draws the trim
 and safe-area guides over it — a screen affordance only, so a trim mark cannot
-reach a book.
+reach a book. `/preview?character=photograph` is the second affordance of that
+kind: it draws the book as the **photo path** shows it, with the child's place
+held by a glowing silhouette because on that path nobody has drawn them yet.
+Like the guides, the print path has no argument it could be passed in.
 
 ```sh
 npm test             # the whole suite
@@ -181,11 +184,56 @@ the exact print file months later with no browser involved;
 `lib/orders/store.ts` opens with the storage options considered and why this
 one won.
 
+## The photo path
+
+The captain sells two ways. **Choose a look** picks one of twelve finished
+folders. **Upload a photograph** is a hand-made premium service: the captain
+takes this book's artwork into an image tool, replaces the child with one
+resembling the buyer's own, and uploads the result back against the order. Four
+things on `/admin/[ref]` serve it.
+
+**All twenty-five finished pages, as a ZIP — and this is the primary
+download.** Printify takes **one raster per print area**, so a single PDF is the
+wrong shape: it has to be taken apart again, twenty-five times, in order, before
+any of it can be uploaded. The PDF is still there and is for reading.
+[`lib/book/print.ts`](lib/book/print.ts) § `renderBookPagesZip`.
+
+**The artwork with no text drawn on it, as a separate ZIP.** *Text never makes a
+round trip through an image model.* The ordinary download has the child's name
+rendered onto the page, and a model asked to swap the character redraws the
+lettering — the captain's own earlier artwork survey found roughly twenty-five
+pieces carrying garbled near-words, which is exactly that. So clean pages go
+out, regenerated art comes back, and the renderer draws the words afterwards.
+The default is the **right-hand page of each spread**, which is the only half the
+artwork puts the child on; all twenty-four and all twenty-five are options.
+[`lib/book/artwork.ts`](lib/book/artwork.ts).
+
+**The regenerated pages, uploaded against one order.** Held to the same contract
+the twelve looks are — 3600 × 3600 exactly, PNG, sRGB, 8-bit, no alpha — by the
+same function, with every problem reported in one pass, and accepting the
+captain's own `spread-NN-right.png` spelling as well as `page-NNN.png`. A
+re-upload adds a version and **keeps the one before it**, because a bad character
+swap is discovered at full size after the replacement has been made.
+[`lib/book/order-upload.ts`](lib/book/order-upload.ts).
+
+**Nothing of a customer's artwork is ever committed.** It is one family's child,
+this repository is public, and git history is permanent.
+[`lib/artwork/store.ts`](lib/artwork/store.ts) is one interface and five
+operations with a local-filesystem implementation, `.gitignore` excludes the
+directory it writes to, and a test asserts that rule rather than trusting it.
+**Where it should really live is the captain's decision and is not made** — the
+two candidates are private Vercel Blob and the R2 content origin under a private
+prefix, both stated in that file, neither chosen.
+
 ## What is not built
 
 Any printer integration, which is deliberately not coming: an order arrives, a
-file is produced, **a human uploads it** from `/admin`. Also not built: buyer
-accounts, a resumable-book link, and the dispatch email with tracking.
+file is produced, **a human uploads it** from `/admin`. The **photograph route
+of the flow** is the other one: the rendering, the clean-artwork download and
+the per-order upload behind it are built, and `/make/how` still says plainly
+that the route is not here, because selling it is a pricing and flow decision
+nobody has made. Also not built: buyer accounts, a resumable-book link, and the
+dispatch email with tracking.
 
 ---
 
@@ -202,7 +250,12 @@ lib/assets/       content-addressed assets: fixtures, R2, and bytes posted
                   with a render request
 lib/book/         a book: types, derive (a book page -> a PageTemplate), the
                   order, the name's refusal, the photo floor, validation,
-                  the upload checker, editions and prices, rev
+                  the upload checker, editions and prices, rev; and the photo
+                  path — artwork (the clean pages, no text), order-upload (the
+                  regenerated ones coming back), order-art (one order's own
+                  artwork bound to the book), ghost (which pages hold a place)
+lib/artwork/      where one order's regenerated artwork lives, behind one
+                  interface, and the storage decision that is still open
 lib/orders/       the durable order: the record, the store and its reasoning,
                   SigV4 against R2, the lifecycle, and receiving a webhook
 lib/stripe/       form encoding, the Checkout Session, signature verification
@@ -218,6 +271,7 @@ lib/env.ts        whether an environment variable is really set
 lib/checkout.ts   whether this shop can take money
 templates/        pages and books, as data
 fixtures/         two hard-coded orders, and the photographs they use
+lib/zip.ts        the ZIP the pages are downloaded in, written by hand
 app/              the landing page and its shelf, /books/[slug], the five
                   /make screens, /preview and the whole book, /basket,
                   /my-forever, the four policy pages, /order/[ref], /admin,
