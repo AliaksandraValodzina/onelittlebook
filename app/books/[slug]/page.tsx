@@ -23,12 +23,15 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { assetUrl } from "../../../lib/assets/resolve";
+import { bookAsDelivered } from "../../../lib/artwork/release";
+import { showcaseLook } from "../../../lib/book/release-art";
 import { pageTitle } from "../../../lib/brand";
 import { pageFillFor, pageSequence, pageTemplateFor } from "../../../lib/book/derive";
 import { BOOK_UNCONFIRMED } from "../../../lib/book/product";
 import { PLACEHOLDER } from "../../../lib/product";
 import { renderPageSvg } from "../../../lib/render/svg";
-import { titleFor, type ShelfTitle } from "../../../lib/shop/shelf";
+import { titleFor } from "../../../lib/shop/shelf";
+import type { BookTemplate } from "../../../lib/book/types";
 import {
   HELP,
   PAGE_BOTTOM_QUESTIONS,
@@ -83,11 +86,14 @@ export async function generateMetadata(props: {
  * not is worse than one that plainly is not. The real gallery arrives with the
  * photograph of the printed book that replaces the render.
  */
-function Rail({ title }: { title: ShelfTitle }) {
-  const book = title.book;
+function Rail({ book }: { book: BookTemplate }) {
   const sequence = pageSequence(book);
   const indices = [0, 1, 2, 3, 4].filter((i) => i < sequence.length);
-  const chose = { lookId: book.looks[0].id, coverId: book.covers[0].id };
+  // The baby whose artwork this machine actually has, where there is one —
+  // `showcaseLook` — so the strip is the finished book rather than the
+  // placeholder sitting in front of it. With nothing imported it is the first
+  // look, exactly as before.
+  const chose = { lookId: showcaseLook(book).id, coverId: book.covers[0].id };
 
   return (
     <ul className="rail" aria-label={`Pages of ${book.name}`}>
@@ -121,7 +127,10 @@ export default async function BookPageRoute(props: { params: Promise<{ slug: str
   const { slug } = await props.params;
   const title = titleFor(slug);
   if (!title) notFound();
-  const book = title.book;
+  // The shelf's book with this machine's artwork bound over it, so the page
+  // cannot advertise a book the renderer does not draw — which is this route's
+  // own rule, now that there is artwork for it to be wrong about.
+  const book = await bookAsDelivered(title.book);
   const start = STEPS[0];
   // Four facts, a price line, a spec table and a strip, all of which say
   // something that depends on where the reader is buying.
@@ -145,7 +154,7 @@ export default async function BookPageRoute(props: { params: Promise<{ slug: str
             <Cover book={book} name={SAMPLE_NAME} href={assetUrl} />
             <p className="cap">{RENDER_CAPTION}</p>
           </div>
-          <Rail title={title} />
+          <Rail book={book} />
         </div>
 
         <div>

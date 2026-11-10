@@ -3,7 +3,9 @@
  *
  * This is the local half of `lib/assets/resolve.ts`: with `R2_PUBLIC_BASE_URL`
  * unset, `assetUrl` points the browser here and this hands back the bytes from
- * `fixtures/assets/`. Set the variable and nothing reaches this route at all —
+ * `fixtures/assets/`, or from the released artwork store when the captain has
+ * imported artwork — which is where every page image is, because none of it can
+ * be in a public repository. Set the variable and nothing reaches this route —
  * the browser goes to R2 directly, which is where a customer's photograph will
  * live.
  *
@@ -17,6 +19,7 @@ import path from "node:path";
 import { NextResponse } from "next/server";
 import { toArrayBuffer } from "../../../../lib/bytes";
 import { ASSET_EXTENSIONS, sha256 } from "../../../../lib/assets/resolve";
+import { releaseBytesFor } from "../../../../lib/artwork/release";
 
 export const runtime = "nodejs";
 
@@ -36,12 +39,19 @@ export async function GET(_req: Request, ctx: { params: Promise<{ key: string }>
   }
   const [, digest, ext] = match;
 
-  let bytes: Uint8Array;
+  let bytes: Uint8Array | null = null;
   try {
     // Statically scoped to one subfolder on purpose: a join the bundler
     // cannot see the root of makes it trace the whole project into the output.
     bytes = new Uint8Array(await readFile(path.join(process.cwd(), "fixtures", "assets", `${digest}.${ext}`)));
   } catch {
+    // Then the released artwork, which is not in the repository because it
+    // cannot be — `lib/artwork/release.ts` says why. Same order as
+    // `loadAsset`, so the browser and the print path cannot be looking at
+    // different pictures.
+    bytes = await releaseBytesFor(digest);
+  }
+  if (!bytes) {
     return NextResponse.json({ error: "no such asset" }, { status: 404 });
   }
 

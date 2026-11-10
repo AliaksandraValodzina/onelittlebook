@@ -30,6 +30,7 @@
  */
 
 import { FIRST_BOOK } from "../../templates/first-book";
+import { bookAsDelivered } from "../../lib/artwork/release";
 import { WHEN_THEY_WERE_SMALL, pathOf } from "../../lib/shop/shelf";
 import { previous, stepFor } from "../../lib/shop/steps";
 import BookProvider from "../_book/BookProvider";
@@ -60,6 +61,13 @@ export default async function PreviewPage(props: {
    * print file.
    */
   const photoPath = (await props.searchParams).character === "photograph";
+  /**
+   * The published book with this machine's artwork bound over it, which on the
+   * photo path is also where the golden ghost halves come from: they ride on
+   * the pages, as `BookPage.ghost`, which is a type the print path cannot
+   * accept.
+   */
+  const book = await bookAsDelivered(FIRST_BOOK);
 
   return (
     <>
@@ -72,7 +80,7 @@ export default async function PreviewPage(props: {
           </a>
         </p>
 
-        <BookProvider book={FIRST_BOOK} market={market}>
+        <BookProvider book={book} market={market}>
           <div className="mt-4">
             <Preview photoPath={photoPath} />
           </div>

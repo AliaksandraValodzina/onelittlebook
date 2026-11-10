@@ -9,7 +9,7 @@ next-env.d.ts
 .DS_Store
 .vercel
 
-# PER-ORDER ARTWORK IS NEVER COMMITTED. The regenerated pages the captain
+# NO ARTWORK IS EVER COMMITTED, OF EITHER KIND. The regenerated pages the captain
 # uploads against one order are a picture of one family's child, this
 # repository is public, and git history is permanent — a file committed by
 # mistake and deleted in the next commit is still there, still fetchable, for
@@ -17,4 +17,11 @@ next-env.d.ts
 # `test/order-artwork.test.ts` asserts this rule, because a gitignore line is a
 # one-line thing to lose in a merge and this is the one whose loss cannot be
 # undone. ORDER_ARTWORK_DIR may point anywhere outside the tree instead.
+#
+# THE CAPTAIN'S RELEASED ARTWORK IS IN HERE TOO, under `release/`, for a
+# different reason that lands in the same place: one look of twenty-four
+# finished pages is 155 MB and twelve looks is the better part of two
+# gigabytes, which nobody should have to clone. `lib/artwork/release.ts` says
+# why not even its manifest is committed, and `RELEASE_ARTWORK_DIR` moves it.
+# One rule covers both, so there is only one line here to lose in a merge.
 .artwork/

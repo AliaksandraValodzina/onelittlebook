@@ -260,7 +260,7 @@ This is the rule that is easiest to break and hardest to see.
 | **Every look has the same backgrounds** | **Only the baby differs.** Buyers flick between looks before they buy. If the kitchen changes with the baby they will notice, and what they will conclude is that the book is not really a book. |
 | **The same page number is the same scene in every look** | `page-002.png` is the photograph's page in every folder. The validator checks counts and sizes; it cannot check that a scene is the same scene, so this one is on the eye. |
 | **The baby is the same person on every page of a look** | Generated art drifts. Same hair, same face, same outfit, page one to page twenty-four. |
-| **The pose in the grid tile is the same for every look** | The buyer is choosing *which baby*, not *which picture*. This is handled for you: the picture tiles in the chooser are **one declared page of each look** — `page-003` today, because `page-001` has no baby in it — rendered by the same renderer, so the pose is identical by construction and there is no tile to supply. The book declares which page in `tilePage`, and the build refuses a babyless one. |
+| **The pose in the grid tile is the same for every look** | The buyer is choosing *which baby*, not *which picture*. **Superseded on 10 November**: the captain delivered twelve portraits — a head and shoulders on white — and approved them as the tiles, which say *which baby* and nothing else where a whole page at tile size says *which picture*. See [`artwork.md`](artwork.md) § 2 for the set and the id mapping. What is written here is still the **fallback**, and is what every look with no portrait gets: one declared page of each look, rendered by the same renderer, so the pose is identical by construction. The book declares which page in `tilePage`, and the build refuses a babyless one. |
 
 Two pages being byte-identical across looks is reported as a note rather than
 an error: a page with no baby in it legitimately is the same file, and a page
@@ -345,7 +345,7 @@ What is different, and only this:
 | **A partial upload is normal** | The clean-artwork download defaults to the **right-hand page of each spread**, because that is the only half of a spread the child is on. The other pages keep the artwork they had. |
 | **Your own filenames are accepted** | `spread-03-right.png` as well as `page-006.png`, and the name the download handed over. The mapping is derived from the book's own spread pairing, so it follows a page that moves. |
 | **Nothing is overwritten** | A re-upload is a new version and the previous one stays readable. A character swap that looks right in a thumbnail and wrong at 3600 px is found *after* the replacement, and a model will not regenerate the earlier pages identically. |
-| **None of it is ever committed** | A look is a public product; a regenerated child is one family's private document, this repository is public and git history is permanent. `lib/artwork/store.ts` says where it goes and names the storage decision that is still the captain's. |
+| **None of it is ever committed** | Neither is, now: a regenerated child is one family's private document, and a look is two gigabytes. Both go through `lib/artwork/store.ts`, which names the storage decision that is still the captain's. |
 
 **There is one thing the artwork cannot do for the photo path today, and it is
 worth knowing before it is promised.** While the buyer is reading the book their
@@ -360,18 +360,32 @@ nobody has asked for the photo path to sell at volume yet.
 Drop the folders anywhere and run the checker. When it is clean:
 
 ```sh
-npm run looks:import -- path/to/looks
+npm run looks:import -- path/to/looks     # a finished folder of looks, as above
+npm run artwork -- look <dir> 02-girl     # one look at a time, the captain's own filenames
 ```
 
-`looks:import` hashes every file, copies it into the content-addressed asset
-store, and rewrites `templates/first-book.art.ts` — the map from
-`(look, page)` to a content hash, and the looks list with its genders — then
-prints the new `rev` to stamp on the book. Nothing about the artwork is retyped
-by hand and no coordinate is ever transcribed.
+Both write the bytes into the **artwork store** — `lib/artwork/release.ts`,
+which is a directory on this machine today and a bucket when the captain has
+chosen one — and **nothing at all into the repository**. One look of
+twenty-four finished pages is 155 MB and twelve looks is the better part of two
+gigabytes, which nobody should have to clone, and this repository is public.
+
+**Nothing has to be restamped.** The artwork is bound over the published book at
+request time (`lib/book/release-art.ts`) rather than written into
+`templates/`, so `FIRST_BOOK.rev` does not move, `npm run print`'s
+byte-identity gate keeps working, and a machine with no artwork draws the book
+from its own numbers exactly as before. [`artwork.md`](artwork.md) § 4 states
+the consequence of that — the binding is environment state, so it sits outside
+the book's `rev` — and what closes it.
 
 Artwork is named by **content hash, never by filename**, so re-uploading a
-corrected page is a *different* address rather than a redefinition: a book
-already sold cannot be repainted by a later upload, and a reprint of a
-year-old order is byte-identical to the first. That is
+corrected page is a *different* address rather than a redefinition, and the
+store adds a version rather than overwriting one: a bad swap found at 3600 px is
+recoverable, and a reprint resolves the same digests it did before. That is
 [`template-format.md`](template-format.md) § Nothing in a template holds
 pixels, one level up.
+
+**The look ids are published in `templates/first-book.ts`** and an upload for a
+look the book does not offer is refused. `looks.json` used to declare the list;
+it cannot now, because an order names a look id and the list has to be
+reviewable in a diff.

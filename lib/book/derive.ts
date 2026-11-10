@@ -263,15 +263,25 @@ function artLayer(book: BookTemplate, page: BookPage, chosen: Chosen): Layer {
 
   if (page.art.kind === "asset") {
     const asset = page.art.byLook[look.id];
-    if (!asset) {
-      throw new BookArtMissing(
-        page.id,
-        look.id,
-        "the page declares uploaded artwork and this look is not in the map. " +
-          "Run `npm run looks` against the upload.",
-      );
-    }
-    return { id: "art", kind: "image", frame, asset };
+    if (asset) return { id: "art", kind: "image", frame, asset };
+  }
+
+  /**
+   * Below here the page is drawn — either because it has no uploaded artwork at
+   * all, or because this is a **partial** import and the captain has not
+   * delivered this look yet. `PageArt.scene` says why the second is a
+   * legitimate state: the first of twelve looks landed on 10 November and the
+   * other eleven are still being drawn, so one look's real pages beside eleven
+   * placeholder babies is what the shop honestly is.
+   */
+  const scene = page.art.scene;
+  if (!scene) {
+    throw new BookArtMissing(
+      page.id,
+      look.id,
+      "the page declares uploaded artwork, this look is not in the map, and the page " +
+        "declares no placeholder scene to fall back to. Run `npm run looks` against the upload.",
+    );
   }
 
   if (!look.baby) {
@@ -282,7 +292,6 @@ function artLayer(book: BookTemplate, page: BookPage, chosen: Chosen): Layer {
     );
   }
 
-  const scene = page.art.scene;
   return {
     id: "art",
     kind: "art",

@@ -35,6 +35,7 @@ import { artworkBytesFor, artworkStoreFromEnv } from "../../../../../lib/artwork
 import { bookWithOrderArtwork } from "../../../../../lib/book/order-art";
 import { BookNotPrintable, renderBookPagesZip } from "../../../../../lib/book/print";
 import { FIRST_BOOK } from "../../../../../templates/first-book";
+import { bookAsDelivered } from "../../../../../lib/artwork/release";
 
 // Native code and the filesystem: this cannot run on the edge.
 export const runtime = "nodejs";
@@ -74,7 +75,11 @@ export async function GET(request: Request, ctx: { params: Promise<{ ref: string
       supplied.set(digest, bytes);
     }
   }
-  const book = bookWithOrderArtwork(FIRST_BOOK, record.fill, artwork);
+  // The order's artwork goes **over** the release's: the look the buyer chose,
+  // repainted for this order alone. `bookWithOrderArtwork` merges into whatever
+  // the page already declared, which is what makes the order of these two lines
+  // the only thing that has to be right.
+  const book = bookWithOrderArtwork(await bookAsDelivered(FIRST_BOOK), record.fill, artwork);
 
   try {
     const result = await renderBookPagesZip(book, record.fill, { supplied, ref: record.ref });

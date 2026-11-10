@@ -79,7 +79,6 @@
 import type { Layer } from "../lib/template/types";
 import type { BookPage, BookTemplate, Look, SceneSpec } from "../lib/book/types";
 import { SLOT } from "../lib/book/slots";
-import { UPLOADED } from "./first-book.art";
 
 // ---------------------------------------------------------------------------
 // The artboard
@@ -407,7 +406,7 @@ function interior(index: number): BookPage {
 
   return {
     id,
-    art: artFor(id, {
+    art: artFor({
       // `index >> 1` is the spread this page is a half of: pages 1 and 2 are
       // spread 0, pages 3 and 4 are spread 1, and so on.
       ...SCENES[(index >> 1) % SCENES.length],
@@ -420,32 +419,42 @@ function interior(index: number): BookPage {
 }
 
 /**
- * This page's artwork: the captain's upload if there is one, the drawn
- * placeholder if there is not.
+ * This page's artwork, as **published**: the scene drawn from the numbers
+ * below.
  *
- * **One `if`, in one place, and it is about which state the project is in**
- * rather than about which page this is. `./first-book.art.ts` is `null` until
- * `npm run looks:import` has run; after it has, every page is an uploaded image
- * and the scenes below stop being consulted. A page the upload is missing falls
- * back to the placeholder rather than to nothing, so a half-finished import is
- * a visibly mixed book instead of a blank one — and `validateBook` says so
- * either way.
+ * **The captain's finished pages are never written into this file**, and that
+ * is the one thing to understand about artwork here. They weigh 155 MB a look
+ * and this repository is public, so they live in the artwork store
+ * (`lib/artwork/release.ts`) and are bound over this book at request time by
+ * `lib/book/release-art.ts`. The consequences are all good ones: nothing in the
+ * repository changes when artwork lands, this book's `rev` does not move, a
+ * fresh clone and CI draw exactly what they always drew, and the page below is
+ * still the thing a reviewer reads in a diff.
+ *
+ * It is a function rather than a literal because every page calls it, and
+ * because the day the artwork is reachable by everybody — a bucket, a decision
+ * the captain still owes — this is the one place that would gain an argument.
  */
-function artFor(id: string, scene: SceneSpec): BookPage["art"] {
-  const byLook = UPLOADED?.pages[id];
-  return byLook ? { kind: "asset", byLook } : { kind: "drawn", scene };
+function artFor(scene: SceneSpec): BookPage["art"] {
+  return { kind: "drawn", scene };
 }
 
 /**
- * The placeholder looks, used until an upload declares the real ones.
+ * The twelve looks, and the placeholder baby each one is drawn as until its
+ * artwork lands.
  *
  * **Twelve: six per gender**, which is the captain's settled count and exactly
  * Wonderbly's — two genders by six. The count is nonetheless **data and nothing
  * counts it**: no component, validator or test asserts twelve, so the day the
- * captain delivers five or eight the grid renders five or eight. `looks.json`
- * in the upload declares each look's id, label and gender and
- * `npm run looks:import` writes the real list into `./first-book.art.ts`,
- * replacing this one wholesale.
+ * captain delivers five or eight the grid renders five or eight.
+ *
+ * **These ids are the published addresses of the twelve babies.** An order
+ * names one, so they are permanent, and `docs/artwork.md` is the map from the
+ * captain's own numbering — `01-girl` … `12-boy` — onto them, written down so
+ * that nobody ever has to match a baby to an id by eye. The first look landed
+ * on 10 November and is bound over this list at request time by
+ * `lib/book/release-art.ts`; `baby` stays, because eleven of the twelve are
+ * still being drawn and a look with no artwork has to be drawable.
  *
  * **Only the baby differs, and here the baby is four numbers.** The gender tag
  * is a tag on an otherwise opaque look: the captain's decision is that gender
@@ -455,7 +464,7 @@ function artFor(id: string, scene: SceneSpec): BookPage["art"] {
  * none of it needs to be: a look is a folder of finished pages, so whatever the
  * artwork does changes pixels and changes nothing in this format.
  */
-const PLACEHOLDER_LOOKS: Look[] = [
+const LOOKS: Look[] = [
   {
     id: "mabel",
     label: "Mabel",
@@ -609,12 +618,13 @@ export const FIRST_BOOK: BookTemplate = {
   /**
    * The looks. Same book, same words, same backgrounds — a different baby.
    *
-   * The upload is the source of truth when there is one: `looks.json` declares
-   * every look's id, label and gender, and `npm run looks:import` writes the
-   * list into `./first-book.art.ts`. Until then this is `PLACEHOLDER_LOOKS`.
-   * **Nothing anywhere counts them** — the grid renders the list it is given.
+   * The list is published here and the **artwork is bound over it** — the
+   * finished pages and the chooser portrait of each baby are in the artwork
+   * store, not in this repository, for the reasons `lib/artwork/release.ts`
+   * gives. **Nothing anywhere counts them** — the grid renders the list it is
+   * given.
    */
-  looks: UPLOADED?.looks ?? PLACEHOLDER_LOOKS,
+  looks: LOOKS,
 
   /**
    * **The tiles show page four: a baby, and not one word.**
@@ -665,7 +675,7 @@ export const FIRST_BOOK: BookTemplate = {
 
   cover: {
     id: "cover",
-    art: artFor("cover", {
+    art: artFor({
       // Replaced by the chosen cover's colour. The only page that does this,
       // and `validateBook` refuses any interior page that tries.
       ground: "#E8A0A8",

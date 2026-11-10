@@ -82,15 +82,20 @@ npm run build        # production build
 npm run print        # re-write My Forever's committed evidence in data/
 npm run book         # re-write the book's committed evidence in data/
 npm run book -- --all --out <dir>   # the whole 25-page PDF, ~25 s and ~9 MB
-npm run looks -- <dir>              # check an upload of artwork
-npm run looks:import -- <dir>       # take it into the repository
+npm run looks -- <dir>              # check a finished folder of looks
+npm run looks:import -- <dir>       # take it into the artwork store
+npm run artwork -- status           # what artwork this machine holds
+npm run artwork -- look|portraits|ghosts <dir>   # import one delivered set
 ```
 
 All of them run on every pull request — [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
-Nothing needs configuring. With no environment variables set the app serves the
-fixture photographs out of `fixtures/assets/`, which is the correct state until
-there is a bucket — see [`.env.example`](.env.example).
+Nothing needs configuring, and **no artwork is needed either**. With no
+environment variables set the app serves the fixture photographs out of
+`fixtures/assets/` and draws every page of the book from the numbers in its own
+template — a complete, printable book — which is the correct state until there
+is a bucket. See [`.env.example`](.env.example) and
+[`docs/artwork.md`](docs/artwork.md).
 
 ---
 
@@ -154,6 +159,14 @@ square, an alpha channel, a look whose page count disagrees with its siblings.
 A silent bad upload is a printed book with a white edge, and that is not
 visible in a browser.
 
+**What has actually been delivered**, and what it became, is
+[`docs/artwork.md`](docs/artwork.md): the first look's twenty-four pages, twelve
+portraits that are now the chooser's tiles, and twelve golden ghost spreads for
+the photo path's preview. **None of it is in this repository** — it is 200 MB
+and this repository is public — so the artwork is kept in the artwork store and
+bound over the published book at request time. A machine with none of it draws
+the placeholder, which is what keeps a fresh clone and CI working.
+
 **What it costs, and what the page may say about it.**
 [`docs/pricing.md`](docs/pricing.md). Two real prices, one hardcover upgrade,
 and no struck-out "was" — the type has nowhere to put one.
@@ -216,11 +229,12 @@ re-upload adds a version and **keeps the one before it**, because a bad characte
 swap is discovered at full size after the replacement has been made.
 [`lib/book/order-upload.ts`](lib/book/order-upload.ts).
 
-**Nothing of a customer's artwork is ever committed.** It is one family's child,
-this repository is public, and git history is permanent.
-[`lib/artwork/store.ts`](lib/artwork/store.ts) is one interface and five
-operations with a local-filesystem implementation, `.gitignore` excludes the
-directory it writes to, and a test asserts that rule rather than trusting it.
+**No artwork of either kind is ever committed.** A customer's is one family's
+child; the captain's is two gigabytes; this repository is public and git history
+is permanent. [`lib/artwork/store.ts`](lib/artwork/store.ts) is one interface
+and five operations with a local-filesystem implementation — the same one serves
+both — `.gitignore` excludes the directory it writes to, and a test asserts that
+rule rather than trusting it.
 **Where it should really live is the captain's decision and is not made** — the
 two candidates are private Vercel Blob and the R2 content origin under a private
 prefix, both stated in that file, neither chosen.
@@ -254,8 +268,9 @@ lib/book/         a book: types, derive (a book page -> a PageTemplate), the
                   path — artwork (the clean pages, no text), order-upload (the
                   regenerated ones coming back), order-art (one order's own
                   artwork bound to the book), ghost (which pages hold a place)
-lib/artwork/      where one order's regenerated artwork lives, behind one
-                  interface, and the storage decision that is still open
+lib/artwork/      where artwork lives — one order's regenerated pages and the
+                  captain's released sets — behind one interface, plus the
+                  import's pixel work, and the storage decision still open
 lib/orders/       the durable order: the record, the store and its reasoning,
                   SigV4 against R2, the lifecycle, and receiving a webhook
 lib/stripe/       form encoding, the Checkout Session, signature verification

@@ -74,21 +74,37 @@ export function bookWithOrderArtwork(
   const cover = coverOf(book, fill.coverId);
   const byPage = new Map<string, AssetRef>(artwork.pages.map((p) => [p.pageId, p.asset]));
 
+  /**
+   * Artwork for the looks this derived book no longer offers, dropped.
+   *
+   * It offers exactly one — see this file's docblock — and `validateBook`
+   * reports `art.lookUnknown` for a page declaring artwork for a look the book
+   * does not have. Since `printProblems` is every problem `validateBook` finds,
+   * leaving the released artwork for the other eleven looks on the page would
+   * **refuse to print this order**, which is the kind of failure that only
+   * appears once a second look has been delivered.
+   */
+  const only = (byLook: Record<string, AssetRef>): Record<string, AssetRef> =>
+    Object.fromEntries(Object.entries(byLook).filter(([id]) => id === look.id));
+
   const repaint = (page: BookPage): BookPage => {
     const asset = byPage.get(page.id);
-    if (!asset) return page;
+    const already = page.art.kind === "asset" ? only(page.art.byLook) : {};
+    if (!asset) {
+      // The page keeps the artwork it had — which is the released look's own
+      // pages for an order of a look the captain has delivered, and the drawn
+      // placeholder for one they have not.
+      return page.art.kind === "asset" ? { ...page, art: { ...page.art, byLook: already } } : page;
+    }
     return {
       ...page,
-      // Merged into whatever the page already declared, so a book whose other
-      // looks are uploaded artwork keeps those refs — they are dropped with the
-      // looks below, but the merge is what makes this function independent of
-      // which state the project's artwork is in.
+      // Merged into whatever the page already declared, so the clean-artwork
+      // download's twelve-page default leaves the other thirteen pages exactly
+      // as they were, whichever state the project's artwork is in.
       art: {
         kind: "asset",
-        byLook: {
-          ...(page.art.kind === "asset" ? page.art.byLook : {}),
-          [look.id]: asset,
-        },
+        byLook: { ...already, [look.id]: asset },
+        ...(page.art.kind === "asset" && page.art.scene ? { scene: page.art.scene } : {}),
       },
     };
   };

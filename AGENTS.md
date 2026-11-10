@@ -12,7 +12,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 Personalised printed books. `README.md` is the orientation; the documents that
 decide everything else are `docs/template-format.md`, `docs/print.md`,
-`docs/look-upload-contract.md` and `docs/pricing.md`.
+`docs/look-upload-contract.md`, `docs/artwork.md` and `docs/pricing.md`.
 
 **The shop is "One Little Book" at `onelittlebook.com`.** It was Keepnook; every
 brand string — name, domain, support address — is in `lib/brand.ts` and nowhere
@@ -147,9 +147,11 @@ fails if one does not.
 **The opening spread is babyless on purpose.** It is the one spread identical
 across every look, which is exactly why it carries the buyer's photograph,
 dedication and from-line — switching look cannot reflow anything they typed.
-The consequence to remember: the chooser's tiles must come from a page with a
-baby on it, which is why `BookTemplate.tilePage` is declared and `validateBook`
-refuses a babyless one.
+The consequence to remember: the chooser's **fallback** tile must come from a
+page with a baby on it, which is why `BookTemplate.tilePage` is declared and
+`validateBook` refuses a babyless one. A look with a delivered portrait
+(`Look.tile`) shows that instead — `app/_book/tile.ts` decides, and the
+page-drawn tile is still what eleven of the twelve looks get.
 
 **Crop is the one thing the buyer may move**, and it moves nothing on the page:
 a gesture becomes a `PhotoView`, `cropFor` turns it into the `Crop` the format
@@ -266,13 +268,14 @@ is the primary download on `/admin/[ref]` and the PDF is secondary and for
 reading. `lib/zip.ts` writes the container by hand — stored, never deflated,
 and with a fixed 1980 timestamp so a download is reproducible.
 
-**Per-order artwork is never committed and the storage choice is still open.**
-`lib/artwork/store.ts` is one interface, five operations, with a
+**No artwork of either kind is ever committed and the storage choice is still
+open.** `lib/artwork/store.ts` is one interface, five operations, with a
 local-filesystem implementation; it names the two candidates (private Vercel
 Blob, or the R2 content origin under a private prefix) and chooses neither,
-because that is the captain's call and being wrong is a migration. A re-upload
-**adds a version and keeps the last**, so a bad swap found at 3600 px is
-recoverable. `.gitignore` excludes `.artwork/` and `test/order-artwork.test.ts`
+because that is the captain's call and being wrong is a migration. It holds a
+customer's regenerated pages *and* the captain's released artwork — one seam, so
+there is one migration and not two. A re-upload **adds a version and keeps the
+last**, so a bad swap found at 3600 px is recoverable. `.gitignore` excludes `.artwork/` and `test/order-artwork.test.ts`
 asserts the rule — it is one family's child and git history is permanent.
 `lib/book/order-upload.ts` holds an upload to the same contract the twelve looks
 are held to, by calling `lib/book/upload.ts` § `pageAgainstContract`, and
@@ -287,14 +290,45 @@ because `validateBook` rightly refuses uploaded artwork missing for a look the
 book offers, and a cover choice that changes nothing.
 
 **The ghost is preview-only and structurally so.** On the photo path the child
-does not exist yet, so the pages they are on carry a soft white pearlescent
-glowing silhouette and *"Your little one will appear here"* —
-`lib/render/ghost.ts` for the treatment and why the felt figure lost,
-`lib/book/ghost.ts` for which pages. It is a **render option**, so the print
+does not exist yet, so the pages they are on carry the captain's golden sparkle
+silhouette where one has been delivered and a drawn white pearlescent one where
+it has not, with *"Your little one will appear here"* drawn by the renderer
+either way — `lib/render/ghost.ts` for the treatment and `GhostOptions.figure`,
+`lib/book/ghost.ts` for which pages and for the **one** conversion of a
+`PreviewAsset` into something drawable. It is a **render option**, so the print
 path cannot express one; `test/ghost.test.ts` also reads the import graph off
 disk. The funnel does not sell the route — `/make/how` still says plainly that
 it is not here — and the affordance is `/preview?character=photograph`, exactly
 as `/my-forever?guides=1` is.
+
+## The artwork is not in the repository
+
+**Three sets were delivered on 10 November and none of them is committed:**
+the first look's 24 pages, twelve portrait tiles, twelve golden ghost spreads.
+`docs/artwork.md` is the inventory, the id mapping and what is still owed;
+`npm run artwork` imports, `npm run artwork -- status` says what a machine has.
+
+**The binding is environment state, which is why nothing in `templates/` moves
+when artwork lands.** `lib/artwork/release.ts` § `bookAsDelivered` is the one
+line a server component or route adds in front of `FIRST_BOOK`, and
+`lib/book/release-art.ts` is the pure binding. The book's `rev` does **not**
+change — a manifest naming bytes a fresh clone does not have would be a book
+that declares twenty-four pages and can draw none of them, and `npm run print`'s
+byte-identity gate would stop meaning anything. The cost is stated rather than
+hidden in both files: a re-import changes what a reprint looks like without
+changing the revision the order names.
+
+**A partial import is a legitimate state.** `PageArt` has a `scene` beside
+`byLook`: a page carries the captain's artwork for the looks that have it and
+the placeholder baby for the rest, which is what lets one of twelve looks be
+real. With every look delivered the fallback is dropped and `art.lookMissing`
+comes back on its own.
+
+**Preview artwork is a different type, so it cannot print.** `PreviewAsset`
+(`lib/book/preview-art.ts`) carries its hash in `digest` and not `sha256`, so
+TypeScript refuses it everywhere an `AssetRef` goes — `PageArt.byLook`, an
+`image` layer, `verifySupplied`. The golden halves are 887 px and the page
+contract refuses them on size as well.
 
 ## Two things that will bite
 

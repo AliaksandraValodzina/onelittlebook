@@ -24,6 +24,7 @@ import { photoFor, storeFromEnv } from "../../../../../lib/orders/store";
 import { isReference } from "../../../../../lib/orders/record";
 import { BookNotPrintable, renderBookPdf } from "../../../../../lib/book/print";
 import { FIRST_BOOK } from "../../../../../templates/first-book";
+import { bookAsDelivered } from "../../../../../lib/artwork/release";
 
 // Native code and the filesystem: this cannot run on the edge.
 export const runtime = "nodejs";
@@ -53,8 +54,12 @@ export async function GET(request: Request, ctx: { params: Promise<{ ref: string
   // somebody else's baby — `lib/orders/store.ts` § photoFor.
   const supplied = await photoFor(storeState.store, record);
 
+  // The released artwork bound over the published book, so the PDF the captain
+  // reads is the book the printer gets. `lib/artwork/release.ts`.
+  const book = await bookAsDelivered(FIRST_BOOK);
+
   try {
-    const result = await renderBookPdf(FIRST_BOOK, record.fill, { supplied });
+    const result = await renderBookPdf(book, record.fill, { supplied });
     return new NextResponse(new Blob([toArrayBuffer(result.pdf)]), {
       headers: {
         "content-type": "application/pdf",

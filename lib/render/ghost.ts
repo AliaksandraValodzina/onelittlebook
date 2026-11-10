@@ -71,6 +71,26 @@ export interface GhostOptions {
   size: number;
   /** The words under the figure. `GHOST_CAPTION` unless a caller says otherwise. */
   caption: string;
+  /**
+   * Who draws the figure.
+   *
+   * **Absent, or `"drawn"`, is the silhouette below** — the pearlescent shape
+   * this module argues for, which is what every page without delivered artwork
+   * gets and what this product shipped with.
+   *
+   * `"supplied"` means **the artwork underneath already holds the child**: the
+   * captain's golden ghost spreads are the page's own scene with a glowing gold
+   * sparkle figure in it, clothing and props left solid, and
+   * `lib/book/ghost.ts` puts one in as the page's bottom layer when there is
+   * one. Drawing a white silhouette on top of that would be two placeholders
+   * for one child, so only the caption is drawn — the words are still the
+   * renderer's, which is this repository's rule for every word in the book.
+   *
+   * It stays an **option** either way, which is the whole structural guarantee:
+   * `renderPrintSvg` takes no options object, so neither mode can reach a print
+   * file.
+   */
+  figure?: "drawn" | "supplied";
 }
 
 /**
@@ -97,6 +117,13 @@ export function ghostOverlay(id: string, canvas: Canvas, ghost: GhostOptions): F
   const cx = canvas.width * clamp(ghost.at.x, 0, 1);
   const cy = canvas.height * clamp(ghost.at.y, 0, 1);
   const h = canvas.height * clamp(ghost.size, 0.05, 0.9);
+
+  // The figure is already in the artwork — see `GhostOptions.figure`. The
+  // caption still belongs to the renderer, because every word in this book
+  // does.
+  if (ghost.figure === "supplied") {
+    return { defs: "", body: caption(id, canvas, ghost, cx, cy + h * 0.5) };
+  }
 
   const defs =
     // The halo. It stops well short of 1 so the page's own artwork is still

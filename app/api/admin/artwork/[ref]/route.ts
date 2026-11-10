@@ -55,6 +55,7 @@ import { checkOrderArtwork } from "../../../../../lib/book/order-upload";
 import { isCleanSelection, renderCleanArtworkZip } from "../../../../../lib/book/artwork";
 import { BookNotPrintable } from "../../../../../lib/book/print";
 import { FIRST_BOOK } from "../../../../../templates/first-book";
+import { bookAsDelivered } from "../../../../../lib/artwork/release";
 import type { UploadedFile } from "../../../../../lib/book/upload";
 
 // Native code, the filesystem and a rasteriser: this cannot run on the edge.
@@ -93,8 +94,14 @@ export async function GET(request: Request, ctx: { params: Promise<{ ref: string
   const asked = new URL(request.url).searchParams.get("pages");
   const which = isCleanSelection(asked) ? asked : "right";
 
+  // **The clean pages have to be the real artwork**, which is the whole point
+  // of the download: the captain takes this book's own pictures into an image
+  // tool and replaces the child. With nothing imported they are the drawn
+  // placeholder, which is still a genuine 3600 px page to practise on.
+  const book = await bookAsDelivered(FIRST_BOOK);
+
   try {
-    const result = await renderCleanArtworkZip(FIRST_BOOK, record.fill, {
+    const result = await renderCleanArtworkZip(book, record.fill, {
       which,
       ref: record.ref,
     });

@@ -1,6 +1,6 @@
 /**
- * **Where one order's regenerated artwork lives — and the decision the captain
- * still owes.**
+ * **Where artwork too big or too private for git lives — and the decision the
+ * captain still owes.**
  *
  * ## It must never be in git, and that is the hard requirement
  *
@@ -13,10 +13,18 @@
  * one-line thing to lose in a merge, and this is the one rule in the repository
  * whose loss cannot be undone.
  *
- * `fixtures/assets/` is the opposite case and the comparison is worth making:
- * that holds *the shop's own* artwork, the same twenty-four pictures for every
- * buyer, which is why it can be committed at all. The twelve looks are a public
- * product; a regenerated child is one order's private document.
+ * **The captain's released artwork is now here too**, for a different reason
+ * that lands in the same place: one look of finished pages is 155 MB and twelve
+ * of them are the better part of two gigabytes, which is not a thing to put in
+ * a public repository either. `lib/artwork/release.ts` is that half and it
+ * reuses this interface rather than inventing a second one — two storage seams
+ * would be two places to migrate the day the captain picks a bucket, and the
+ * one that got missed would be the one holding the pictures.
+ *
+ * `fixtures/assets/` is the remaining case and the comparison is worth making:
+ * that holds the fixture **photographs**, a few kilobytes each, which the test
+ * suite and `npm run print` need with no network and no credential. Small,
+ * synthetic and public; neither of the two kinds of artwork is any of those.
  *
  * ## THE DECISION THE CAPTAIN HAS NOT MADE
  *
@@ -36,7 +44,7 @@
  *
  * **Nothing is picked here, because picking it is the captain's call and the
  * cost of being wrong is a migration.** What is built instead is the seam: the
- * `OrderArtworkStore` interface below is five operations, `localArtworkStore`
+ * `ArtworkStore` interface below is five operations, `localArtworkStore`
  * implements it against the filesystem, and swapping in either candidate is one
  * new file and no change above this line. That is the same arrangement
  * `lib/orders/store.ts` describes for R2 and the same arrangement that made
@@ -65,7 +73,7 @@
 
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { sha256 } from "../assets/resolve";
+import { sha256 } from "../assets/digest";
 import { readPngHeader } from "../render/png";
 import { isReference } from "../orders/record";
 import { value } from "../env";
@@ -104,7 +112,7 @@ export interface ArtworkVersion {
  * feature nobody has asked for that a Blob or R2 implementation would have to
  * provide.
  */
-export interface OrderArtworkStore {
+export interface ArtworkStore {
   /** How the admin page names where it is reading from. Never a credential. */
   readonly describe: string;
   /** Oldest first. Empty for an order nobody has uploaded artwork for. */
@@ -153,13 +161,25 @@ function versionDir(version: number): string {
  * every read would be the slow way to get the same answer, while trusting a
  * filename for them is the wrong answer. `read` is still digest-checked by the
  * caller against the manifest, so a file swapped under its name is caught.
+ *
+ * **`keyIsValid` is an argument because there are two kinds of key and both
+ * become a path segment.** An order's artwork is keyed by its reference, which
+ * arrives from a URL — so the default is `isReference` and nothing about that
+ * has loosened. The captain's released artwork is keyed by the *set* it belongs
+ * to (`lib/artwork/release.ts` § `RELEASE_SETS`), which is a constant in this
+ * repository and never a request parameter. One store with the check passed in
+ * beats a second store with the check copied, which is how the two would end up
+ * disagreeing about what a path segment may contain.
  */
-export function localArtworkStore(root: string): OrderArtworkStore {
+export function localArtworkStore(
+  root: string,
+  keyIsValid: (value: unknown) => boolean = isReference,
+): ArtworkStore {
   const dirFor = (ref: string) => {
-    if (!isReference(ref)) {
+    if (!keyIsValid(ref)) {
       // Checked before it becomes a path segment. A reference arrives from a
       // URL, and `../../` is the oldest trick there is.
-      throw new NotAnOrderReference(`${JSON.stringify(ref)} is not an order reference`);
+      throw new NotAnOrderReference(`${JSON.stringify(ref)} is not an artwork store key`);
     }
     return path.join(root, ref);
   };
@@ -290,7 +310,7 @@ function readManifest(raw: unknown, version: number): ArtworkVersion | null {
  * the captain picks a bucket", and `describe` says so out loud wherever it is
  * offered.
  */
-export function artworkStoreFromEnv(env: Record<string, string | undefined>): OrderArtworkStore {
+export function artworkStoreFromEnv(env: Record<string, string | undefined>): ArtworkStore {
   const configured = value(env, ARTWORK_DIR_VAR);
   return localArtworkStore(
     configured ? path.resolve(configured) : path.join(process.cwd(), DEFAULT_ARTWORK_DIR),
@@ -307,7 +327,7 @@ export function artworkStoreFromEnv(env: Record<string, string | undefined>): Or
  * thing this product can do.
  */
 export async function artworkBytesFor(
-  store: OrderArtworkStore,
+  store: ArtworkStore,
   ref: string,
   version: ArtworkVersion,
 ): Promise<Map<string, Uint8Array>> {
