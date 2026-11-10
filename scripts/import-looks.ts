@@ -1,45 +1,40 @@
 /**
- * Take an upload the checker accepted and make it the book's artwork.
+ * Take a folder of looks the checker accepted and make it the book's artwork.
  *
  *     npm run looks:import -- path/to/looks
  *
- * Three things happen, in this order, and the order is the point:
+ * This is the **finished-release** importer: a folder per look, `looks.json`
+ * beside them, every page and every cover present, exactly as
+ * `docs/look-upload-contract.md` specifies. One set at a time — one look, the
+ * portraits, the golden halves — is `npm run artwork`, which is what the
+ * captain's delivery of 10 November actually was.
+ *
+ * Two things happen, in this order, and the order is the point:
  *
  * **It refuses first.** `checkUpload` runs again here rather than trusting that
  * somebody ran `npm run looks`. An import is the step that changes what a paid
  * book looks like, and a gate that can be skipped is not a gate.
  *
- * **It copies every page into the content-addressed store**, under its own
- * sha256. So the artwork becomes an *address* rather than a filename: a
- * corrected page re-imported later is a different address, which means a book
- * already sold cannot be repainted by a later upload and a reprint of a
- * year-old order is byte-identical to the first. That is
- * `docs/template-format.md` § Nothing in a template holds pixels, one level up.
+ * **It writes the bytes into the artwork store and nothing into the
+ * repository.** Twenty-four pages of 3600 px PNG is 155 MB a look and twelve
+ * looks is the better part of two gigabytes, which cannot go in a public
+ * repository — so it goes where `lib/artwork/release.ts` says, the manifest
+ * goes beside it, and the repository keeps ids, digests and slot coordinates
+ * and no pixels. That module also states why the manifest is not committed
+ * either: a manifest naming bytes a fresh clone does not have is a book that
+ * declares twenty-four pages and can draw none of them.
  *
- * **It writes `templates/first-book.art.ts` and prints the new `rev`.** Nothing
- * about the artwork is retyped and no coordinate is ever transcribed — where
- * the slots sit is `templates/first-book.ts`, which this does not touch.
- *
- * The asset store today is `fixtures/assets/`, which is the correct place while
- * there is no bucket: `lib/assets/resolve.ts` reads it, verifies every digest
- * against the bytes, and will read R2 instead the moment `R2_PUBLIC_BASE_URL`
- * is set. **Twenty-four pages times eight looks of 3600 px PNG is of the order
- * of a gigabyte**, which is not a thing to commit to a public repository — so
- * this prints the total and says so, and moving the store to the bucket is the
- * task that follows the first upload.
+ * **Nothing has to be restamped.** The book's `rev` does not move when artwork
+ * lands, because the artwork is bound over the published book at request time
+ * (`lib/book/release-art.ts`) rather than written into it. That is what keeps
+ * `npm run print`'s byte-identity gate meaningful on a machine with no artwork.
  */
 
-import { copyFile, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { FIRST_BOOK } from "../templates/first-book";
-import { sha256 } from "../lib/assets/resolve";
-import { readPngHeader } from "../lib/render/png";
 import { blockingUploadProblems, checkUpload, readManifest } from "../lib/book/upload";
-import type { AssetRef } from "../lib/template/types";
-import type { Look } from "../lib/book/types";
-
-const STORE = path.join(process.cwd(), "fixtures", "assets");
-const OUT = path.join(process.cwd(), "templates", "first-book.art.ts");
+import { lookSet, releaseRoot, releaseStoreFromEnv } from "../lib/artwork/release";
 
 async function main() {
   const root = process.argv[2];
@@ -85,60 +80,66 @@ async function main() {
     return;
   }
 
-  const manifest = readManifest(manifestJson).looks;
-  await mkdir(STORE, { recursive: true });
+  const declared = readManifest(manifestJson).looks;
 
-  const pages: Record<string, Record<string, AssetRef>> = {};
+  /**
+   * **The book's own look list is the published one**, and a folder for a look
+   * it does not offer is refused rather than imported.
+   *
+   * That is a change from the arrangement this script had when the artwork was
+   * written into `templates/`: `looks.json` used to *replace* the book's list.
+   * It cannot now — the list is committed and a look id is a published address
+   * an order names — so a folder nothing could bind is 155 MB written where
+   * nothing will read it, and the person running this needs to know before
+   * they wait for it.
+   */
+  const unknown = looks.filter((l) => !FIRST_BOOK.looks.some((b) => b.id === l.look));
+  if (unknown.length) {
+    for (const look of unknown) {
+      console.error(
+        `look.unknownToBook  ${look.look}  ${FIRST_BOOK.id} offers ` +
+          `${FIRST_BOOK.looks.map((l) => l.id).join(", ")}; declare it in templates/first-book.ts first`,
+      );
+    }
+    process.exitCode = 1;
+    return;
+  }
+
+  const store = releaseStoreFromEnv(process.env);
+  const now = new Date();
   let bytes = 0;
 
   for (const look of looks) {
-    for (const file of look.files) {
-      const pageId = file.name === "cover.png" ? "cover" : file.name.replace(/\.png$/, "");
-      const digest = sha256(file.bytes);
-      const header = readPngHeader(file.bytes);
-      const target = path.join(STORE, `${digest}.png`);
-      await copyFile(path.join(dir, look.look, file.name), target);
-      bytes += file.bytes.length;
-
-      pages[pageId] ??= {};
-      pages[pageId][look.look] = {
-        sha256: digest,
-        mime: "image/png",
-        // Measured out of the IHDR, never copied from a filename or a report:
-        // `placePhoto` divides by these two numbers.
-        px: [header.width, header.height],
-        label: `${look.look} ${pageId}`,
-      };
-    }
+    const version = await store.put(
+      lookSet(look.look),
+      look.files.map((file) => ({
+        // `cover.png` is `cover`; `page-006.png` is `page-006`. The page id and
+        // nothing derived from a filename beyond it.
+        pageId: file.name === "cover.png" ? "cover" : file.name.replace(/\.png$/, ""),
+        bytes: file.bytes,
+      })),
+      now,
+    );
+    bytes += look.files.reduce((n, f) => n + f.bytes.length, 0);
+    console.log(
+      `${look.look}: ${version.pages.length} page(s) as ${lookSet(look.look)} v${version.version}`,
+    );
   }
 
-  const imported: { importedAt: string; looks: Look[]; pages: typeof pages } = {
-    // A date, and the only non-deterministic thing in the file. It is here
-    // because "is this import stale" is a question somebody will ask at three
-    // in the morning, and it does not reach a rendered page.
-    importedAt: new Date().toISOString().slice(0, 10),
-    looks: manifest.map((m) => ({ id: m.id, label: m.label, gender: m.gender })),
-    pages,
-  };
-
-  await writeFile(
-    OUT,
-    `// Written by \`npm run looks:import\`. Do not edit by hand.\n` +
-      `// See templates/first-book.art.ts's own header in git history for what this is.\n\n` +
-      `import type { UploadedArt } from "./first-book.art.types";\n\n` +
-      `export const UPLOADED: UploadedArt = ${JSON.stringify(imported, null, 2)};\n\n` +
-      `export default UPLOADED;\n`,
-  );
-
   console.log(
-    `imported ${Object.keys(pages).length} page(s) across ${looks.length} look(s), ` +
-      `${(bytes / 1024 / 1024).toFixed(0)} MB into fixtures/assets/`,
+    `\nimported ${looks.length} look(s), ${(bytes / 1024 / 1024).toFixed(0)} MB into ` +
+      `${releaseRoot(process.env)}`,
   );
+  const undeclared = looks.filter((l) => !declared.some((d) => d.id === l.look));
+  if (undeclared.length) {
+    // `checkUpload` has already refused this, so it cannot happen — kept as the
+    // statement of what the manifest is for rather than as a check.
+    console.log(`not in looks.json: ${undeclared.map((l) => l.look).join(", ")}`);
+  }
   console.log(
-    "fixtures/assets/ is not the right home for a gigabyte of artwork in a public repository — " +
-      "set R2_PUBLIC_BASE_URL and move the store once the first upload lands.",
+    "Nothing was written into the repository and nothing needs restamping. " +
+      "Run `npm run artwork -- status` to see what is bound.",
   );
-  console.log("\nNow restamp the book: run `npm run book`, which prints the rev to set.");
 }
 
 void main();

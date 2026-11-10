@@ -5,27 +5,34 @@
  * **Server only.** It reads the filesystem and the environment; the browser
  * gets `assetUrl` below, which is a string and nothing else.
  *
- * Two stores, looked at in this order:
+ * Three stores, looked at in this order:
  *
  * 1. **`fixtures/assets/`** — content-addressed on disk, `<sha256>.<ext>`. This
  *    is where the fixture's photographs live so the test suite and `npm run
  *    print` work with no network, no bucket and no credential. A store the
  *    tests can rely on is not a lesser store; it is the same store with a
  *    different root.
- * 2. **Cloudflare R2**, over the public base URL in `R2_PUBLIC_BASE_URL`. A
+ * 2. **The released artwork store** — `lib/artwork/release.ts`, which is where
+ *    the captain's finished pages, the chooser portraits and the golden ghost
+ *    halves are, because none of them can be in a public repository. It is
+ *    looked at *after* the fixtures and *before* the bucket: the fixtures are a
+ *    few kilobytes and always present, and the artwork is on this machine
+ *    where the bucket is a network call.
+ * 3. **Cloudflare R2**, over the public base URL in `R2_PUBLIC_BASE_URL`. A
  *    customer's uploaded photograph will land here, under its own digest, which
  *    is why the key is the digest and not a filename.
  *
- * **The digest is verified against the bytes, always, in both stores.** An
+ * **The digest is verified against the bytes, always, in all three stores.** An
  * `AssetRef` is an address *and* a claim, and a renderer that trusts the claim
  * will happily print the wrong photograph if an upload ever lands under the
  * wrong key. Checking costs one hash of a file we have already read.
  */
 
-import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { AssetRef } from "../template/types";
+import { sha256 } from "./digest";
+import { releaseBytesFor } from "../artwork/release";
 
 const EXT: Record<AssetRef["mime"], string> = {
   "image/png": "png",
@@ -35,9 +42,8 @@ const EXT: Record<AssetRef["mime"], string> = {
 
 export const FIXTURE_ASSET_DIR = path.join(process.cwd(), "fixtures", "assets");
 
-export function sha256(bytes: Uint8Array): string {
-  return createHash("sha256").update(bytes).digest("hex");
-}
+/** Re-exported: `./digest.ts` says why it lives one module down. */
+export { sha256 };
 
 /**
  * The public URL for an asset, for the browser and for an `<img>`.
@@ -64,7 +70,9 @@ export class AssetDigestMismatch extends Error {
 export class AssetMissing extends Error {
   constructor(ref: AssetRef) {
     super(
-      `no bytes for ${ref.sha256.slice(0, 12)}… (${ref.label ?? "unlabelled"}): not in fixtures/assets and ` +
+      `no bytes for ${ref.sha256.slice(0, 12)}… (${ref.label ?? "unlabelled"}): ` +
+        "not in fixtures/assets, not in the released artwork store " +
+        "(run `npm run artwork -- status`), and " +
         (process.env.R2_PUBLIC_BASE_URL ? "not in the bucket" : "no R2_PUBLIC_BASE_URL is set"),
     );
     this.name = "AssetMissing";
@@ -95,6 +103,16 @@ export async function loadAsset(ref: AssetRef): Promise<Uint8Array> {
     if (got !== ref.sha256) throw new AssetDigestMismatch(ref.sha256, got, "fixtures");
     return local;
   }
+  // The released artwork. Checked here rather than in that module, so this
+  // function is the one place the rule lives — an `AssetRef` is an address
+  // *and* a claim, and here the wrong answer prints the wrong child.
+  const released = await releaseBytesFor(ref.sha256);
+  if (released) {
+    const got = sha256(released);
+    if (got !== ref.sha256) throw new AssetDigestMismatch(ref.sha256, got, "the artwork store");
+    return released;
+  }
+
   const remote = await fromBucket(ref);
   if (remote) {
     const got = sha256(remote);

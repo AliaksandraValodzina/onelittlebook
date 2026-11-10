@@ -28,6 +28,7 @@
 import { NextResponse } from "next/server";
 import { toArrayBuffer } from "../../../../lib/bytes";
 import { FIRST_BOOK } from "../../../../templates/first-book";
+import { bookAsDelivered } from "../../../../lib/artwork/release";
 import { pageCount } from "../../../../lib/book/derive";
 import {
   BookNotPrintable,
@@ -86,9 +87,18 @@ export async function POST(request: Request) {
   if (!fill || typeof fill !== "object") return badRequest("no fill");
   const asFill = fill as BookFill;
 
+  /**
+   * **The book this machine can actually print**: the published template with
+   * whatever artwork has been imported bound over it. It is read before the
+   * order is validated, because what is printable depends on it — and with
+   * nothing imported it is `FIRST_BOOK` unchanged, which is a complete,
+   * printable book drawn from numbers.
+   */
+  const book = await bookAsDelivered(FIRST_BOOK);
+
   // Validated **before** the bytes are decoded and hashed, so a nonsense order
   // does not get a megabyte of work done on its behalf first.
-  const problems = printProblems(FIRST_BOOK, asFill);
+  const problems = printProblems(book, asFill);
   if (problems.length) {
     return NextResponse.json({ error: "not printable", problems }, { status: 422 });
   }
@@ -110,7 +120,7 @@ export async function POST(request: Request) {
   }
 
   const url = new URL(request.url);
-  const last = pageCount(FIRST_BOOK) - 1;
+  const last = pageCount(book) - 1;
 
   try {
     if (url.searchParams.get("format") === "png") {
@@ -118,7 +128,7 @@ export async function POST(request: Request) {
       if (!Number.isInteger(page) || page < 0 || page > last) {
         return badRequest("no such page", `the book has pages 0 to ${last}`, 404);
       }
-      const result = await renderBookPagePng(FIRST_BOOK, page, asFill, supplied);
+      const result = await renderBookPagePng(book, page, asFill, supplied);
       return file(result.png, "image/png", result.filename);
     }
 
@@ -127,14 +137,14 @@ export async function POST(request: Request) {
     if (to - from + 1 > MAX_PAGES_PER_REQUEST) {
       return badRequest(
         "too many pages",
-        `${to - from + 1} pages at ${FIRST_BOOK.page.print.pixels.width} px is more than one ` +
+        `${to - from + 1} pages at ${book.page.print.pixels.width} px is more than one ` +
           `request can finish. Ask for ${MAX_PAGES_PER_REQUEST} at a time with ?from= and ?to=, ` +
           "or run `npm run book -- --all` where there is no request timeout.",
         413,
       );
     }
 
-    const result = await renderBookPdf(FIRST_BOOK, asFill, { supplied, from, to });
+    const result = await renderBookPdf(book, asFill, { supplied, from, to });
     return file(result.pdf, "application/pdf", result.filename);
   } catch (error) {
     if (error instanceof BookNotPrintable) {

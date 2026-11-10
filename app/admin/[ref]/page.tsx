@@ -34,6 +34,7 @@ import { pageTitle } from "../../../lib/brand";
 import { COOKIE, allowed } from "../../../lib/admin/guard";
 import { storeFromEnv } from "../../../lib/orders/store";
 import { artworkStoreFromEnv } from "../../../lib/artwork/store";
+import { releaseArtworkFor } from "../../../lib/artwork/release";
 import { cleanArtworkPages } from "../../../lib/book/artwork";
 import { artworkPageIds } from "../../../lib/book/order-art";
 import { pageCount } from "../../../lib/book/derive";
@@ -83,6 +84,11 @@ export default async function AdminOrder(props: {
   const justUploaded = (await props.searchParams).artwork;
   const cleanCount = cleanArtworkPages(FIRST_BOOK, "right").length;
   const everyPage = pageCount(FIRST_BOOK);
+
+  // What the shop would draw this order with, which is not a fact the
+  // repository holds: see `lib/artwork/release.ts`.
+  const releasedArt = await releaseArtworkFor(FIRST_BOOK);
+  const releasedPages = Object.keys(releasedArt.pages[record.fill.lookId] ?? {});
 
   const edition = editionOf(record.editionId);
   const look = lookOf(FIRST_BOOK, record.fill.lookId);
@@ -167,6 +173,21 @@ export default async function AdminOrder(props: {
         {currentArtwork
           ? ` Drawn with this order's own artwork, version ${currentArtwork.version}.`
           : ""}
+      </p>
+      {/*
+        **Which pictures this machine is actually drawing from**, said out loud
+        rather than left to be discovered in a finished book. The captain's
+        released artwork is not in the repository — `docs/artwork.md` says why —
+        so a deployment that has none of it prints the placeholder book, and the
+        only way to know which one you are looking at is to be told.
+      */}
+      <p className="mt-2 text-sm opacity-75" data-testid="release-artwork">
+        {releasedPages.length
+          ? `The look "${look?.label ?? record.fill.lookId}" draws from ${releasedPages.length} ` +
+            `delivered page(s) of released artwork, in ${releasedArt.describe}.`
+          : `There is no released artwork for "${look?.label ?? record.fill.lookId}" on this ` +
+            `machine, so these pages are the drawn placeholder. ` +
+            `Import it with \`npm run artwork\` — see docs/artwork.md.`}
       </p>
       <p className="mt-3">
         <a

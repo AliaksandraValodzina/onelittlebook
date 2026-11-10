@@ -49,6 +49,7 @@
 
 import { NextResponse } from "next/server";
 import { FIRST_BOOK } from "../../../templates/first-book";
+import { bookAsDelivered } from "../../../lib/artwork/release";
 import { baseUrl, checkoutState, copyFor, statusFor } from "../../../lib/checkout";
 import { printProblems } from "../../../lib/book/print";
 import { isEdition, editionOf } from "../../../lib/book/editions";
@@ -120,7 +121,10 @@ export async function POST(request: Request) {
   }
   const asFill = fill as BookFill;
 
-  const problems = printProblems(FIRST_BOOK, asFill);
+  // Against the book this machine would actually print — the published
+  // template with whatever artwork has been imported bound over it. A gate in
+  // front of money has to be asked of the real document.
+  const problems = printProblems(await bookAsDelivered(FIRST_BOOK), asFill);
   if (problems.length) {
     return NextResponse.json({ ok: false, error: "not printable", problems }, { status: 422 });
   }

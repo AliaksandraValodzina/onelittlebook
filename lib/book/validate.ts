@@ -72,6 +72,15 @@ export function validateBook(book: BookTemplate): Problem[] {
     if (lookIds.has(look.id)) say("look.duplicateId", look.id, "two looks share an id");
     lookIds.add(look.id);
     if (!look.label.trim()) say("look.noLabel", look.id, "the chooser has nothing to call it");
+    if (look.tile) {
+      // The chooser's box is square and the portraits are square. A tile that
+      // is not would be cropped by the box rather than reported, and what gets
+      // cropped off a portrait is the top of somebody's head.
+      const [w, h] = look.tile.px ?? [0, 0];
+      if (w !== h) {
+        say("tile.notSquare", look.id, `the portrait tile is ${w}×${h}; the chooser's box is square`);
+      }
+    }
   }
 
   // --- the gender question -----------------------------------------------
@@ -351,15 +360,50 @@ function artProblems(book: BookTemplate, page: BookPage, where: string): Problem
   const say = (code: string, detail: string) => out.push({ code, where, detail });
   const want = book.page.print.pixels;
 
+  // --- the photo path's preview artwork, which can never print ------------
+  if (page.ghost) {
+    const [w, h] = page.ghost.px;
+    const babyless = page.art.scene?.babyless === true;
+    if (babyless) {
+      // Nothing would ever draw it: `./ghost.ts` asks whether the child is on
+      // the page before it asks whether there is artwork for them. A golden
+      // half sitting on a babyless page is somebody's work silently unused,
+      // which is exactly the kind of thing a reviewer cannot see in a preview.
+      say(
+        "ghost.onBabylessPage",
+        "a preview ghost on a page the book declares babyless; no path would ever draw it",
+      );
+    }
+    if (w <= 0 || h <= 0 || w * want.height !== h * want.width) {
+      say(
+        "ghost.wrongShape",
+        `the preview ghost is ${w}×${h} and the page is ${want.width}×${want.height}; ` +
+          "it is drawn to the whole artboard, so the child would be stretched",
+      );
+    }
+  }
+
   if (page.art.kind === "asset") {
     const extra = Object.keys(page.art.byLook).filter((id) => !book.looks.some((l) => l.id === id));
     for (const id of extra) {
       say("art.lookUnknown", `artwork is declared for look "${id}", which the book does not offer`);
     }
+    const fallback = page.art.scene;
     for (const look of book.looks) {
       const asset = page.art.byLook[look.id];
       if (!asset) {
-        say("art.lookMissing", `no uploaded artwork for look "${look.id}"`);
+        if (!fallback) {
+          say("art.lookMissing", `no uploaded artwork for look "${look.id}"`);
+        } else if (!look.baby) {
+          // A **partial** import is legitimate — `PageArt.scene` says why — but
+          // only while the looks it does not cover can still be drawn. A look
+          // with neither artwork nor a placeholder baby is the blank page the
+          // strict rule exists to prevent, arrived at by the back door.
+          say(
+            "art.babyMissing",
+            `the import does not cover look "${look.id}" and it declares no placeholder baby`,
+          );
+        }
         continue;
       }
       const [w, h] = asset.px;
@@ -374,18 +418,21 @@ function artProblems(book: BookTemplate, page: BookPage, where: string): Problem
         say("art.notPng", `look "${look.id}" artwork is ${asset.mime}; the contract is PNG`);
       }
     }
-    return out;
-  }
-
-  for (const look of book.looks) {
-    if (!look.baby) {
-      say(
-        "art.babyMissing",
-        `the page is a drawn placeholder and look "${look.id}" declares no placeholder baby`,
-      );
+  } else {
+    for (const look of book.looks) {
+      if (!look.baby) {
+        say(
+          "art.babyMissing",
+          `the page is a drawn placeholder and look "${look.id}" declares no placeholder baby`,
+        );
+      }
     }
   }
-  if (page.art.scene.groundFromCover && page.id !== book.cover.id) {
+
+  // Asked of a drawn page **and** of a partial import's fallback scene, because
+  // the fallback is what a look with no artwork is drawn from and the mistake
+  // would be exactly as visible.
+  if (page.art.scene?.groundFromCover && page.id !== book.cover.id) {
     say(
       "art.interiorTintedByCover",
       "an interior page takes its ground from the cover choice, so picking a cover would " +

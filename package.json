@@ -11,6 +11,7 @@
     "test:watch": "vitest",
     "print": "tsx scripts/render-print.ts",
     "book": "tsx scripts/render-book.ts",
+    "artwork": "tsx scripts/import-artwork.ts",
     "looks": "tsx scripts/check-looks.ts",
     "looks:import": "tsx scripts/import-looks.ts"
   },

@@ -44,6 +44,7 @@
  */
 
 import type { AssetRef, Canvas, Colour, Layer, PhotoFill, PrintSpec } from "../template/types";
+import type { PreviewAsset } from "./preview-art";
 
 // ---------------------------------------------------------------------------
 // The looks axis
@@ -93,6 +94,29 @@ export interface Look {
    * wearing a costume.
    */
   baby?: BabySpec;
+  /**
+   * The chooser's tile: a portrait of this baby, head and shoulders on white.
+   *
+   * **Present means the tile is this picture; absent means the tile is
+   * `tilePage` of the book drawn with this look**, which is what it has always
+   * been and still is for a look nobody has delivered a portrait for.
+   *
+   * The captain approved the portraits as the tiles on 10 November, and the
+   * reasoning is worth keeping because it reverses what
+   * `docs/look-upload-contract.md` § 4 argued for: a rendered page makes the
+   * pose *identical by construction*, which is the property the research asked
+   * for — but a head on white says **which baby** and nothing else, where a
+   * whole page at tile size says "which picture" in a sixth of the pixels. It
+   * is also what Wonderbly does. The page-drawn tile stays as the fallback
+   * rather than being deleted, so the chooser works on a machine with no
+   * artwork at all.
+   *
+   * It is **not a page** and is never held to the page contract: a portrait is
+   * 1254 × 1254 with the subject flattened onto white, and `validateBook`
+   * refuses one that claims to be a page size. `docs/artwork.md` carries the
+   * mapping from the captain's numbering to these ids.
+   */
+  tile?: AssetRef;
 }
 
 /**
@@ -209,7 +233,26 @@ export type PageArt =
    * page. `docs/look-upload-contract.md` is the agreement these refs come from
    * and `npm run looks:import` is what writes them.
    */
-  | { kind: "asset"; byLook: Record<string, AssetRef> }
+  | {
+      kind: "asset";
+      byLook: Record<string, AssetRef>;
+      /**
+       * The drawn placeholder for the looks `byLook` does not cover.
+       *
+       * **Present means the import is partial and that is a legitimate state.**
+       * The captain delivered the first of twelve looks on 10 November and the
+       * other eleven are still being drawn, so a page with one look's artwork
+       * and eleven placeholder babies is what the shop honestly is — where
+       * refusing it would mean no real artwork could be seen until the twelfth
+       * look was finished.
+       *
+       * **Absent means every look must have an asset**, which is the state a
+       * finished release is in: `./validate.ts` then reports `art.lookMissing`
+       * for any look without one, because in a complete book that is a chooser
+       * offering a tile that renders a blank page.
+       */
+      scene?: SceneSpec;
+    }
   /**
    * Drawn from numbers, with the look's own baby placed in it.
    *
@@ -265,6 +308,30 @@ export interface BookPage {
    * because a slot nothing fills is a dashed placeholder box printed in a book.
    */
   layers?: Layer[];
+  /**
+   * **The photo path's preview art for this page, and it can never print.**
+   *
+   * The captain's golden ghost spread for this page: the whole scene with the
+   * child drawn as a glowing gold sparkle silhouette, clothing and props left
+   * solid. On the photo path the child does not exist yet
+   * (`lib/book/ghost.ts`), so this is what holds their place — and it holds it
+   * far better than a drawn silhouette, because it is the page's own artwork
+   * with the child *in* it rather than a white shape over a scene.
+   *
+   * **Absent means the drawn silhouette**, which is `lib/render/ghost.ts` and
+   * is still what every page without a delivered golden half gets. A page the
+   * child is not on ignores this entirely: `lib/book/ghost.ts` asks whether the
+   * child is on the page *first*, which is why the captain's `spread-01` —
+   * correctly, since the opening spread is babyless — has no ghost in it.
+   *
+   * It is a `PreviewAsset` and not an `AssetRef`, so **the type system refuses
+   * it as page artwork**: it is 887 px, a quarter of a page's linear
+   * resolution, and a printed book drawn from one would be soft. See
+   * `./preview-art.ts` for how the two types are kept apart and
+   * `test/ghost.test.ts` for the import graph that keeps the print path away
+   * from the one module that can convert it.
+   */
+  ghost?: PreviewAsset;
 }
 
 // ---------------------------------------------------------------------------

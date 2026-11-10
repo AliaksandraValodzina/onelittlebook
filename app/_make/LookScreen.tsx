@@ -31,8 +31,10 @@
  * the axes resolve to the nearest of the twelve.
  *
  * Until that resolution is built — it needs generated artwork, which is out of
- * scope — the honest surface is the twelve themselves, each drawn from the book
- * it will print. The skin tone of each is the look's own
+ * scope — the honest surface is the twelve themselves: the captain's portrait
+ * of each where there is one, and otherwise the tile drawn from the book it
+ * will print. `app/_book/tile.ts` carries that choice and its reasoning. The
+ * skin tone of each is the look's own
  * `baby.skin`, so the row the artefact labelled *Skin tone* is here as the
  * swatches under the tiles: one swatch per look, every one of them a baby the
  * interior can draw.
@@ -42,11 +44,49 @@ import { looksFor, tileIndexOf } from "../../lib/book/derive";
 import { nameLimit } from "../../lib/book/name";
 import { next, stepFor } from "../../lib/shop/steps";
 import BookPage from "../_book/BookPage";
-import { lookTileSvg } from "../_book/tile";
+import { lookTile } from "../_book/tile";
+import type { BookTemplate } from "../../lib/book/types";
 import { useBook } from "../_book/BookProvider";
 import Screen from "./Screen";
 
 const step = stepFor("look")!;
+
+/**
+ * The tile, in whichever of its two shapes this look has.
+ *
+ * `app/_book/tile.ts` decides which — a delivered portrait of that baby, or
+ * `tilePage` of the book drawn with them — and this is the eight lines of
+ * markup that difference needs. A plain `<img>` and not `next/image`: the
+ * bytes are content-addressed and immutable, served by
+ * `app/api/assets/[key]/route.ts` with a year of cache, so there is nothing for
+ * an optimiser to add and a loader in front of it would be one more thing
+ * between the buyer and the baby they are choosing.
+ */
+function LookTileImage({
+  book,
+  lookId,
+  coverId,
+}: {
+  book: BookTemplate;
+  lookId: string;
+  coverId: string;
+}) {
+  const tile = lookTile(book, lookId, coverId);
+  if (tile.kind === "portrait") {
+    return (
+      <img
+        className="block aspect-square w-full object-cover"
+        src={tile.src}
+        width={tile.width || undefined}
+        height={tile.height || undefined}
+        alt=""
+        loading="lazy"
+        decoding="async"
+      />
+    );
+  }
+  return <span className="block w-full" dangerouslySetInnerHTML={{ __html: tile.svg }} />;
+}
 
 export default function LookScreen({ closeTo }: { closeTo: string }) {
   const { book, order, typedName, nameVerdict, setName, setGender, setLook, done, flush } = useBook();
@@ -99,12 +139,7 @@ export default function LookScreen({ closeTo }: { closeTo: string }) {
                       data-testid={`look-${look.id}`}
                       title={look.label}
                     >
-                      <span
-                        className="block w-full"
-                        dangerouslySetInnerHTML={{
-                          __html: lookTileSvg(book, look.id, order.coverId),
-                        }}
-                      />
+                      <LookTileImage book={book} lookId={look.id} coverId={order.coverId} />
                       <span className="lbl">{look.label}</span>
                     </button>
                   ))}
