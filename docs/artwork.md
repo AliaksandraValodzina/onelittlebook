@@ -15,6 +15,8 @@ npm run artwork -- status
 npm run artwork -- look      ~/Downloads/approved-pages-3600x3600 02-girl
 npm run artwork -- portraits ~/Downloads/baby-portraits-v2
 npm run artwork -- ghosts    ~/Downloads/golden-spreads
+
+npm run artwork:upload       # all three, to the public Blob store — § 6
 ```
 
 With nothing imported the shop draws every page from the numbers in
@@ -156,8 +158,8 @@ twice and neither way is a rule somebody has to remember:
 
 | | |
 |---|---|
-| **Pixels** | the artwork store: `.artwork/release/<set>/vNNNN/<pageId>.png`, `RELEASE_ARTWORK_DIR` to move it. `.gitignore` excludes `.artwork/` and `test/release-artwork.test.ts` asserts the rule. |
-| **Manifests** | `manifest.json` beside each version's pages — ids, digests, measured sizes. **Also not committed**, deliberately: see below. |
+| **Pixels** | the artwork store — the public Blob store `olb-looks` when `BLOB_READ_WRITE_TOKEN` is set (§ 6), otherwise `.artwork/release/<set>/vNNNN/<pageId>.png` on this machine, `RELEASE_ARTWORK_DIR` to move it. `.gitignore` excludes `.artwork/` and `test/release-artwork.test.ts` asserts the rule. |
+| **Manifests** | beside each version's pages — ids, digests, measured sizes, and in the public store the CDN URL of each picture. **Also not committed**, deliberately: see below. |
 | **The repository** | the look ids, the labels, the genders, the slot coordinates, the page order — `templates/first-book.ts` — and no pixels. |
 
 **The manifest is not committed either**, and the reason is the property this
@@ -172,8 +174,8 @@ The consequence, stated rather than hidden: **the artwork binding is environment
 state, so it is outside the book's `rev`.** A re-import of corrected artwork
 changes what a reprint looks like without changing the revision the order names.
 Nothing is lost — the store never overwrites — but pinning a chosen-look order
-to an artwork version is the task that follows the storage decision, because the
-honest place to record it is wherever the bytes end up living.
+to an artwork version is still owed. The honest place to record it is a version
+number beside the look id in the order's record, now that the bytes have a home.
 
 ---
 
@@ -182,12 +184,63 @@ honest place to record it is wherever the bytes end up living.
 - **Eleven more looks.** One of twelve has pages.
 - **A cover for every look.** There is no cover artwork at all.
 - **Replacements for `02-girl` and `08-boy`.** § 2 above.
-- **The storage decision.** Private Vercel Blob, or the R2 content origin under
-  a private prefix. `lib/artwork/store.ts` § THE DECISION THE CAPTAIN HAS NOT
-  MADE states both candidates and chooses neither; the local filesystem store is
-  right for the captain's own machine and is **not** production — a Vercel
-  function's filesystem is read-only outside `/tmp`. Until it is answered, a
-  deployment renders the placeholder book and the real artwork is on one laptop.
-- **The trim**, still open and unrelated to any of this:
-  `print.md` § The square trim nobody has pinned down. 3600 downscales to every
-  candidate, so no artwork would be regenerated when it is answered.
+- **Uploading it.** The storage decision is answered — see § 6 — and the command
+  is `npm run artwork:upload`. Until somebody runs it against the real token,
+  the deployed shop renders the placeholder book and the artwork is on one
+  laptop.
+- **Pinning a chosen-look order to an artwork version**, as § 4 above says.
+- **The trim**: `print.md` § The square trim nobody has pinned down. The captain
+  confirmed **12 × 12 inches** on 11 November, over which the delivered 3600 px
+  pages are 300 DPI native with no upscaling — so **no artwork is regenerated**
+  when it is applied. What is still unconfirmed is the interior bleed, about
+  225 px an edge, and the repository still *declares* 8.00 in: applying the
+  answer is an edit to `page.canvas`/`page.print`, a restamp and a re-run of
+  `npm run print`.
+
+---
+
+## 6. Where the artwork lives: two Vercel Blob stores
+
+**The captain picked Vercel Blob and created two stores.**
+`lib/artwork/blob.ts` is the adapter, behind the same `ArtworkStore` interface
+the filesystem already answered.
+
+| Store | Access | Reached through | Holds |
+|---|---|---|---|
+| `olb-looks` | **public** | `BLOB_READ_WRITE_TOKEN` | the looks' pages, the twelve portrait tiles, the golden ghost halves |
+| `olb-orders` | **private** | `OLB_ORDERS_STORE_ID` + the deployment's OIDC token | one order's regenerated artwork |
+
+**Public is deliberate.** The looks' pages are shown to everyone during the
+whole-book preview with no watermark and no account; serving twenty-five of them
+from a CDN rather than from twenty-five function invocations is what makes that
+promise affordable.
+
+**Private is equally deliberate**, and nothing may cross between the two:
+`olb-orders` holds artwork regenerated from a photograph of one family's child
+and a guessable URL for that is the worst thing this product could do. The two
+stores have **distinct types** with no function that turns one into the other,
+the public store's key check refuses an order reference, and the private store
+records no URLs at all. `test/artwork-separation.test.ts` and
+`test/no-order-asset-in-the-public-store.ts` are the proof — the second is a
+file of calls that must not compile, so `npm run lint` is the gate.
+
+### Uploading
+
+```
+npm run artwork:upload                       # all three sets, the delivered folders
+npm run artwork:upload -- --dry-run          # prepare and compare, write nothing
+npm run artwork:upload -- --only portraits   # just the twelve tiles
+npm run artwork:upload -- --portraits ~/art/tiles-v3
+```
+
+Each directory is an argument; the defaults are the folders the artwork was
+delivered into. It validates every set against the same contract an order's
+regenerated pages are held to and **refuses before it writes**. A set whose
+pages are digest-for-digest what the store already holds is skipped entirely, so
+running it twice does nothing the second time, and because a key is a content
+hash, re-uploading the two corrected portraits uploads two files and can never
+be served stale from a cache.
+
+With no token set it refuses and names the variable. `npm run artwork` writes to
+whichever store the environment points at, and every line it prints names that
+store.

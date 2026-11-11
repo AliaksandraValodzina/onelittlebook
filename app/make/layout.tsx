@@ -13,7 +13,7 @@
 
 import type { Metadata } from "next";
 import { FIRST_BOOK } from "../../templates/first-book";
-import { bookAsDelivered } from "../../lib/artwork/release";
+import { deliveredBook } from "../../lib/artwork/release";
 import { pageTitle } from "../../lib/brand";
 import BookProvider from "../_book/BookProvider";
 import { Ribbon, ShopFooter, ShopNav } from "../_shop/Chrome";
@@ -29,10 +29,12 @@ export default async function MakeLayout({ children }: { children: React.ReactNo
   // Read here and handed to the provider, so every screen of the flow and the
   // basket beyond it price against the same market the masthead is showing.
   const market = await currentMarket();
-  // The published book with whatever artwork this machine holds bound over it —
-  // one line, `lib/artwork/release.ts` § bookAsDelivered, and the book is
-  // unchanged when nothing has been delivered.
-  const book = await bookAsDelivered(FIRST_BOOK);
+  // The published book with whatever artwork the store holds bound over it —
+  // one line, `lib/artwork/release.ts` § deliveredBook, and the book is
+  // unchanged when nothing has been delivered. `assets` comes out of the same
+  // read: it is where those pictures are publicly readable, which only the
+  // server can know and the chooser's tiles need in the browser.
+  const { book, assets } = await deliveredBook(FIRST_BOOK);
 
   return (
     <>
@@ -44,7 +46,7 @@ export default async function MakeLayout({ children }: { children: React.ReactNo
       */}
       <Ribbon market={market} />
       <ShopNav market={market} />
-      <BookProvider book={book} market={market}>
+      <BookProvider book={book} market={market} assets={assets}>
         {children}
       </BookProvider>
       <ShopFooter />

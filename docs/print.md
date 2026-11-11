@@ -127,9 +127,35 @@ re-run of `npm run print`. Nothing else moves.
 **This is the open question, and this section exists so that nobody resolves it
 by accident.**
 
-### What is settled
+### The captain answered it on 11 November, and the repository has not been changed yet
 
-**The baby book is 8 × 8 inches.** The captain's specification names Printify's
+**The book is 12 × 12 inches, confirmed against Printify's real template** — not
+the 8 × 8 the rest of this section was written around. Two consequences, and the
+first one is a relief:
+
+**3600 px a page is 300 DPI native over a 12 in trim**, exactly, with no
+upscaling anywhere. The number this repository already generates turns out to be
+the right number for the right reason rather than the over-specified number it
+was chosen as.
+
+**Interior pages may need about 225 px of bleed per edge, like the cover does.**
+That half is **unconfirmed** and is the thing still to read off the template.
+225 px is 0.75 in at 300 DPI, which is a plausible photo-book bleed and is not
+yet a fact.
+
+**Nothing in `templates/` has moved.** The book still declares an 8.5 in
+artboard with a quarter inch of bleed, so its declared trim is still 8.00 in and
+every number downstream is still derived from that declaration — which is the
+property that makes the change a small one when it is made. Applying the
+captain's answer is an edit to `page.canvas` and `page.print`, a restamped
+`rev`, and a re-run of `npm run print` with `data/` committed; it is one task and
+it is deliberately not this one. **Until then, do not write 8 × 8 anywhere new,
+and do not hard-code any trim: read `book.page` instead, as every test and
+component already does.**
+
+### What was settled before that, and the arithmetic it produced
+
+**The specification said 8 × 8 inches.** The captain's specification names Printify's
 [Softcover Photo
 Book](https://printify.com/app/products/2733/generic-brand/softcover-photo-book)
 — 8 × 8 in, its only size — and its [Hardcover Photo
@@ -143,9 +169,13 @@ decision about the object, not about the file.
 
 ### What is not settled
 
-**Printify's stated print-area pixel size for that product.** It is published
-only inside their signed-in Product Creator, so reading it needs somebody signed
-in to the account with the product open. Nobody has.
+**The bleed on an interior page**, as above — roughly 225 px per edge, from the
+captain's reading of the template, not yet confirmed.
+
+Printify's stated print-area pixel size is published only inside their signed-in
+Product Creator, so reading it needs somebody signed in to the account with the
+product open. The captain has now read the template and reports 12 × 12; the
+pixel figure and the interior bleed are what remain.
 
 ### What the arithmetic actually says, which is evidence either way
 
@@ -248,4 +278,4 @@ this file at all. No screen lays out 3150 pixels to be photographed. Keepnook's
 | Printify wants sRGB | **Documented** — Printify help centre |
 | The trim line sits 0.25 in inside the artboard | **Assumed, conservatively** — not measured; see above |
 | 3150 px is the right number for My Forever | **Captain-confirmed** — stated in the brief as checked against Printify |
-| 3600 px is the right number for the book | **Deliberately over-specified** — it clears every candidate trim; Printify's own stated figure is **unread**, and 3150 matching no square trim at 300 DPI is **still unanswered since 31 October** |
+| 3600 px is the right number for the book | **Yes, and now for the stated reason**: the captain confirmed a 12 × 12 in trim on 11 November, over which 3600 px is 300 DPI native. The book still *declares* 8.00 in and the interior bleed (~225 px an edge) is unconfirmed — § The square trim nobody has pinned down |

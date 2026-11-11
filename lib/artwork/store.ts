@@ -1,6 +1,6 @@
 /**
- * **Where artwork too big or too private for git lives — and the decision the
- * captain still owes.**
+ * **Where artwork too big or too private for git lives — and which of the two
+ * Blob stores it goes to.**
  *
  * ## It must never be in git, and that is the hard requirement
  *
@@ -18,37 +18,53 @@
  * of them are the better part of two gigabytes, which is not a thing to put in
  * a public repository either. `lib/artwork/release.ts` is that half and it
  * reuses this interface rather than inventing a second one — two storage seams
- * would be two places to migrate the day the captain picks a bucket, and the
- * one that got missed would be the one holding the pictures.
+ * would have been two places to migrate the day the captain picked a bucket,
+ * and the one that got missed would have been the one holding the pictures.
  *
  * `fixtures/assets/` is the remaining case and the comparison is worth making:
  * that holds the fixture **photographs**, a few kilobytes each, which the test
  * suite and `npm run print` need with no network and no credential. Small,
  * synthetic and public; neither of the two kinds of artwork is any of those.
  *
- * ## THE DECISION THE CAPTAIN HAS NOT MADE
+ * ## THE DECISION, AND THE ANSWER THE CAPTAIN GAVE
  *
- * **Two candidates, and this module does not choose between them:**
+ * The two candidates were **Vercel Blob** — one integration on the platform
+ * this app already runs on, no credentials to rotate by hand, reads
+ * authenticated by OIDC — and the **Keepnook-style content origin**, the R2
+ * bucket the orders are already in, under a private prefix exactly as a buyer's
+ * photograph is (`lib/orders/store.ts` § Photographs are private).
  *
- * **Vercel Blob.** Private Blob is generally available and this app runs on
- * Vercel, so it is one integration, no credentials to rotate by hand, and reads
- * are already authenticated by OIDC. Against it: a second storage product
- * beside the R2 bucket the orders are already in, and two places to look when
- * something is missing.
+ * **The captain picked Blob, and picked it twice**, which is the part worth
+ * reading. Two stores exist, not one:
  *
- * **The Keepnook-style content origin** — the R2 bucket this project already
- * has, under a private prefix, exactly as a buyer's photograph is stored
- * (`lib/orders/store.ts` § Photographs are private). Against it: the artwork is
- * forty megabytes an order rather than one, and R2's egress-free pricing is a
- * reason to like it rather than a reason to be sure.
+ * | Store | Access | Reached through | Holds |
+ * |---|---|---|---|
+ * | `olb-looks` | **public** | `BLOB_READ_WRITE_TOKEN` | the looks' pages, the portrait tiles, the golden ghost halves |
+ * | `olb-orders` | **private** | `OLB_ORDERS_STORE_ID` + OIDC | one order's regenerated artwork |
  *
- * **Nothing is picked here, because picking it is the captain's call and the
- * cost of being wrong is a migration.** What is built instead is the seam: the
- * `ArtworkStore` interface below is five operations, `localArtworkStore`
- * implements it against the filesystem, and swapping in either candidate is one
- * new file and no change above this line. That is the same arrangement
- * `lib/orders/store.ts` describes for R2 and the same arrangement that made
- * *this* file possible to write before the answer existed.
+ * `./blob.ts` implements this interface against both and `./keys.ts` is the key
+ * check both of them share. **`localArtworkStore` below did not become legacy**
+ * — it is what a fresh clone, the whole test suite and the captain's own laptop
+ * run on, with no token and no network, and the bucket was only ever possible
+ * to add because this interface existed first.
+ *
+ * ## The one thing that may never cross between the two stores
+ *
+ * Public is a deliberate choice: the looks' pages are shown to everyone during
+ * the whole-book preview, with no watermark and no account, and serving
+ * twenty-five of them from a CDN rather than from twenty-five function
+ * invocations is the reason that promise is affordable. Private is the equally
+ * deliberate other half: `olb-orders` holds artwork regenerated from a
+ * photograph of **one family's child**, and a guessable URL for that is the
+ * worst thing this product could leak.
+ *
+ * So the types below make the mistake **not compile**. `PublicArtworkStore` and
+ * `PrivateArtworkStore` are distinct types with no function that turns one into
+ * the other, every caller that writes per-order artwork asks for the private
+ * one by type, and the public store's key check (`isReleaseSet`) refuses an
+ * order reference at runtime as well. `test/artwork-separation.test.ts` is the
+ * proof, including a file whose `@ts-expect-error`s fail `npm run lint` the day
+ * the wall stops standing.
  *
  * **The local implementation is not production.** A Vercel function's
  * filesystem is read-only outside `/tmp`, and `/tmp` is per instance and gone
@@ -74,47 +90,46 @@
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { sha256 } from "../assets/digest";
-import { readPngHeader } from "../render/png";
 import { isReference } from "../orders/record";
 import { value } from "../env";
-import type { AssetRef } from "../template/types";
+import { NotAnOrderReference, isArtworkPageId, versionDir, versionOfDir } from "./keys";
+import {
+  artworkPageFor,
+  manifestBytes,
+  readManifest,
+  type ArtworkPage,
+  type ArtworkVersion,
+} from "./manifest";
+import {
+  OIDC_TOKEN_VAR,
+  ORDERS_STORE_VAR,
+  ordersBlobStore,
+  ordersStoreIn,
+  ordersStoreNamedButUnreachable,
+} from "./blob";
 
-/** One page of one version, named by the page it replaces and by its content. */
-export interface ArtworkPage {
-  /** A page id of the book — `cover`, `page-001`. Never a filename. */
-  pageId: string;
-  /**
-   * The bytes, by content hash and measured size.
-   *
-   * An `AssetRef` and not a path, which is what lets the renderer treat this
-   * artwork exactly as it treats the twelve looks' artwork: `lib/book/derive.ts`
-   * puts an `image` layer on the page and the bytes arrive through the
-   * `supplied` seam. Nothing downstream knows this picture came from an order
-   * rather than from a release.
-   */
-  asset: AssetRef;
-}
-
-export interface ArtworkVersion {
-  /** 1, 2, 3 … The highest is the one in use. */
-  version: number;
-  /** ISO 8601, from the clock the caller passed in. */
-  at: string;
-  pages: ArtworkPage[];
-}
+export { NotAnOrderReference };
+export type { ArtworkPage, ArtworkVersion };
 
 /**
  * The store, as everything above this line sees it.
  *
- * Five operations, which is the whole of what "hand the captain the clean
- * pages, take the regenerated ones back, print the order, and be able to go
- * back a version" needs. Every operation this interface does not have is a
- * feature nobody has asked for that a Blob or R2 implementation would have to
- * provide.
+ * Six operations, which is the whole of what "hand the captain the clean pages,
+ * take the regenerated ones back, print the order, and be able to go back a
+ * version" needs. Every operation this interface does not have is a feature
+ * nobody has asked for that both implementations would have to provide.
+ *
+ * `sets` is the sixth and arrived with the bucket. It was a `readdir` in
+ * `lib/artwork/release.ts` — the one line up there that knew the local
+ * implementation's layout — and that module's docblock said at the time that a
+ * bucket would "list a prefix instead, which is the same operation under a
+ * different name". It was, so it is an operation now and not a special case.
  */
 export interface ArtworkStore {
   /** How the admin page names where it is reading from. Never a credential. */
   readonly describe: string;
+  /** Every key this store holds anything under. Unordered. */
+  sets(): Promise<string[]>;
   /** Oldest first. Empty for an order nobody has uploaded artwork for. */
   versions(ref: string): Promise<ArtworkVersion[]>;
   /** The highest version, or null. */
@@ -129,6 +144,38 @@ export interface ArtworkStore {
   read(ref: string, version: number, pageId: string): Promise<Uint8Array | null>;
 }
 
+/**
+ * **A store for the captain's released artwork, and nothing else.**
+ *
+ * The twelve looks' pages, the portrait tiles and the golden ghost halves: the
+ * same twenty-four pictures for every buyer, shown to anybody who opens the
+ * preview. Backed by `olb-looks`, which is **public**, so everything in it has
+ * a CDN URL and that is the point of it.
+ *
+ * `holds` is a discriminant and exists for exactly one reason: to make
+ * `PublicArtworkStore` and `PrivateArtworkStore` **mutually unassignable**, so
+ * a function that takes one cannot be handed the other. There is no cast, no
+ * widening helper and no function in this repository that turns one into the
+ * other. A store is minted by exactly four constructors — `localOrderStore`
+ * below, `localReleaseStore` in `./release.ts`, and `looksBlobStore` /
+ * `ordersBlobStore` in `./blob.ts` — and that is the whole of the surface.
+ */
+export interface PublicArtworkStore extends ArtworkStore {
+  readonly holds: "released";
+}
+
+/**
+ * **A store for one order's regenerated artwork, and nothing else.**
+ *
+ * A child who resembles the buyer's own, painted by hand into this book's
+ * pages. Backed by `olb-orders`, which is **private**: nothing in it has a URL,
+ * reads happen on the server behind `lib/admin/guard.ts`, and the type above is
+ * what stops anybody putting one of these pictures somewhere a URL would exist.
+ */
+export interface PrivateArtworkStore extends ArtworkStore {
+  readonly holds: "per-order";
+}
+
 /** The variable that says where the local store writes. */
 export const ARTWORK_DIR_VAR = "ORDER_ARTWORK_DIR";
 
@@ -141,16 +188,6 @@ export const ARTWORK_DIR_VAR = "ORDER_ARTWORK_DIR";
  * must not happen here is a child's picture in a public git history.
  */
 export const DEFAULT_ARTWORK_DIR = ".artwork";
-
-/** A reference is a path segment here, so it is checked before it is one. */
-export class NotAnOrderReference extends Error {}
-
-const PAGE_ID = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-const VERSION_DIR = /^v(\d{4,})$/;
-
-function versionDir(version: number): string {
-  return `v${String(version).padStart(4, "0")}`;
-}
 
 /**
  * The store on this machine's filesystem.
@@ -170,6 +207,14 @@ function versionDir(version: number): string {
  * repository and never a request parameter. One store with the check passed in
  * beats a second store with the check copied, which is how the two would end up
  * disagreeing about what a path segment may contain.
+ *
+ * **It returns an untagged `ArtworkStore`, which is deliberate**: it is the
+ * shared implementation and not a store anybody above this line may use.
+ * `localOrderStore` and `localReleaseStore` are the two that tag it, each
+ * setting the tag and the key check together because they are the same fact.
+ * An untagged store satisfies neither typed interface, so passing this straight
+ * to anything is a compile error rather than a store with no opinion about what
+ * it holds.
  */
 export function localArtworkStore(
   root: string,
@@ -197,6 +242,17 @@ export function localArtworkStore(
   return {
     describe: `the filesystem at ${root} — this machine only, nothing here survives a deploy`,
 
+    async sets() {
+      try {
+        const entries = await readdir(root, { withFileTypes: true });
+        return entries.filter((e) => e.isDirectory() && keyIsValid(e.name)).map((e) => e.name);
+      } catch {
+        // No directory is the normal state of a machine nobody has imported
+        // anything on, which is every fresh clone and all of CI.
+        return [];
+      }
+    },
+
     async versions(ref: string) {
       // The reference is checked **outside** the try, so a path that is not an
       // order reference is a refusal rather than "no versions". The catch below
@@ -211,9 +267,9 @@ export function localArtworkStore(
       }
       const out: ArtworkVersion[] = [];
       for (const entry of entries.sort()) {
-        const match = VERSION_DIR.exec(entry);
-        if (!match) continue;
-        const read = await readVersion(ref, Number(match[1]));
+        const version = versionOfDir(entry);
+        if (version === null) continue;
+        const read = await readVersion(ref, version);
         if (read) out.push(read);
       }
       return out.sort((a, b) => a.version - b.version);
@@ -232,31 +288,22 @@ export function localArtworkStore(
 
       const written: ArtworkPage[] = [];
       for (const page of pages) {
-        if (!PAGE_ID.test(page.pageId)) {
+        if (!isArtworkPageId(page.pageId)) {
           throw new NotAnOrderReference(`${JSON.stringify(page.pageId)} is not a page id`);
         }
         await writeFile(path.join(dir, `${page.pageId}.png`), page.bytes);
-        const header = readPngHeader(page.bytes);
-        written.push({
-          pageId: page.pageId,
-          asset: {
-            sha256: sha256(page.bytes),
-            mime: "image/png",
-            // Measured out of the IHDR, never copied from a report:
-            // `placePhoto` and the renderer divide by these two numbers.
-            px: [header.width, header.height],
-            label: `${ref} ${page.pageId} v${version}`,
-          },
-        });
+        // No URL: a directory on this machine has no address, which is what
+        // `ArtworkPage.url`'s absence means and why nothing here invents one.
+        written.push(artworkPageFor(page.pageId, page.bytes, `${ref} ${page.pageId} v${version}`));
       }
 
       const record: ArtworkVersion = { version, at: now.toISOString(), pages: written };
-      await writeFile(path.join(dir, "manifest.json"), `${JSON.stringify(record, null, 2)}\n`);
+      await writeFile(path.join(dir, "manifest.json"), manifestBytes(record));
       return record;
     },
 
     async read(ref: string, version: number, pageId: string) {
-      if (!PAGE_ID.test(pageId)) return null;
+      if (!isArtworkPageId(pageId)) return null;
       try {
         return new Uint8Array(
           await readFile(path.join(dirFor(ref), versionDir(version), `${pageId}.png`)),
@@ -268,53 +315,57 @@ export function localArtworkStore(
   };
 }
 
-/** A manifest read back tolerantly — it may have been written by an older build. */
-function readManifest(raw: unknown, version: number): ArtworkVersion | null {
-  if (!raw || typeof raw !== "object") return null;
-  const v = raw as Partial<ArtworkVersion>;
-  if (!Array.isArray(v.pages)) return null;
-  const pages: ArtworkPage[] = [];
-  for (const entry of v.pages) {
-    const page = entry as Partial<ArtworkPage>;
-    const asset = page.asset as Partial<AssetRef> | undefined;
-    if (typeof page.pageId !== "string" || !PAGE_ID.test(page.pageId)) continue;
-    if (!asset || typeof asset.sha256 !== "string" || !/^[0-9a-f]{64}$/.test(asset.sha256)) continue;
-    const px = asset.px;
-    if (!Array.isArray(px) || px.length !== 2) continue;
-    pages.push({
-      pageId: page.pageId,
-      asset: {
-        sha256: asset.sha256,
-        mime: "image/png",
-        px: [Number(px[0]), Number(px[1])],
-        label: typeof asset.label === "string" ? asset.label : undefined,
-      },
-    });
-  }
-  return {
-    version: typeof v.version === "number" ? v.version : version,
-    at: typeof v.at === "string" ? v.at : "",
-    pages,
-  };
+/**
+ * The local store, tagged as the only kind of thing it may hold.
+ *
+ * The tag and the key check are the **same fact** stated twice — a store keyed
+ * by order references holds per-order artwork — which is why they are set in
+ * one place rather than passed in as two arguments that could disagree.
+ */
+export function localOrderStore(root: string): PrivateArtworkStore {
+  return { holds: "per-order", ...localArtworkStore(root, isReference) };
+}
+
+/** The directory the local per-order store writes to under this environment. */
+export function artworkRoot(env: Record<string, string | undefined>): string {
+  const configured = value(env, ARTWORK_DIR_VAR);
+  return configured ? path.resolve(configured) : path.join(process.cwd(), DEFAULT_ARTWORK_DIR);
 }
 
 /**
  * The store this environment describes.
  *
- * It always answers, which is the opposite of `storeFromEnv` for orders — and
- * the asymmetry is deliberate. An order store that silently fell back to
- * something that does not survive a redeploy would take money for a book
- * nobody can print, so that one refuses. Artwork is a thing the captain uploads
- * from their own machine and immediately downloads the finished pages from; a
- * directory on that machine is the honest answer to "where does this go until
- * the captain picks a bucket", and `describe` says so out loud wherever it is
- * offered.
+ * **`olb-orders` when it is configured, this machine's filesystem when it is
+ * not**, and it always answers — which is the opposite of `storeFromEnv` for
+ * orders, deliberately. An order *record* store that silently fell back to
+ * something that does not survive a redeploy would take money for a book nobody
+ * can print, so that one refuses. Artwork is a thing the captain uploads and
+ * immediately downloads the finished pages from; a directory on their own
+ * machine is the honest answer when there is no bucket, and `describe` says
+ * which of the two it is out loud wherever it is offered — the admin page
+ * prints that sentence.
+ *
+ * The return type is `PrivateArtworkStore`, so every caller of this function is
+ * holding a store that **cannot be handed to anything expecting the public
+ * one.** That is the whole of the wall; the rest is this file's docblock saying
+ * why it is there.
  */
-export function artworkStoreFromEnv(env: Record<string, string | undefined>): ArtworkStore {
-  const configured = value(env, ARTWORK_DIR_VAR);
-  return localArtworkStore(
-    configured ? path.resolve(configured) : path.join(process.cwd(), DEFAULT_ARTWORK_DIR),
-  );
+export function artworkStoreFromEnv(env: Record<string, string | undefined>): PrivateArtworkStore {
+  const configured = ordersStoreIn(env);
+  if (configured) return ordersBlobStore(configured.storeId, configured.oidcToken);
+  const local = localOrderStore(artworkRoot(env));
+  if (!ordersStoreNamedButUnreachable(env)) return local;
+  // Named but unreachable is its own state and gets its own sentence, because
+  // it is the one that looks configured from the dashboard and is not: the
+  // store id is set and this process has no OIDC token to authenticate with.
+  // `./blob.ts` § the OIDC token says why that may not quietly fall through to
+  // the SDK's own credential search.
+  return {
+    ...local,
+    describe:
+      `${local.describe} — ${ORDERS_STORE_VAR} is set, but this process has no ` +
+      `${OIDC_TOKEN_VAR}, so nothing can be written to the private Blob store`,
+  };
 }
 
 /**

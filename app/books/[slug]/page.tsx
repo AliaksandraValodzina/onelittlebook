@@ -23,7 +23,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { assetUrl } from "../../../lib/assets/resolve";
-import { bookAsDelivered } from "../../../lib/artwork/release";
+import { hrefIn, type AssetAddresses } from "../../../lib/assets/address";
+import type { AssetRef } from "../../../lib/template/types";
+import { deliveredBook } from "../../../lib/artwork/release";
 import { showcaseLook } from "../../../lib/book/release-art";
 import { pageTitle } from "../../../lib/brand";
 import { pageFillFor, pageSequence, pageTemplateFor } from "../../../lib/book/derive";
@@ -86,7 +88,7 @@ export async function generateMetadata(props: {
  * not is worse than one that plainly is not. The real gallery arrives with the
  * photograph of the printed book that replaces the render.
  */
-function Rail({ book }: { book: BookTemplate }) {
+function Rail({ book, href }: { book: BookTemplate; href: (ref: AssetRef) => string }) {
   const sequence = pageSequence(book);
   const indices = [0, 1, 2, 3, 4].filter((i) => i < sequence.length);
   // The baby whose artwork this machine actually has, where there is one —
@@ -114,7 +116,7 @@ function Rail({ book }: { book: BookTemplate }) {
                 name: SAMPLE_NAME,
                 dedication: "",
               }),
-              { href: assetUrl },
+              { href },
             ),
           }}
         />
@@ -130,7 +132,11 @@ export default async function BookPageRoute(props: { params: Promise<{ slug: str
   // The shelf's book with this machine's artwork bound over it, so the page
   // cannot advertise a book the renderer does not draw — which is this route's
   // own rule, now that there is artwork for it to be wrong about.
-  const book = await bookAsDelivered(title.book);
+  const { book, assets } = await deliveredBook(title.book);
+  // The delivered artwork's own addresses in front of `assetUrl`, so a page
+  // that came out of the public Blob store is drawn from the CDN and anything
+  // else is answered exactly as it was before there was one.
+  const href = hrefIn(assets, assetUrl);
   const start = STEPS[0];
   // Four facts, a price line, a spec table and a strip, all of which say
   // something that depends on where the reader is buying.
@@ -151,10 +157,10 @@ export default async function BookPageRoute(props: { params: Promise<{ slug: str
       <div className="wrap pdp">
         <div className="gal">
           <div className="main">
-            <Cover book={book} name={SAMPLE_NAME} href={assetUrl} />
+            <Cover book={book} name={SAMPLE_NAME} href={href} />
             <p className="cap">{RENDER_CAPTION}</p>
           </div>
-          <Rail book={book} />
+          <Rail book={book} href={href} />
         </div>
 
         <div>

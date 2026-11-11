@@ -1,6 +1,6 @@
 /**
- * **The captain's released artwork, on this machine — and what the repository
- * keeps instead of it.**
+ * **The captain's released artwork — in `olb-looks`, or on this machine, or
+ * nowhere at all — and what the repository keeps instead of it.**
  *
  * Three sets were delivered on 10 November and `docs/artwork.md` is the
  * inventory, including the two portraits being regenerated and the mapping from
@@ -48,24 +48,49 @@
  *
  * ## The store is the per-order seam, not a second one
  *
- * `./store.ts` is one interface and five operations with a local
- * implementation, written for the photo path. This reuses it: one key per set,
- * versions that only ever accumulate, a manifest of `AssetRef`s beside the
- * pages. Two storage seams would be two migrations the day the captain picks
- * between Vercel Blob and the R2 content origin, and the one that got missed
- * would be the one holding the pictures. That decision is still the captain's:
- * `./store.ts` § THE DECISION THE CAPTAIN HAS NOT MADE states both candidates
- * and chooses neither.
+ * `./store.ts` is one interface and six operations, written for the photo path.
+ * This reuses it: one key per set, versions that only ever accumulate, a
+ * manifest of `AssetRef`s beside the pages. Two storage seams would have been
+ * two migrations the day the captain picked a bucket, and the one that got
+ * missed would have been the one holding the pictures.
+ *
+ * ## Where the bytes actually are now
+ *
+ * The captain picked Vercel Blob and created two stores; this half reads the
+ * **public** one, `olb-looks`, through `./blob.ts`. Three states, and all three
+ * are real:
+ *
+ * 1. **`BLOB_READ_WRITE_TOKEN` set** — the looks' pages, the portrait tiles and
+ *    the golden halves come out of `olb-looks`, each with a CDN URL, which is
+ *    what `urls` below carries and why a twenty-five page preview is not
+ *    twenty-five function invocations.
+ * 2. **A local directory with artwork in it** — the captain's own machine after
+ *    `npm run artwork`. No URLs: a directory has no address, so every picture is
+ *    served by `/api/assets/<digest>.png`.
+ * 3. **Neither** — a fresh clone, CI, and anybody who has not imported
+ *    anything. `templates/first-book.ts` draws every page from its own numbers
+ *    and the book is complete and printable. This is the state the whole test
+ *    suite runs in and it is not a degraded one.
+ *
+ * `test/artwork-blob.test.ts` asserts all three, because each is how the others
+ * go wrong.
  */
 
-import { readdir } from "node:fs/promises";
 import path from "node:path";
 import { value } from "../env";
+import type { AssetAddresses } from "../assets/address";
 import type { AssetRef } from "../template/types";
 import type { BookTemplate } from "../book/types";
 import type { PreviewAsset } from "../book/preview-art";
 import { bookWithReleaseArtwork } from "../book/release-art";
-import { DEFAULT_ARTWORK_DIR, localArtworkStore, type ArtworkStore } from "./store";
+import { isReleaseSet } from "./keys";
+import { LOOKS_TOKEN_VAR, looksBlobStore, looksTokenIn } from "./blob";
+import {
+  DEFAULT_ARTWORK_DIR,
+  localArtworkStore,
+  type ArtworkStore,
+  type PublicArtworkStore,
+} from "./store";
 
 /** The variable that moves the whole of it somewhere else. */
 export const RELEASE_ARTWORK_DIR_VAR = "RELEASE_ARTWORK_DIR";
@@ -88,18 +113,14 @@ export function lookSet(lookId: string): string {
 }
 
 /**
- * A key the local store will turn into a path segment.
+ * A key a store will turn into a path segment or a blob prefix.
  *
- * Checked for the same reason an order reference is, even though every value
- * here is a constant of this repository rather than anything from a request:
- * the check is what makes that still true after somebody wires a set name to
- * something a user typed.
+ * Re-exported rather than defined here: it moved to `./keys.ts` the day there
+ * were two implementations, because the one thing the filesystem and the bucket
+ * may not disagree about is what a key may contain. `./keys.ts` carries the
+ * reasoning.
  */
-const RELEASE_KEY = /^(tiles|ghosts|look-[a-z0-9]+(?:-[a-z0-9]+)*)$/;
-
-export function isReleaseSet(value: unknown): boolean {
-  return typeof value === "string" && RELEASE_KEY.test(value);
-}
+export { isReleaseSet };
 
 /** The pageId a portrait is stored under, inside the `tiles` set. */
 export function tilePageId(lookId: string): string {
@@ -110,16 +131,35 @@ export function lookOfTilePageId(pageId: string): string | null {
   return pageId.startsWith("tile-") ? pageId.slice("tile-".length) : null;
 }
 
-/** The store, rooted wherever this environment says. */
-export function releaseStoreFromEnv(env: Record<string, string | undefined> = process.env): ArtworkStore {
-  const configured = value(env, RELEASE_ARTWORK_DIR_VAR);
-  return localArtworkStore(
-    configured ? path.resolve(configured) : path.join(process.cwd(), DEFAULT_RELEASE_ARTWORK_DIR),
-    isReleaseSet,
-  );
+/**
+ * The local store, tagged as the only kind of thing it may hold.
+ *
+ * The tag and the key check are the **same fact** stated twice — a store keyed
+ * by release set names holds released artwork — so they are set together here
+ * and nowhere else. `./store.ts` § The one thing that may never cross says what
+ * the tag is for.
+ */
+export function localReleaseStore(root: string): PublicArtworkStore {
+  return { holds: "released", ...localArtworkStore(root, isReleaseSet) };
 }
 
-/** The directory `releaseStoreFromEnv` reads, for the one listing the interface has no operation for. */
+/**
+ * The store this environment describes: `olb-looks` when it is configured, this
+ * machine's filesystem when it is not.
+ *
+ * Both answer the same six operations, so **nothing below this line knows which
+ * one it got** — which is the entire reason the interface was written before
+ * either existed.
+ */
+export function releaseStoreFromEnv(
+  env: Record<string, string | undefined> = process.env,
+): PublicArtworkStore {
+  const token = looksTokenIn(env);
+  if (token) return looksBlobStore(token);
+  return localReleaseStore(releaseRoot(env));
+}
+
+/** The directory the local store reads under this environment. */
 export function releaseRoot(env: Record<string, string | undefined> = process.env): string {
   const configured = value(env, RELEASE_ARTWORK_DIR_VAR);
   return configured ? path.resolve(configured) : path.join(process.cwd(), DEFAULT_RELEASE_ARTWORK_DIR);
@@ -139,6 +179,17 @@ export interface ReleaseArtwork {
   tiles: Record<string, AssetRef>;
   /** Page id -> the preview-only golden half. Never an `AssetRef`. */
   ghosts: Record<string, PreviewAsset>;
+  /**
+   * Digest -> public URL, for the pictures that have one.
+   *
+   * Filled from `ArtworkPage.url`, which the public Blob store records and the
+   * local filesystem store does not — a directory has no address. **Empty is
+   * the normal state** and means every picture is served by
+   * `/api/assets/<digest>.png`, which answers from wherever the bytes are.
+   * `lib/assets/address.ts` is that rule and the reason a URL is not allowed
+   * anywhere near an `AssetRef`.
+   */
+  urls: AssetAddresses;
   /** Where it was read from, in a sentence. Never a credential. */
   describe: string;
   /** One line per set, for the admin page and for `npm run artwork -- status`. */
@@ -146,7 +197,7 @@ export interface ReleaseArtwork {
 }
 
 export function emptyReleaseArtwork(describe = "nothing"): ReleaseArtwork {
-  return { pages: {}, tiles: {}, ghosts: {}, describe, sets: [] };
+  return { pages: {}, tiles: {}, ghosts: {}, urls: {}, describe, sets: [] };
 }
 
 export function anyReleaseArtwork(art: ReleaseArtwork): boolean {
@@ -171,11 +222,9 @@ export function asPreviewAsset(ref: AssetRef): PreviewAsset {
 /**
  * The artwork for one book, read through the store.
  *
- * **Driven by the book's own look list** rather than by a directory listing,
- * which is what keeps it honest in two directions: a set for a look the book
- * does not offer is ignored rather than bound to nothing, and the five
- * interface operations are enough — no "list everything" capability every
- * future implementation would have to provide.
+ * **Driven by the book's own look list** rather than by a listing of the store,
+ * which is what keeps it honest: a set for a look the book does not offer is
+ * ignored rather than bound to nothing.
  *
  * Only the **current** version of each set is bound. The earlier ones are still
  * on disk, which is the recovery this store exists for; nothing draws them.
@@ -185,12 +234,19 @@ export async function releaseArtworkFor(
   store: ArtworkStore = releaseStoreFromEnv(),
 ): Promise<ReleaseArtwork> {
   const out = emptyReleaseArtwork(store.describe);
+  // The address book is filled by the same read that produced the refs, which
+  // is what makes it exact: a digest is in it only because this store just
+  // said it holds those bytes at that URL.
+  const urls: Record<string, string> = {};
 
   for (const look of book.looks) {
     const version = await store.current(lookSet(look.id));
     if (!version || version.pages.length === 0) continue;
     const pages: Record<string, AssetRef> = {};
-    for (const page of version.pages) pages[page.pageId] = page.asset;
+    for (const page of version.pages) {
+      pages[page.pageId] = page.asset;
+      if (page.url) urls[page.asset.sha256] = page.url;
+    }
     out.pages[look.id] = pages;
     out.sets.push({
       set: lookSet(look.id),
@@ -208,7 +264,10 @@ export async function releaseArtworkFor(
       // than reported: the twelve portraits arrived before eleven of the looks
       // have any pages, and a look that is renamed one day should not break a
       // chooser over a tile.
-      if (lookId && book.looks.some((l) => l.id === lookId)) out.tiles[lookId] = page.asset;
+      if (lookId && book.looks.some((l) => l.id === lookId)) {
+        out.tiles[lookId] = page.asset;
+        if (page.url) urls[page.asset.sha256] = page.url;
+      }
     }
     out.sets.push({
       set: TILES_SET,
@@ -220,7 +279,10 @@ export async function releaseArtworkFor(
 
   const ghosts = await store.current(GHOSTS_SET);
   if (ghosts) {
-    for (const page of ghosts.pages) out.ghosts[page.pageId] = asPreviewAsset(page.asset);
+    for (const page of ghosts.pages) {
+      out.ghosts[page.pageId] = asPreviewAsset(page.asset);
+      if (page.url) urls[page.asset.sha256] = page.url;
+    }
     out.sets.push({
       set: GHOSTS_SET,
       version: ghosts.version,
@@ -229,11 +291,23 @@ export async function releaseArtworkFor(
     });
   }
 
+  out.urls = urls;
   return out;
 }
 
+/** The book bound to the delivered artwork, and where that artwork is readable. */
+export interface Delivered {
+  book: BookTemplate;
+  /**
+   * The address book for the pictures the book now names, for the one screen
+   * that cannot ask the environment anything: the browser. It travels as a prop
+   * and is `{}` whenever the store has no public URLs.
+   */
+  assets: AssetAddresses;
+}
+
 /**
- * **The one line a route adds: the published book, bound to what is on disk.**
+ * **The one line a route adds: the published book, bound to what the store has.**
  *
  * Every server component and every route that draws or prints this book calls
  * this instead of using `FIRST_BOOK` directly, and that is the whole of the
@@ -241,12 +315,25 @@ export async function releaseArtworkFor(
  * which is why a fresh clone, the test suite and CI are untouched by any of
  * this — and `lib/book/release-art.ts` carries the argument for what it changes
  * when something has been.
+ *
+ * **`deliveredBook` is the same read with the address book kept**, for the
+ * routes that hand the book to a client component. One read, two answers: a
+ * page that called `bookAsDelivered` and then asked for the URLs separately
+ * would read every manifest twice, which over a bucket is twice the network.
  */
+export async function deliveredBook(
+  book: BookTemplate,
+  store: ArtworkStore = releaseStoreFromEnv(),
+): Promise<Delivered> {
+  const art = await releaseArtworkFor(book, store);
+  return { book: bookWithReleaseArtwork(book, art), assets: art.urls };
+}
+
 export async function bookAsDelivered(
   book: BookTemplate,
   store: ArtworkStore = releaseStoreFromEnv(),
 ): Promise<BookTemplate> {
-  return bookWithReleaseArtwork(book, await releaseArtworkFor(book, store));
+  return (await deliveredBook(book, store)).book;
 }
 
 // ---------------------------------------------------------------------------
@@ -254,53 +341,44 @@ export async function bookAsDelivered(
 // ---------------------------------------------------------------------------
 
 /**
- * Every digest this machine holds, to where it is.
+ * Every digest this store holds, to where it is.
  *
  * `lib/assets/resolve.ts` is handed an `AssetRef` and nothing else, so the one
  * question it has to be able to ask is *"do you have these bytes"* — which the
- * five-operation interface cannot answer without being told the set, the
- * version and the page id. The index below is that lookup, built out of the
- * manifests the store already keeps, through the store's own operations, with
- * **one exception**: enumerating which sets exist is a directory listing, and
- * that is the one line in this file that knows the local implementation's
- * layout. A bucket implementation would list a prefix instead, which is the
- * same operation under a different name.
+ * interface cannot answer without being told the set, the version and the page
+ * id. The index below is that lookup, built out of the manifests the store
+ * already keeps, **entirely through the store's own operations**: enumerating
+ * the sets was a `readdir` here until the bucket arrived and needed to list a
+ * prefix instead, which is why `sets` is the sixth operation rather than a
+ * special case in this file.
  *
  * Every version is indexed, not only the current one, so a picture that is no
  * longer bound is still readable — that is the point of never overwriting.
+ *
+ * It is keyed by the store's own `describe`, which changes when the environment
+ * points somewhere else, so a test that swaps `RELEASE_ARTWORK_DIR` or sets a
+ * Blob token does not read the previous store's index.
  */
 type Located = { set: string; version: number; pageId: string };
 
-let cached: { root: string; entries: Map<string, Located>; missed: Set<string> } | null = null;
+let cached: { key: string; entries: Map<string, Located>; missed: Set<string> } | null = null;
 
 /** For tests, and for anything that has just written artwork and wants to read it. */
 export function forgetReleaseArtwork(): void {
   cached = null;
 }
 
-async function setsOn(root: string): Promise<string[]> {
-  try {
-    const entries = await readdir(root, { withFileTypes: true });
-    return entries.filter((e) => e.isDirectory() && isReleaseSet(e.name)).map((e) => e.name);
-  } catch {
-    return [];
-  }
-}
-
-async function index(
-  root: string,
-  store: ArtworkStore,
-): Promise<Map<string, Located>> {
-  if (cached && cached.root === root) return cached.entries;
+async function index(store: ArtworkStore): Promise<Map<string, Located>> {
+  if (cached && cached.key === store.describe) return cached.entries;
   const entries = new Map<string, Located>();
-  for (const set of await setsOn(root)) {
+  for (const set of await store.sets()) {
     for (const version of await store.versions(set)) {
       for (const page of version.pages) {
         entries.set(page.asset.sha256, { set, version: version.version, pageId: page.pageId });
       }
     }
   }
-  cached = { root, entries, missed: new Set() };
+  cached = { key: store.describe, entries, missed: new Set() };
   return entries;
 }
 
@@ -320,10 +398,9 @@ export async function releaseBytesFor(
   env: Record<string, string | undefined> = process.env,
 ): Promise<Uint8Array | null> {
   if (!/^[0-9a-f]{64}$/.test(digest)) return null;
-  const root = releaseRoot(env);
   const store = releaseStoreFromEnv(env);
-  if (cached?.root === root && cached.missed.has(digest)) return null;
-  let found = (await index(root, store)).get(digest);
+  if (cached?.key === store.describe && cached.missed.has(digest)) return null;
+  let found = (await index(store)).get(digest);
   if (!found) {
     // One rebuild on a miss: a dev server started before an import would
     // otherwise answer 404 for artwork that is on the disk, and the person
@@ -332,7 +409,7 @@ export async function releaseBytesFor(
     // buyer's own photograph — which lives somewhere else entirely and would
     // rebuild this index on every page of a print file.
     forgetReleaseArtwork();
-    found = (await index(root, store)).get(digest);
+    found = (await index(store)).get(digest);
     if (!found) {
       cached?.missed.add(digest);
       return null;

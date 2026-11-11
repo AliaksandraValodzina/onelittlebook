@@ -12,6 +12,7 @@
     "print": "tsx scripts/render-print.ts",
     "book": "tsx scripts/render-book.ts",
     "artwork": "tsx scripts/import-artwork.ts",
+    "artwork:upload": "tsx scripts/upload-artwork.ts",
     "looks": "tsx scripts/check-looks.ts",
     "looks:import": "tsx scripts/import-looks.ts"
   },
@@ -20,6 +21,7 @@
     "@fontsource/instrument-sans": "5.3.0",
     "@fontsource/instrument-serif": "5.3.0",
     "@resvg/resvg-js": "^2.6.2",
+    "@vercel/blob": "^2.9.0",
     "next": "^16.4.3",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"

@@ -35,7 +35,9 @@
 
 import { lookOf, pageFillFor, pageTemplateFor, tileIndexOf } from "../../lib/book/derive";
 import { renderPageSvg } from "../../lib/render/svg";
+import { hrefIn, type AssetAddresses } from "../../lib/assets/address";
 import type { BookTemplate } from "../../lib/book/types";
+import type { AssetRef } from "../../lib/template/types";
 
 /**
  * What to put in the tile's box: a picture to point an `<img>` at, or an SVG
@@ -52,27 +54,36 @@ export type LookTile =
 /**
  * The URL for a tile's bytes.
  *
- * The same spelling `app/_book/BookPage.tsx` uses rather than `assetUrl`, and
- * for the same reason: this runs in a client component, where reading
+ * **`assets` and not `assetUrl`**, for the reason this function existed before
+ * there was an address book: this runs in a client component, where reading
  * `process.env.R2_PUBLIC_BASE_URL` would be reading a value the browser does
- * not have. `app/api/assets/[key]/route.ts` answers it out of the artwork
- * store.
+ * not have. What the browser *is* given is the address book the server built
+ * from the artwork store (`lib/assets/address.ts`), so a delivered portrait
+ * comes off the CDN, and anything the store published no address for is
+ * answered by `app/api/assets/[key]/route.ts` out of wherever the bytes are.
  */
-function tileSrc(sha256: string): string {
-  return `/api/assets/${sha256}.png`;
-}
-
-export function lookTile(book: BookTemplate, lookId: string, coverId: string): LookTile {
+export function lookTile(
+  book: BookTemplate,
+  lookId: string,
+  coverId: string,
+  assets?: AssetAddresses,
+): LookTile {
+  const href = hrefIn(assets);
   const look = lookOf(book, lookId);
   if (look?.tile) {
     const [width, height] = look.tile.px ?? [0, 0];
-    return { kind: "portrait", src: tileSrc(look.tile.sha256), width, height };
+    return { kind: "portrait", src: href(look.tile), width, height };
   }
-  return { kind: "page", svg: lookTileSvg(book, lookId, coverId) };
+  return { kind: "page", svg: lookTileSvg(book, lookId, coverId, href) };
 }
 
 /** The page-drawn tile. Not exported: `lookTile` above is the one way in. */
-function lookTileSvg(book: BookTemplate, lookId: string, coverId: string): string {
+function lookTileSvg(
+  book: BookTemplate,
+  lookId: string,
+  coverId: string,
+  href: (ref: AssetRef) => string,
+): string {
   const index = tileIndexOf(book);
   return renderPageSvg(
     pageTemplateFor(book, index, { lookId, coverId }),
@@ -85,6 +96,6 @@ function lookTileSvg(book: BookTemplate, lookId: string, coverId: string): strin
       name: "",
       dedication: "",
     }),
-    { href: (ref) => `/api/assets/${ref.sha256}.png` },
+    { href },
   );
 }

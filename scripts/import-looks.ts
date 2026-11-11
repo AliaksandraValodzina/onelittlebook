@@ -34,7 +34,7 @@ import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { FIRST_BOOK } from "../templates/first-book";
 import { blockingUploadProblems, checkUpload, readManifest } from "../lib/book/upload";
-import { lookSet, releaseRoot, releaseStoreFromEnv } from "../lib/artwork/release";
+import { lookSet, releaseStoreFromEnv } from "../lib/artwork/release";
 
 async function main() {
   const root = process.argv[2];
@@ -128,7 +128,7 @@ async function main() {
 
   console.log(
     `\nimported ${looks.length} look(s), ${(bytes / 1024 / 1024).toFixed(0)} MB into ` +
-      `${releaseRoot(process.env)}`,
+      `${store.describe}`,
   );
   const undeclared = looks.filter((l) => !declared.some((d) => d.id === l.look));
   if (undeclared.length) {

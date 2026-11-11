@@ -13,7 +13,7 @@
 
 import type { Metadata } from "next";
 import { FIRST_BOOK } from "../../templates/first-book";
-import { bookAsDelivered } from "../../lib/artwork/release";
+import { deliveredBook } from "../../lib/artwork/release";
 import { pageTitle } from "../../lib/brand";
 import { stepFor } from "../../lib/shop/steps";
 import BookProvider from "../_book/BookProvider";
@@ -28,13 +28,13 @@ export const metadata: Metadata = {
 
 export default async function BasketPage() {
   const market = await currentMarket();
-  const book = await bookAsDelivered(FIRST_BOOK);
+  const { book, assets } = await deliveredBook(FIRST_BOOK);
 
   return (
     <>
       <Ribbon market={market} />
       <ShopNav market={market} basketCount={1} />
-      <BookProvider book={book} market={market}>
+      <BookProvider book={book} market={market} assets={assets}>
         <Basket />
       </BookProvider>
       <ShopFooter />

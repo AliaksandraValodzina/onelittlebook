@@ -45,6 +45,7 @@ import { nameLimit } from "../../lib/book/name";
 import { next, stepFor } from "../../lib/shop/steps";
 import BookPage from "../_book/BookPage";
 import { lookTile } from "../_book/tile";
+import type { AssetAddresses } from "../../lib/assets/address";
 import type { BookTemplate } from "../../lib/book/types";
 import { useBook } from "../_book/BookProvider";
 import Screen from "./Screen";
@@ -66,12 +67,14 @@ function LookTileImage({
   book,
   lookId,
   coverId,
+  assets,
 }: {
   book: BookTemplate;
   lookId: string;
   coverId: string;
+  assets: AssetAddresses;
 }) {
-  const tile = lookTile(book, lookId, coverId);
+  const tile = lookTile(book, lookId, coverId, assets);
   if (tile.kind === "portrait") {
     return (
       <img
@@ -89,7 +92,8 @@ function LookTileImage({
 }
 
 export default function LookScreen({ closeTo }: { closeTo: string }) {
-  const { book, order, typedName, nameVerdict, setName, setGender, setLook, done, flush } = useBook();
+  const { book, assets, order, typedName, nameVerdict, setName, setGender, setLook, done, flush } =
+    useBook();
   const genders = book.genders ?? [];
   const grid = looksFor(book, order.genderId);
   const limit = nameLimit(book);
@@ -139,7 +143,12 @@ export default function LookScreen({ closeTo }: { closeTo: string }) {
                       data-testid={`look-${look.id}`}
                       title={look.label}
                     >
-                      <LookTileImage book={book} lookId={look.id} coverId={order.coverId} />
+                      <LookTileImage
+                        book={book}
+                        lookId={look.id}
+                        coverId={order.coverId}
+                        assets={assets}
+                      />
                       <span className="lbl">{look.label}</span>
                     </button>
                   ))}

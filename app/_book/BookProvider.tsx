@@ -51,9 +51,25 @@ import { DEFAULT_VIEW, type PhotoView } from "../../lib/editor/view";
 import { checkPhoto } from "../../lib/book/photo";
 import { PhotoUnreadable, preparePhoto } from "../../lib/editor/photo";
 import type { AskId } from "../../lib/book/slots";
+import { NO_ASSET_ADDRESSES, type AssetAddresses } from "../../lib/assets/address";
 
 export interface BookContext {
   book: BookTemplate;
+  /**
+   * **Where the book's delivered artwork is publicly readable, digest by
+   * digest.**
+   *
+   * Handed down from the server for the same reason `market` is: only the
+   * server can ask where the artwork store put things, and a client component
+   * reading `process.env` would be reading a value the browser does not have.
+   * It arrives from `lib/artwork/release.ts` § `deliveredBook`, which produced
+   * the refs and the addresses in the same read.
+   *
+   * `{}` is the ordinary state — no artwork imported, or a store with no public
+   * URLs — and it means every picture is drawn from `/api/assets/<digest>.png`.
+   * `lib/assets/address.ts` § `hrefIn` is the one place that decision is made.
+   */
+  assets: AssetAddresses;
   /**
    * **The market every price in the flow is shown in.**
    *
@@ -132,10 +148,13 @@ function store(): Storage | null {
 export default function BookProvider({
   book,
   market,
+  assets = NO_ASSET_ADDRESSES,
   children,
 }: {
   book: BookTemplate;
   market: Market;
+  /** Optional: a route with no artwork delivered has nothing to pass. */
+  assets?: AssetAddresses;
   children: ReactNode;
 }) {
   const [order, setOrder] = useState<Order>(() => emptyOrder(book));
@@ -262,6 +281,7 @@ export default function BookProvider({
   const value = useMemo<BookContext>(
     () => ({
       book,
+      assets,
       market,
       order,
       typedName,
@@ -287,6 +307,7 @@ export default function BookProvider({
     }),
     [
       book,
+      assets,
       market,
       order,
       typedName,
