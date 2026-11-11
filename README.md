@@ -232,12 +232,19 @@ swap is discovered at full size after the replacement has been made.
 **No artwork of either kind is ever committed.** A customer's is one family's
 child; the captain's is two gigabytes; this repository is public and git history
 is permanent. [`lib/artwork/store.ts`](lib/artwork/store.ts) is one interface
-and five operations with a local-filesystem implementation — the same one serves
-both — `.gitignore` excludes the directory it writes to, and a test asserts that
-rule rather than trusting it.
-**Where it should really live is the captain's decision and is not made** — the
-two candidates are private Vercel Blob and the R2 content origin under a private
-prefix, both stated in that file, neither chosen.
+and six operations; `.gitignore` excludes the directory it writes to, and a test
+asserts that rule rather than trusting it.
+
+**It lives in two Vercel Blob stores**, behind that same interface
+([`lib/artwork/blob.ts`](lib/artwork/blob.ts)): `olb-looks` is **public**,
+because the twelve looks' pages are what a preview shows everybody with no
+watermark and no account, and `olb-orders` is **private**, because it holds
+artwork regenerated from a photograph of one family's child. Nothing may cross
+between them and that is a **type** rather than a rule somebody remembers —
+`test/no-order-asset-in-the-public-store.ts` is a file of calls that must not
+compile. With neither configured the local filesystem implementation answers,
+which is what a fresh clone and the whole test suite run on.
+`npm run artwork:upload` pushes the captain's folders to the public store.
 
 ## What is not built
 
@@ -269,8 +276,10 @@ lib/book/         a book: types, derive (a book page -> a PageTemplate), the
                   regenerated ones coming back), order-art (one order's own
                   artwork bound to the book), ghost (which pages hold a place)
 lib/artwork/      where artwork lives — one order's regenerated pages and the
-                  captain's released sets — behind one interface, plus the
-                  import's pixel work, and the storage decision still open
+                  captain's released sets — behind one interface: the local
+                  filesystem, the two Vercel Blob stores (public looks, private
+                  orders) and the wall between them, plus the import's pixel
+                  work and the preparation both upload commands share
 lib/orders/       the durable order: the record, the store and its reasoning,
                   SigV4 against R2, the lifecycle, and receiving a webhook
 lib/stripe/       form encoding, the Checkout Session, signature verification

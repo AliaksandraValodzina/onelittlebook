@@ -95,12 +95,15 @@ plays the same trick with money: it has fields for a price and no field for a
 unrepresentable rather than discouraged. `docs/pricing.md` says why that is a
 legal position and not a taste one.
 
-**The open question nobody may close by accident is the trim.** The book
-declares an 8.00 in trim at 3600 px a page; what Printify actually asks for is
-unread, and 3150 (My Forever's number) matches no square trim at 300 DPI. The
-page size is declared data on the book, so the answer is an edit to
-`page.canvas`/`page.print` and a restamp — and no test or component reads a page
-size from anywhere else. `docs/print.md` § The square trim nobody has pinned
+**The trim is answered and not yet applied, so do not hard-code either
+number.** The captain confirmed **12 × 12 in** against Printify's real template
+on 11 November, which makes the delivered 3600 px pages 300 DPI native with no
+upscaling; the interior bleed (~225 px an edge, like the cover) is still
+unconfirmed. The book still *declares* an 8.00 in trim, so applying the answer
+is an edit to `page.canvas`/`page.print`, a restamp and a re-run of `npm run
+print` — one task, not yet done. Until it is: the page size is declared data on
+the book and **no test or component may read a page size from anywhere else**,
+and nothing new says 8 × 8. `docs/print.md` § The square trim nobody has pinned
 down.
 
 ## The shop around the book
@@ -268,15 +271,27 @@ is the primary download on `/admin/[ref]` and the PDF is secondary and for
 reading. `lib/zip.ts` writes the container by hand — stored, never deflated,
 and with a fixed 1980 timestamp so a download is reproducible.
 
-**No artwork of either kind is ever committed and the storage choice is still
-open.** `lib/artwork/store.ts` is one interface, five operations, with a
-local-filesystem implementation; it names the two candidates (private Vercel
-Blob, or the R2 content origin under a private prefix) and chooses neither,
-because that is the captain's call and being wrong is a migration. It holds a
-customer's regenerated pages *and* the captain's released artwork — one seam, so
-there is one migration and not two. A re-upload **adds a version and keeps the
-last**, so a bad swap found at 3600 px is recoverable. `.gitignore` excludes `.artwork/` and `test/order-artwork.test.ts`
-asserts the rule — it is one family's child and git history is permanent.
+**No artwork of either kind is ever committed, and it lives in two Vercel Blob
+stores.** `lib/artwork/store.ts` is one interface, six operations;
+`lib/artwork/blob.ts` implements it against `olb-looks` (**public**, the looks'
+pages and tiles and golden halves, `BLOB_READ_WRITE_TOKEN`) and `olb-orders`
+(**private**, one order's regenerated pages, `OLB_ORDERS_STORE_ID` + the
+deployment's OIDC token), and the local filesystem store is what a fresh clone
+and the whole suite run on. **Nothing may cross between the two stores and that
+is a type**: `PublicArtworkStore` and `PrivateArtworkStore` are mutually
+unassignable with no cast anywhere, the public store's key check refuses an
+order reference, and the private store records no URLs —
+`test/no-order-asset-in-the-public-store.ts` is a file of calls that must not
+compile, so `npm run lint` is the gate. The hazard it is guarding is real and
+written down in `lib/artwork/blob.ts`: `@vercel/blob` falls back to
+`BLOB_READ_WRITE_TOKEN` when given no other credential, so the private store
+takes its OIDC token as a **required argument** and `artworkStoreFromEnv`
+refuses to build it without one. A re-upload **adds a version and keeps the
+last**, so a bad swap found at 3600 px is recoverable; keys are content hashes,
+so re-uploading one corrected page uploads one file and no cache can serve the
+old one. `npm run artwork:upload` is the command. `.gitignore` excludes
+`.artwork/` and `test/order-artwork.test.ts` asserts the rule — it is one
+family's child and git history is permanent.
 `lib/book/order-upload.ts` holds an upload to the same contract the twelve looks
 are held to, by calling `lib/book/upload.ts` § `pageAgainstContract`, and
 accepts the captain's `spread-NN-left|right` spelling by **deriving** it from
@@ -306,12 +321,19 @@ as `/my-forever?guides=1` is.
 **Three sets were delivered on 10 November and none of them is committed:**
 the first look's 24 pages, twelve portrait tiles, twelve golden ghost spreads.
 `docs/artwork.md` is the inventory, the id mapping and what is still owed;
-`npm run artwork` imports, `npm run artwork -- status` says what a machine has.
+`npm run artwork` imports onto a machine, `npm run artwork:upload` pushes all
+three sets to the public Blob store, and `npm run artwork -- status` says what
+the store this environment points at actually has.
 
 **The binding is environment state, which is why nothing in `templates/` moves
 when artwork lands.** `lib/artwork/release.ts` § `bookAsDelivered` is the one
-line a server component or route adds in front of `FIRST_BOOK`, and
-`lib/book/release-art.ts` is the pure binding. The book's `rev` does **not**
+line a server component or route adds in front of `FIRST_BOOK` —
+`deliveredBook` where the book is handed to a client component, because it
+returns the same read's **address book** (digest → CDN URL) and only the server
+can know it; `lib/assets/address.ts` § `hrefIn` is the one place a picture's URL
+is decided, and a digest with no address falls through to `/api/assets/` so a
+missing image can never draw as a hole. `lib/book/release-art.ts` is the pure
+binding. The book's `rev` does **not**
 change — a manifest naming bytes a fresh clone does not have would be a book
 that declares twenty-four pages and can draw none of them, and `npm run print`'s
 byte-identity gate would stop meaning anything. The cost is stated rather than

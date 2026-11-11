@@ -14,10 +14,12 @@
  *    different root.
  * 2. **The released artwork store** — `lib/artwork/release.ts`, which is where
  *    the captain's finished pages, the chooser portraits and the golden ghost
- *    halves are, because none of them can be in a public repository. It is
- *    looked at *after* the fixtures and *before* the bucket: the fixtures are a
- *    few kilobytes and always present, and the artwork is on this machine
- *    where the bucket is a network call.
+ *    halves are, because none of them can be in a public repository. That is
+ *    the public Vercel Blob store `olb-looks` when it is configured and a
+ *    directory on this machine when it is not; `lib/artwork/blob.ts` is the
+ *    adapter and nothing here knows which of the two answered. It is looked at
+ *    *after* the fixtures and *before* R2: the fixtures are a few kilobytes and
+ *    always present.
  * 3. **Cloudflare R2**, over the public base URL in `R2_PUBLIC_BASE_URL`. A
  *    customer's uploaded photograph will land here, under its own digest, which
  *    is why the key is the digest and not a filename.
@@ -33,12 +35,7 @@ import path from "node:path";
 import type { AssetRef } from "../template/types";
 import { sha256 } from "./digest";
 import { releaseBytesFor } from "../artwork/release";
-
-const EXT: Record<AssetRef["mime"], string> = {
-  "image/png": "png",
-  "image/jpeg": "jpg",
-  "image/webp": "webp",
-};
+import { assetKey, assetRouteUrl } from "./address";
 
 export const FIXTURE_ASSET_DIR = path.join(process.cwd(), "fixtures", "assets");
 
@@ -56,8 +53,7 @@ export { sha256 };
  */
 export function assetUrl(ref: AssetRef): string {
   const base = process.env.R2_PUBLIC_BASE_URL?.replace(/\/+$/, "");
-  const key = `${ref.sha256}.${EXT[ref.mime]}`;
-  return base ? `${base}/${key}` : `/api/assets/${key}`;
+  return base ? `${base}/${assetKey(ref)}` : assetRouteUrl(ref);
 }
 
 export class AssetDigestMismatch extends Error {
@@ -81,7 +77,7 @@ export class AssetMissing extends Error {
 
 async function fromFixtures(ref: AssetRef): Promise<Uint8Array | null> {
   try {
-    const file = path.join(FIXTURE_ASSET_DIR, `${ref.sha256}.${EXT[ref.mime]}`);
+    const file = path.join(FIXTURE_ASSET_DIR, assetKey(ref));
     return new Uint8Array(await readFile(file));
   } catch {
     return null;
@@ -91,7 +87,7 @@ async function fromFixtures(ref: AssetRef): Promise<Uint8Array | null> {
 async function fromBucket(ref: AssetRef): Promise<Uint8Array | null> {
   const base = process.env.R2_PUBLIC_BASE_URL?.replace(/\/+$/, "");
   if (!base) return null;
-  const res = await fetch(`${base}/${ref.sha256}.${EXT[ref.mime]}`);
+  const res = await fetch(`${base}/${assetKey(ref)}`);
   if (!res.ok) return null;
   return new Uint8Array(await res.arrayBuffer());
 }
@@ -134,4 +130,5 @@ export function dataUri(bytes: Uint8Array, mime: AssetRef["mime"]): string {
   return `data:${mime};base64,${Buffer.from(bytes).toString("base64")}`;
 }
 
-export { EXT as ASSET_EXTENSIONS };
+/** Re-exported: `./address.ts` holds it, because the browser needs it too. */
+export { ASSET_EXTENSIONS } from "./address";

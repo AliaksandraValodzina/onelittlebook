@@ -24,6 +24,7 @@ import { useMemo } from "react";
 import { pageFillFor, pageTemplateFor } from "../../lib/book/derive";
 import { ghostPreviewOf } from "../../lib/book/ghost";
 import { renderPageSvg } from "../../lib/render/svg";
+import { hrefIn } from "../../lib/assets/address";
 import type { AssetRef } from "../../lib/template/types";
 import { useBook } from "./BookProvider";
 
@@ -49,7 +50,7 @@ export default function BookPage({
    */
   photoPath?: boolean;
 }) {
-  const { book, order, fill } = useBook();
+  const { book, assets, order, fill } = useBook();
   const dataUrl = order.photo?.dataUrl;
   const digest = order.photo?.asset.sha256;
 
@@ -60,13 +61,18 @@ export default function BookPage({
     const page = photoPath
       ? ghostPreviewOf(book, index, chosen)
       : { template: pageTemplateFor(book, index, chosen), ghost: null };
+    // The buyer's own photograph is bytes this tab is holding and has no URL
+    // anywhere; everything else is the delivered artwork, which answers from
+    // the CDN when the store published an address for it and from the asset
+    // route when it did not.
+    const fromStore = hrefIn(assets);
     const href = (ref: AssetRef) =>
-      ref.sha256 === digest && dataUrl ? dataUrl : `/api/assets/${ref.sha256}.png`;
+      ref.sha256 === digest && dataUrl ? dataUrl : fromStore(ref);
     return renderPageSvg(page.template, pageFillFor(book, index, fill), {
       href,
       ...(page.ghost ? { ghost: page.ghost } : {}),
     });
-  }, [book, index, fill, dataUrl, digest, photoPath]);
+  }, [book, assets, index, fill, dataUrl, digest, photoPath]);
 
   return (
     <div

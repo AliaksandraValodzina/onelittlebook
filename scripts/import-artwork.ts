@@ -7,10 +7,17 @@
  *     npm run artwork -- ghosts    ~/Downloads/golden-spreads
  *
  * **Nothing it reads is ever copied into the repository.** The bytes go into
- * the artwork store — `lib/artwork/release.ts`, which says where that is and
- * names the storage decision the captain still owes — and the repository keeps
- * ids, digests and slot coordinates and no pixels at all. `docs/artwork.md` is
- * the inventory of what was delivered and what it became.
+ * the artwork store — `lib/artwork/release.ts`, which says where that is — and
+ * the repository keeps ids, digests and slot coordinates and no pixels at all.
+ * `docs/artwork.md` is the inventory of what was delivered and what it became.
+ *
+ * **It writes wherever this environment points.** With `BLOB_READ_WRITE_TOKEN`
+ * set that is the public Blob store `olb-looks`; with it unset it is a directory
+ * on this machine. Every line it prints names the store it wrote to, so there
+ * is no way to be wrong about where the bytes went. `npm run artwork:upload` is
+ * the command for the bucket specifically: it does all three sets in one run,
+ * refuses without the token, and **skips a set whose pages have not changed** —
+ * see `scripts/upload-artwork.ts`.
  *
  * It **refuses before it writes**, every time, rather than trusting that
  * somebody ran a checker first: an import changes what a paid book looks like,
@@ -31,23 +38,16 @@ import {
   TILES_SET,
   lookSet,
   releaseArtworkFor,
-  releaseRoot,
   releaseStoreFromEnv,
-  tilePageId,
 } from "../lib/artwork/release";
+import { portraitName, type ImportFile } from "../lib/artwork/import";
 import {
-  flattenOntoWhite,
-  portraitAgainstContract,
-  portraitMapping,
-  portraitName,
-  rightHalfOf,
-  spreadNumberOf,
-  type ImportFile,
-} from "../lib/artwork/import";
-import { checkOrderArtwork } from "../lib/book/order-upload";
-import { pageCarriesTheChild } from "../lib/book/ghost";
-import { pageSequence, spreadSideOf } from "../lib/book/derive";
-import { readPngHeader } from "../lib/render/png";
+  pagesForStore,
+  pagesNotCovered,
+  prepareGhostHalves,
+  prepareLookPages,
+  preparePortraits,
+} from "../lib/artwork/prepare";
 import type { Problem } from "../lib/template/validate";
 import type { BookTemplate } from "../lib/book/types";
 
@@ -62,6 +62,8 @@ function usage(): never {
       "  npm run artwork -- look      <dir> <look-id|NN-gender>",
       "  npm run artwork -- portraits <dir>",
       "  npm run artwork -- ghosts    <dir>",
+      "",
+      "to push all three to the public Blob store instead: npm run artwork:upload",
     ].join("\n"),
   );
   process.exitCode = 2;
@@ -129,24 +131,19 @@ async function importLook(dir: string, token: string): Promise<void> {
   const files = await pngsIn(dir);
   console.log(`${files.length} file(s) from ${dir} as look "${lookId}"`);
 
-  // The same check an order's regenerated pages get, which is also where the
-  // captain's `spread-NN-left|right` spelling is mapped onto page ids — derived
-  // from the book's own spread pairing, so moving a page moves the name.
-  const check = checkOrderArtwork(FIRST_BOOK, files);
-  report(check.problems);
+  // The same preparation `npm run artwork:upload` does, which is also the same
+  // check an order's regenerated pages get and the same place the captain's
+  // `spread-NN-left|right` spelling is mapped onto page ids — derived from the
+  // book's own spread pairing, so moving a page moves the name.
+  const prepared = prepareLookPages(FIRST_BOOK, files);
+  report(prepared.problems);
 
-  const version = await store.put(
-    lookSet(lookId),
-    check.pages.map((p) => ({ pageId: p.pageId, bytes: p.file.bytes })),
-    NOW,
-  );
+  const version = await store.put(lookSet(lookId), pagesForStore(prepared), NOW);
 
-  for (const page of check.pages) console.log(`  ${page.file.name} → ${page.pageId}`);
-  const missing = pageSequence(FIRST_BOOK)
-    .map((p) => p.id)
-    .filter((id) => !check.pages.some((p) => p.pageId === id));
+  for (const page of prepared.pages) console.log(`  ${page.from} → ${page.pageId}`);
+  const missing = pagesNotCovered(FIRST_BOOK, prepared);
   console.log(
-    `stored ${version.pages.length} page(s) as ${lookSet(lookId)} v${version.version} in ${releaseRoot(process.env)}`,
+    `stored ${version.pages.length} page(s) as ${lookSet(lookId)} v${version.version} in ${store.describe}`,
   );
   if (missing.length) {
     // The honest statement of a partial delivery rather than a silent one.
@@ -167,29 +164,18 @@ async function importPortraits(dir: string): Promise<void> {
   const files = await pngsIn(dir);
   console.log(`${files.length} portrait(s) from ${dir}`);
 
-  const mapping = portraitMapping(FIRST_BOOK, files);
-  report(mapping.problems);
-
-  const pages: Array<{ pageId: string; bytes: Uint8Array }> = [];
-  const problems: Problem[] = [];
-  for (const portrait of mapping.portraits) {
-    const before = readPngHeader(portrait.file.bytes);
-    const bytes = flattenOntoWhite(portrait.file.bytes);
-    const after = readPngHeader(bytes);
-    problems.push(
-      ...portraitAgainstContract({ name: portrait.file.name, bytes }, `${portrait.file.name} → ${portrait.lookId}`),
-    );
-    pages.push({ pageId: tilePageId(portrait.lookId), bytes });
+  const prepared = preparePortraits(FIRST_BOOK, files);
+  for (const portrait of prepared.pages) {
     console.log(
-      `  ${portrait.file.name.padEnd(14)} → ${portrait.lookId.padEnd(8)} ${portrait.label.padEnd(8)} ` +
-        `${before.width}×${before.height} colour ${before.colourType} → colour ${after.colourType}, flattened onto white`,
+      `  ${portrait.from.padEnd(14)} → ${portrait.lookId.padEnd(8)} ${portrait.label.padEnd(8)} ` +
+        `${portrait.did ?? ""}`,
     );
   }
-  report(problems);
+  report(prepared.problems);
 
-  const version = await store.put(TILES_SET, pages, NOW);
+  const version = await store.put(TILES_SET, pagesForStore(prepared), NOW);
   console.log(
-    `stored ${version.pages.length} portrait(s) as ${TILES_SET} v${version.version} in ${releaseRoot(process.env)}`,
+    `stored ${version.pages.length} portrait(s) as ${TILES_SET} v${version.version} in ${store.describe}`,
   );
   console.log(
     "\nTWO OF THESE ARE TO BE REPLACED. `02-girl` and `08-boy` have a red/yellow halo from the\n" +
@@ -204,62 +190,17 @@ async function importGhosts(dir: string): Promise<void> {
   const files = await pngsIn(dir);
   console.log(`${files.length} spread(s) from ${dir}`);
 
-  const sequence = pageSequence(FIRST_BOOK);
-  const pages: Array<{ pageId: string; bytes: Uint8Array }> = [];
-  const problems: Problem[] = [];
-  const skipped: string[] = [];
-
-  for (const file of files) {
-    const spread = spreadNumberOf(file.name);
-    if (spread === null) {
-      problems.push({
-        code: "ghost.nameUnrecognised",
-        where: file.name,
-        detail: "expected spread-NN.png",
-      });
-      continue;
-    }
-    const index = sequence.findIndex((_, at) => {
-      const side = spreadSideOf(FIRST_BOOK, at);
-      return side !== null && side.spread === spread && side.side === "right";
-    });
-    if (index < 0) {
-      problems.push({
-        code: "ghost.spreadUnknown",
-        where: file.name,
-        detail: `the book has no spread ${spread} right`,
-      });
-      continue;
-    }
-    const pageId = sequence[index].id;
-
-    // **The babyless spread is skipped, derived rather than listed.** The
-    // opening spread carries the buyer's photograph and dedication and has no
-    // child on it, so nothing would ever draw a ghost there — which is exactly
-    // why the captain's own `spread-01` has no gold figure in it. Storing it
-    // would be `ghost.onBabylessPage` from `validateBook`.
-    if (!pageCarriesTheChild(FIRST_BOOK, index)) {
-      skipped.push(`${file.name} → ${pageId} (the book declares it babyless)`);
-      continue;
-    }
-
-    const whole = readPngHeader(file.bytes);
-    const half = rightHalfOf(file.bytes);
-    const halfHeader = readPngHeader(half);
-    pages.push({ pageId, bytes: half });
-    console.log(
-      `  ${file.name.padEnd(16)} → ${pageId.padEnd(9)} ${whole.width}×${whole.height} → ` +
-        `${halfHeader.width}×${halfHeader.height}, right half`,
-    );
+  const prepared = prepareGhostHalves(FIRST_BOOK, files);
+  for (const page of prepared.pages) {
+    console.log(`  ${page.from.padEnd(16)} → ${page.pageId.padEnd(9)} ${page.did ?? ""}`);
   }
-  report(problems);
+  report(prepared.problems);
+  for (const line of prepared.skipped) console.log(`  skipped ${line}`);
 
-  for (const line of skipped) console.log(`  skipped ${line}`);
-
-  const version = await store.put(GHOSTS_SET, pages, NOW);
+  const version = await store.put(GHOSTS_SET, pagesForStore(prepared), NOW);
   console.log(
     `stored ${version.pages.length} preview half/halves as ${GHOSTS_SET} v${version.version} in ` +
-      `${releaseRoot(process.env)}`,
+      `${store.describe}`,
   );
   console.log(
     "\nThese are preview resolution and can never be printed: they are stored as a different type\n" +
@@ -296,9 +237,10 @@ async function status(): Promise<void> {
     console.log(`\nno cover artwork for: ${withoutCover.join(", ")} — the cover is still the placeholder.`);
   }
   console.log(
-    "\nstill owed: eleven more looks, a cover for every look, replacements for 02-girl and 08-boy,\n" +
-      "and the storage decision — Vercel Blob or the R2 content origin. lib/artwork/store.ts\n" +
-      "states both candidates and chooses neither.",
+    "\nstill owed: eleven more looks, a cover for every look, and replacements for 02-girl\n" +
+      "and 08-boy. The storage question is answered — two Vercel Blob stores, olb-looks\n" +
+      "public and olb-orders private; lib/artwork/blob.ts is the adapter and\n" +
+      "`npm run artwork:upload` is how the looks get there.",
   );
 }
 

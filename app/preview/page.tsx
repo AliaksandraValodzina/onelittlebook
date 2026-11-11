@@ -30,7 +30,7 @@
  */
 
 import { FIRST_BOOK } from "../../templates/first-book";
-import { bookAsDelivered } from "../../lib/artwork/release";
+import { deliveredBook } from "../../lib/artwork/release";
 import { WHEN_THEY_WERE_SMALL, pathOf } from "../../lib/shop/shelf";
 import { previous, stepFor } from "../../lib/shop/steps";
 import BookProvider from "../_book/BookProvider";
@@ -67,7 +67,7 @@ export default async function PreviewPage(props: {
    * the pages, as `BookPage.ghost`, which is a type the print path cannot
    * accept.
    */
-  const book = await bookAsDelivered(FIRST_BOOK);
+  const { book, assets } = await deliveredBook(FIRST_BOOK);
 
   return (
     <>
@@ -80,7 +80,7 @@ export default async function PreviewPage(props: {
           </a>
         </p>
 
-        <BookProvider book={book} market={market}>
+        <BookProvider book={book} market={market} assets={assets}>
           <div className="mt-4">
             <Preview photoPath={photoPath} />
           </div>
