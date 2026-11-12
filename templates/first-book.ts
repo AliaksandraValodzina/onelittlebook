@@ -163,8 +163,61 @@ const NAME_CHARS = 14;
 // ---------------------------------------------------------------------------
 
 /**
- * The story slot: **one of the captain's twelve verses**, at the top of a
- * spread's page.
+ * How tall a verse's box is, and **where down the page it sits.**
+ *
+ * ## The band, and why it is the middle of the page
+ *
+ * Six lines at 26 pt is 156 pt, which is what the 160 pt box holds.
+ *
+ * The verse sits on the **left-hand page** of every spread — `interior` below
+ * gives the slot to the first page of each — and the captain's generation
+ * brief, which every one of those pages was drawn against, reserves a
+ * `verse_zone` there: *"on the LEFT page keep the middle 60% soft, out of
+ * focus, light in value and low in detail so dark verse text can be added
+ * later"*. The middle 60% of a 612 pt page is **y 122 to 490**.
+ *
+ * `VERSE_TOP` is the box centred in the page — `(612 − 160) / 2` — which lands
+ * at 226 and sits comfortably inside that band. It is **derived rather than
+ * typed** because both halves of the arithmetic are open: the trim is answered
+ * and not yet applied (`docs/print.md` § The square trim nobody has pinned
+ * down), so `SIDE` moves one day, and the box's height is the copy's shape.
+ *
+ * It used to be 64 — the top twelfth of the page — which is the half of every
+ * spread the artwork puts its *detail* on, and the overlap was real and
+ * visible: fairy lights and a window on spread two, hearts and bubbles and
+ * music notes on spread three, a moonbeam on five, a bird and branch on eight,
+ * a picture frame on ten with *"{name}, you are so loved"* running straight
+ * through it, balloons and bunting on twelve. The renderer and the artwork had
+ * simply never agreed about which band was the words'.
+ *
+ * Centring was then checked against the twelve delivered left-hand pages
+ * rather than assumed: each page's verse was rasterised, its ink read out of a
+ * **difference** between two renders exactly as `test/book-verses.test.ts`
+ * does, and the artwork's own detail measured underneath that ink at every
+ * candidate position. 226 is the best position the book has by the average of
+ * the eleven pages of words, and within a point of the best by its worst page.
+ *
+ * ## The one page whose artwork disagrees
+ *
+ * `VERSE_TOP_ON` is the exception list, and **the absence of a page from it
+ * means the shared band is right for that page.** Spread six is the only entry
+ * and the only page that needed one: its windowsill — a robin, a jar and a
+ * knitted pumpkin, all of them high-contrast — sits *in* the reserved band at
+ * roughly y 160 to 340, so the verse is set below it instead. The measurement
+ * above scores that page 34 at the shared position and 14 at its own; no other
+ * page scores worse than 25 where it sits.
+ *
+ * Its box is still wholly inside the brief's 122–490, which is the test of
+ * whether this is an exception or a second rule. If the captain re-draws that
+ * spread's sill, deleting the entry is the whole of the change.
+ */
+const VERSE_HEIGHT = 160;
+const VERSE_TOP = (SIDE - VERSE_HEIGHT) / 2;
+const VERSE_TOP_ON: Record<string, number> = { "page-011": 320 };
+
+/**
+ * The story slot: **one of the captain's twelve verses**, in the band the
+ * artwork reserves for it.
  *
  * Every verse is the same shape — a heading, a blank line, then four rhyming
  * lines — so the slot is six lines and not "a line or two", which is what the
@@ -202,24 +255,31 @@ const NAME_CHARS = 14;
  *
  * ## Why the box is not as wide as the safe area
  *
- * The verses sit on the **right-hand** page of each spread, whose gutter is its
- * left edge, and `lib/book/fold.ts` § `SPREAD_FOLD` shades a band `reach` of a
- * page wide along it in the preview — 48.96 pt here. A box that began inside
- * that band would be claiming space the buyer sees darkened, so this one begins
- * at 56 and `test/spread-fold.test.tsx` § *"reaches none of them"* is the
- * check. The band is also the margin the captain's artwork is composed with, so
- * staying clear of it is the same decision twice.
+ * The verses sit on the **left-hand** page of each spread, whose gutter is its
+ * **right** edge, and `lib/book/fold.ts` § `SPREAD_FOLD` shades a band `reach`
+ * of a page wide along it in the preview — 48.96 pt here. A box that ended
+ * inside that band would be claiming space the buyer sees darkened, so this
+ * one ends at 556 and `test/spread-fold.test.tsx` § *"reaches none of them"*
+ * is the check — which reads the side off `spreadSideOf` rather than being
+ * told, and is why the error this paragraph used to contain never reached the
+ * geometry. The band is also the margin the captain's artwork is composed
+ * with, so staying clear of it is the same decision twice.
  *
- * Six lines at 26 pt is 156 pt, which is what the 160 pt box holds. It sits
- * high because the baby sits low. `test/book-verses.test.ts` is the arithmetic
- * above as pixels, and it reads every number off this slot.
+ * The 56 pt it begins at is then the same margin on the outer edge, which is
+ * both wider than the safe inset and wider than any guillotine tolerance
+ * `docs/print.md` records.
+ *
+ * `VERSE_HEIGHT` above carries the vertical half of this, and
+ * `test/book-verses.test.ts` is the whole arithmetic as pixels — it reads
+ * every number off this slot, per page, so a page with its own position is
+ * measured against its own box.
  */
-function storySlot(id: string): Layer {
+function storySlot(id: string, top: number): Layer {
   return {
     id,
     kind: "textSlot",
     slot: SLOT.story,
-    frame: { x: 56, y: 64, width: 500, height: 160 },
+    frame: { x: 56, y: top, width: 500, height: VERSE_HEIGHT },
     font: "typewriter",
     size: 15,
     baseline: 20,
@@ -560,7 +620,12 @@ const FEATURED: Record<string, { scene?: Partial<SceneSpec>; layers?: Layer[] }>
  * on.** Spreads here are (003,004), (005,006) … (023,024), so the odd pages
  * carry the words and the even ones carry the picture — which is the shape the
  * artwork is drawn to, with the baby on one side and the quiet half taking the
- * text.
+ * text. The first page of a spread is its **left** half — `spreadSideOf` is
+ * where that is decided and `rightHandPages` is the other half, the one the
+ * child is drawn on.
+ *
+ * **Where down that page the verse sits is `VERSE_TOP`**, and one page says
+ * otherwise through `VERSE_TOP_ON`. Both are above, with the measurement.
  */
 function interior(index: number): BookPage {
   const number = index + 1;
@@ -570,7 +635,10 @@ function interior(index: number): BookPage {
   const spread = number >= 3 && number <= 23 && number % 2 === 1 ? (number - 3) / 2 : -1;
   const story = spread >= 0 ? STORY[spread] : undefined;
 
-  const layers = [...(featured?.layers ?? []), ...(story ? [storySlot("story")] : [])];
+  const layers = [
+    ...(featured?.layers ?? []),
+    ...(story ? [storySlot("story", VERSE_TOP_ON[id] ?? VERSE_TOP)] : []),
+  ];
 
   return {
     id,
@@ -579,6 +647,29 @@ function interior(index: number): BookPage {
       // spread 0, pages 3 and 4 are spread 1, and so on.
       ...SCENES[(index >> 1) % SCENES.length],
       seed: 2000 + index,
+      /**
+       * **A page of words is a page with no baby drawn on it**, in the
+       * placeholder exactly as in the artwork it stands in for.
+       *
+       * `lib/book/derive.ts` § `rightHandPages`, `lib/book/ghost.ts` and
+       * `lib/artwork/prepare.ts` all already say this about the delivered
+       * pages — one 2.000:1 scene a spread, the child on the right-hand half,
+       * *"every left half is the quiet half — the words"*. The placeholder was
+       * the only thing in the repository claiming otherwise, and it drew its
+       * baby at the page's own centre.
+       *
+       * That claim was invisible while the verse sat in the top twelfth and
+       * became a verse printed across a drawn face the moment it moved into
+       * the band the artwork reserves (`VERSE_TOP` above). The honest fix is
+       * not a smaller baby pushed to the foot of the page — at
+       * `VERSE_TOP_ON["page-011"]` there is no room for one — it is for the
+       * stand-in to stand in for the right thing.
+       *
+       * The opening spread's left page says the same through `FEATURED`, for
+       * its own reason, and the spread order below puts `featured?.scene`
+       * after this so a page may still override it.
+       */
+      ...(story ? { babyless: true } : {}),
       ...featured?.scene,
     }),
     ...(story ? { story } : {}),
@@ -739,7 +830,7 @@ const LOOKS: Look[] = GENDERS.flatMap(({ id: gender }, column) =>
 export const FIRST_BOOK: BookTemplate = {
   schema: 1,
   id: "the-book-of-you",
-  rev: "24cb8aeb",
+  rev: "1e49cd48",
   /**
    * **"When They Were Small".**
    *

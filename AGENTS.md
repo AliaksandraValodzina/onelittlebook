@@ -67,6 +67,19 @@ reads the ink's bounding box out of a **difference** between two renders
 (`test/pixels.ts` § `changedBox`). Change a type size or a box in
 `templates/first-book.ts` and that file re-measures and says by how much.
 
+**The verse's band is the artwork's, and the left page carries no child.** The
+verses sit on each spread's **left** page, centred down it —
+`templates/first-book.ts` § `VERSE_TOP`, with `VERSE_TOP_ON` as the one
+declared exception and the measurement that chose both. They were in the top
+twelfth until 12 November, over the fairy lights and the picture frame, because
+the renderer and the captain's `verse_zone` had never agreed;
+`docs/look-upload-contract.md` § 3 is now the single statement of the band. The
+consequence that bit: a page of words is declared **`babyless`** in the
+placeholder too, because the delivered artwork puts the child on the right-hand
+half only (`lib/book/derive.ts` § `rightHandPages`) and the stand-in was the
+one thing claiming otherwise — which showed up as a verse printed across a
+drawn face the moment the band moved.
+
 ## The three rules this codebase is built on
 
 **A page template is data, not code.** `lib/template/types.ts` is the format and
