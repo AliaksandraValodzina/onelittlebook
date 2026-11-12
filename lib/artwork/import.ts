@@ -10,7 +10,7 @@
  * | Set | What happens to it | Why |
  * |---|---|---|
  * | **The 24 finished pages** | nothing at all | They already satisfy `docs/look-upload-contract.md` § 2 — 3600 × 3600, sRGB, no alpha — so they are stored byte for byte. Re-encoding would change the digest, cost quality and buy nothing. |
- * | **The 12 portraits** | flattened onto white | They are RGBA with a transparent background and **nothing in them is fully opaque** — the subject tops out at alpha 249–253. A portrait with an alpha channel could never pass the page validator, and a tile with 2 % transparency over a dark page would show the page through the baby. |
+ * | **The portraits** | flattened onto white | They are RGBA with a transparent background and **nothing in them is fully opaque** — the subject tops out at alpha 249–253. A portrait with an alpha channel could never pass the page validator, and a tile with 2 % transparency over a dark page would show the page through the baby. |
  * | **The 12 golden spreads** | split, right half kept | Each is one 1774 × 887 spread. Every left half is babyless and identical to the real artwork, so importing both halves would import the left pages twice at a quarter of the resolution. |
  *
  * ## What it does not re-check
@@ -49,8 +49,14 @@ export interface ImportFile {
 // ---------------------------------------------------------------------------
 
 /**
- * `01-girl.png` … `12-boy.png`: the captain's number, and the gender from the
+ * `01-girl.png` … `07-boy.png`: the captain's number, and the gender from the
  * filename.
+ *
+ * **The number is 1-based within the gender**, which is the captain's own
+ * spelling of their folder: seven girls numbered 01–07 and seven boys numbered
+ * 01–07, not fourteen files numbered 01–14. It is also, exactly, the look ids —
+ * `03-girl.png` is `girl-03` — which is what makes this a derivation and not a
+ * table.
  *
  * **Gender is read from the name rather than guessed from the pixels**, which
  * is `docs/look-upload-contract.md` § 1's own rule for `looks.json`: gender is
@@ -90,17 +96,27 @@ export interface PortraitMapping {
  * **The mapping from the captain's numbering onto the look ids, derived once
  * and printed.**
  *
- * The rule is positional *within a gender*: the captain's girls are numbered
- * 01–06 and the book's girl looks are listed in order, so the nth of one is the
- * nth of the other. Nothing else is available — a PNG of a baby's head says
- * nothing about which of six girl looks it is — and the alternative is somebody
- * matching twelve babies to twelve ids by eye, once, with no record of how.
+ * The rule is **by number within a gender**: the captain's `03-girl` is the
+ * book's third girl look, because the book lists its girl looks in the
+ * captain's own order. Nothing else is available — a PNG of a baby's head says
+ * nothing about which girl look it is — and the alternative is somebody
+ * matching fourteen babies to fourteen ids by eye, once, with no record of how.
  *
  * So the mapping is derived from **the book's own look order and the filename's
- * own gender**, which means it cannot drift from the list it maps onto, and
- * `scripts/import-artwork.ts` prints the whole table every time it runs.
- * `docs/artwork.md` is that table written down, which is what makes it
- * reviewable.
+ * own number and gender**, which means it cannot drift from the list it maps
+ * onto, and `scripts/import-artwork.ts` prints the whole table every time it
+ * runs. `docs/artwork.md` is that table written down, which is what makes it
+ * reviewable. It comes out as the identity — `03-girl` → `girl-03` — and that is
+ * on purpose (`templates/first-book.ts` § `LOOKS`), but it is still read off the
+ * book rather than spelled, so a reordered or renamed look moves the mapping
+ * with it.
+ *
+ * **By number and not by position**, which is the one thing here worth being
+ * careful about: a folder holding only `05-girl.png` is the fifth girl look and
+ * not the first. Position would quietly make it the first, which is the kind of
+ * mistake that is invisible until a buyer gets the wrong baby — and it is the
+ * same indexing `scripts/import-artwork.ts` § `resolveLook` already does for
+ * `npm run artwork -- look <dir> 05-girl`.
  */
 export function portraitMapping(book: BookTemplate, files: ImportFile[]): PortraitMapping {
   const problems: Problem[] = [];
@@ -138,19 +154,19 @@ export function portraitMapping(book: BookTemplate, files: ImportFile[]): Portra
     }
     entries.sort((a, b) => a.name.number - b.name.number);
     const seen = new Set<number>();
-    for (const [at, entry] of entries.entries()) {
+    for (const entry of entries) {
       if (seen.has(entry.name.number)) {
         say("portrait.duplicateNumber", entry.file.name, `two files are ${gender} number ${entry.name.number}`);
         continue;
       }
       seen.add(entry.name.number);
-      const look = looks[at];
+      const look = looks[entry.name.number - 1];
       if (!look) {
         say(
           "portrait.noLookForNumber",
           entry.file.name,
-          `${gender} number ${entry.name.number} is the ${at + 1}th portrait and the book ` +
-            `offers ${looks.length} ${gender} looks`,
+          `${gender} number ${entry.name.number} is past the end of the book's ` +
+            `${looks.length} ${gender} looks`,
         );
         continue;
       }
@@ -164,7 +180,13 @@ export function portraitMapping(book: BookTemplate, files: ImportFile[]): Portra
     }
   }
 
-  portraits.sort((a, b) => a.number - b.number);
+  // Reported in the book's own order: by gender as the book lists them, then by
+  // the captain's number. Sorting by number alone was right only while the
+  // numbers were globally unique — the first set ran 01–06 for the girls and
+  // 07–12 for the boys — and would now interleave the two genders, which is a
+  // table nobody can read.
+  const order = (gender: string) => book.looks.findIndex((l) => l.gender === gender);
+  portraits.sort((a, b) => order(a.gender) - order(b.gender) || a.number - b.number);
   return { portraits, problems };
 }
 
@@ -172,7 +194,7 @@ export function portraitMapping(book: BookTemplate, files: ImportFile[]): Portra
  * What a portrait has to be, once it has been flattened.
  *
  * Deliberately **not** the page contract: a portrait is not a page and holding
- * it to 3600 × 3600 would refuse every one of the twelve. What matters about a
+ * it to 3600 × 3600 would refuse every one of them. What matters about a
  * tile is that it is square — the chooser's box is — that it is 8-bit PNG so a
  * browser draws it the same everywhere, and that the flattening actually
  * happened.

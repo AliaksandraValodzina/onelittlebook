@@ -114,7 +114,7 @@ export function validateBook(book: BookTemplate): Problem[] {
   // --- the page the grid of tiles shows ----------------------------------
   // Both failures here are *silent* in a browser, which is why they are
   // refusals: an unknown id draws a page nobody chose, and a babyless page
-  // draws twelve identical tiles under the question "which baby?".
+  // draws one identical tile per look under the question "which baby?".
   if (book.tilePage !== undefined) {
     const page = pageSequence(book).find((p) => p.id === book.tilePage);
     if (!page) {

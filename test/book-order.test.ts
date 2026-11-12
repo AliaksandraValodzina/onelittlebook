@@ -56,7 +56,7 @@ function finished(): Order {
   return {
     ...emptyOrder(FIRST_BOOK),
     genderId: "boy",
-    lookId: "wren",
+    lookId: "boy-01",
     coverId: "sage",
     name: "Rosalind",
     dedication: "For Rosalind.",
@@ -242,7 +242,7 @@ describe("the edition, which is a price and never a drawing", () => {
 
 describe("answering the question before the grid", () => {
   it("moves the look when the answer no longer contains it", () => {
-    const order = { ...finished(), genderId: "boy", lookId: "wren" };
+    const order = { ...finished(), genderId: "boy", lookId: "boy-01" };
     const moved = answerGender(order, FIRST_BOOK, "girl");
     expect(moved.genderId).toBe("girl");
     expect(FIRST_BOOK.looks.find((l) => l.id === moved.lookId)?.gender).toBe("girl");

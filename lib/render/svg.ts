@@ -87,7 +87,7 @@ export interface RenderOptions {
    * `./ghost.ts` carries the whole argument for why a glowing void in a printed
    * book is the worst failure this product has.
    *
-   * Absent is the normal state: a book drawn with one of the twelve looks has
+   * Absent is the normal state: a book drawn with one of its own looks has
    * its child already, and showing that artwork is the point.
    */
   ghost?: GhostOptions;

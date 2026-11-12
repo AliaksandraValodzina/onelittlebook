@@ -11,7 +11,7 @@
  *
  * A page the captain has delivered becomes `{ kind: "asset" }` with the looks
  * that have artwork in `byLook` **and the page's own drawn scene kept as the
- * fallback**, because eleven of the twelve looks are still being drawn and a
+ * fallback**, because most of the looks are still being drawn and a
  * refusal there would mean no real artwork could be seen until the last one
  * landed. A look with a delivered portrait gets it as its chooser `tile`. A page
  * with a delivered golden ghost half gets it as its `ghost`, which only the

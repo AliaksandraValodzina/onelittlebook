@@ -261,7 +261,7 @@ export async function releaseArtworkFor(
     for (const page of tiles.pages) {
       const lookId = lookOfTilePageId(page.pageId);
       // A portrait for a look the book does not offer is dropped here rather
-      // than reported: the twelve portraits arrived before eleven of the looks
+      // than reported: the portraits arrived before most of the looks
       // have any pages, and a look that is renamed one day should not break a
       // chooser over a tile.
       if (lookId && book.looks.some((l) => l.id === lookId)) {

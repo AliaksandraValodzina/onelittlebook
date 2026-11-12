@@ -68,7 +68,7 @@ import { sha256 } from "../lib/assets/digest";
 import type { AssetRef } from "../lib/template/types";
 
 /** The look the captain delivered first, named the way the book names it. */
-const DELIVERED = "ada";
+const DELIVERED = "girl-02";
 const SIZE = FIRST_BOOK.page.print.pixels.width;
 const NOW = new Date("2026-11-10T09:00:00.000Z");
 
@@ -303,7 +303,7 @@ describe("re-uploading", () => {
     await store.put(TILES_SET, twelve(1), NOW);
     const before = b.puts.length;
 
-    // `02-girl` and `08-boy` regenerated for edge fringing: two of twelve.
+    // Two portraits regenerated for edge fringing — docs/artwork.md § 2.
     const corrected = twelve(1).map((page, at) =>
       at === 1 || at === 7 ? { ...page, bytes: square([at * 7, 100, 2]) } : page,
     );

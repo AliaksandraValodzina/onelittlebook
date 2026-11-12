@@ -29,7 +29,7 @@
  * *choose their look*. The photograph route is a character generated from an
  * uploaded picture, which is out of scope for this task — the brief says no AI
  * cover generation — and the artefact's own closing note is that the open
- * question is exactly this: a generated child the twelve interior babies cannot
+ * question is exactly this: a generated child the interior's own babies cannot
  * match. So the route is **present and honest**: it says what it will be and
  * that it is not here, and the screen does not pretend to offer it.
  */

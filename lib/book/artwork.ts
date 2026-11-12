@@ -2,7 +2,7 @@
  * **The artwork pages with no words on them — the file that goes into an image
  * model, and the one rule that cannot be broken.**
  *
- * The captain sells two ways. *Choose a look* picks one of twelve finished
+ * The captain sells two ways. *Choose a look* picks one of the finished
  * folders and needs nothing generated. *Upload a photograph* is a hand-made
  * premium service: the captain takes this book's artwork into an image tool,
  * replaces the child with one resembling the buyer's own, and uploads the

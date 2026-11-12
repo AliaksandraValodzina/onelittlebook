@@ -35,6 +35,7 @@ import { renderPageSvg } from "../../../lib/render/svg";
 import { titleFor } from "../../../lib/shop/shelf";
 import type { BookTemplate } from "../../../lib/book/types";
 import {
+  BABIES,
   HELP,
   PAGE_BOTTOM_QUESTIONS,
   PAGE_CTA,
@@ -259,7 +260,11 @@ export default async function BookPageRoute(props: { params: Promise<{ slug: str
                       </span>
                     ))}
                   </div>
-                  <p className="mini mt-[9px]">{book.looks.length} babies to choose from</p>
+                  <p className="mini mt-[9px]">
+                    {/* The grid this mock is of is one gender's, which is what
+                        `BABIES` counts — never the book's whole list. */}
+                    {BABIES ? `${BABIES} babies` : "Babies"} to choose from
+                  </p>
                 </div>
               </div>
               <p className="shotcap">

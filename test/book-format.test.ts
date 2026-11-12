@@ -129,12 +129,21 @@ describe("a page derives into a page template the one renderer already knows", (
   });
 
   it("puts the chosen look's baby in the drawn artwork and nothing else", () => {
-    const a = pageTemplateFor(FIRST_BOOK, 5, { ...chosen, lookId: "mabel" });
-    const b = pageTemplateFor(FIRST_BOOK, 5, { ...chosen, lookId: "wren" });
+    // Two looks off the book's own list rather than two ids typed here: the
+    // first, and the first one after it whose baby is a different colour. The
+    // two genders read down the same ladder — `templates/first-book.ts`
+    // § `LOOKS` — so "one girl and one boy" would be two babies with the same
+    // skin, and this assertion would be about nothing.
+    const one = FIRST_BOOK.looks[0];
+    const two = FIRST_BOOK.looks.find((l) => l.baby!.skin !== one.baby!.skin)!;
+    const a = pageTemplateFor(FIRST_BOOK, 5, { ...chosen, lookId: one.id });
+    const b = pageTemplateFor(FIRST_BOOK, 5, { ...chosen, lookId: two.id });
     // The only difference between two looks of one page is the baby.
     expect(a.layers.slice(1)).toEqual(b.layers.slice(1));
     const artA = a.layers[0] as { art: { skin: string; ground: string } };
     const artB = b.layers[0] as { art: { skin: string; ground: string } };
+    expect(artA.art.skin).toBe(one.baby!.skin);
+    expect(artB.art.skin).toBe(two.baby!.skin);
     expect(artA.art.skin).not.toBe(artB.art.skin);
     expect(artA.art.ground).toBe(artB.art.ground);
   });
@@ -190,7 +199,7 @@ describe("the looks axis, and the question asked before it", () => {
     /**
      * **This test asserts no number**, which is the point and was the bug in
      * its first version: it enumerated the four placeholder looks by id, so
-     * delivering the captain's twelve made it fail for no reason anybody
+     * delivering the captain's own set made it fail for no reason anybody
      * cared about. How many looks a gender has is data that arrives with the
      * artwork — what has to hold is the *relationship*.
      */
@@ -242,7 +251,7 @@ describe("the looks axis, and the question asked before it", () => {
   it("refuses a grid whose tiles would all be the same picture", () => {
     /**
      * The failure this closes is **completely silent**: the opening spread is
-     * babyless on purpose, so pointing the tiles at it renders twelve identical
+     * babyless on purpose, so pointing the tiles at it renders identical
      * pictures under the question "which baby?". Nothing throws, nothing looks
      * broken, and the buyer concludes the looks are a lie.
      */

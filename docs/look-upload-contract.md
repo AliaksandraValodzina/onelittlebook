@@ -41,10 +41,13 @@ artwork set therefore serves the softcover and the hardcover, which is what
 makes the hardcover an upgrade on an order rather than a second set of files to
 draw.
 
-**Twelve looks is six per gender**, which is exactly Wonderbly's count. Nothing
-in the code counts them — the grid renders whatever `looks.json` declares — so
-delivering five or eight is an upload and not a release. The number is here so
-that the *artwork* has a target, not because anything would break.
+**Fourteen looks is seven per gender**, the captain's count of 12 November,
+which replaced six per gender. **Nothing in the code counts them** — the grid
+renders whatever `looks.json` declares, which is why this changed with no edit
+to a component — so delivering five or eight is an upload and not a release.
+The number is here so that the *artwork* has a target, not because anything
+would break; `templates/first-book.ts` § `LOOKS` is the list itself, its order,
+and the ladder that order is.
 
 ---
 
@@ -53,13 +56,13 @@ that the *artwork* has a target, not because anything would break.
 ```
 looks/
   looks.json            <- declares each look: id, label, gender
-  mabel/                <- one folder per look, named for the look
+  girl-01/              <- one folder per look, named for the look
     cover.png
     page-001.png
     page-002.png
     …
     page-024.png
-  wren/
+  boy-01/
     cover.png
     page-001.png
     …
@@ -70,9 +73,9 @@ looks/
 ```json
 {
   "looks": [
-    { "id": "mabel", "label": "Mabel", "gender": "girl" },
-    { "id": "ada",   "label": "Ada",   "gender": "girl" },
-    { "id": "wren",  "label": "Wren",  "gender": "boy"  }
+    { "id": "girl-01", "label": "Very fair skin, blonde hair", "gender": "girl" },
+    { "id": "girl-02", "label": "Very fair skin, ginger hair", "gender": "girl" },
+    { "id": "boy-01",  "label": "Very fair skin, blonde hair", "gender": "boy"  }
   ]
 }
 ```
@@ -227,7 +230,7 @@ leave the areas clear.
 **This is the one instruction in this document that changes what you draw.**
 
 The opening spread — cream ground, clouds, bunting, confetti, **no baby** — is
-the spread that is *identical in all twelve looks*, and that is exactly why it
+the spread that is *identical in every look*, and that is exactly why it
 is the one that carries everything the buyer supplies. A page with a baby in it
 differs between looks; a page the buyer's photograph and dedication sit on must
 not, or switching look would reflow somebody's words.
@@ -260,7 +263,7 @@ This is the rule that is easiest to break and hardest to see.
 | **Every look has the same backgrounds** | **Only the baby differs.** Buyers flick between looks before they buy. If the kitchen changes with the baby they will notice, and what they will conclude is that the book is not really a book. |
 | **The same page number is the same scene in every look** | `page-002.png` is the photograph's page in every folder. The validator checks counts and sizes; it cannot check that a scene is the same scene, so this one is on the eye. |
 | **The baby is the same person on every page of a look** | Generated art drifts. Same hair, same face, same outfit, page one to page twenty-four. |
-| **The pose in the grid tile is the same for every look** | The buyer is choosing *which baby*, not *which picture*. **Superseded on 10 November**: the captain delivered twelve portraits — a head and shoulders on white — and approved them as the tiles, which say *which baby* and nothing else where a whole page at tile size says *which picture*. See [`artwork.md`](artwork.md) § 2 for the set and the id mapping. What is written here is still the **fallback**, and is what every look with no portrait gets: one declared page of each look, rendered by the same renderer, so the pose is identical by construction. The book declares which page in `tilePage`, and the build refuses a babyless one. |
+| **The pose in the grid tile is the same for every look** | The buyer is choosing *which baby*, not *which picture*. **Superseded on 10 November**: the captain delivered a portrait per look — a head and shoulders on white — and approved them as the tiles, which say *which baby* and nothing else where a whole page at tile size says *which picture*. See [`artwork.md`](artwork.md) § 2 for the set and the id mapping. What is written here is still the **fallback**, and is what every look with no portrait gets: one declared page of each look, rendered by the same renderer, so the pose is identical by construction. The book declares which page in `tilePage`, and the build refuses a babyless one. |
 
 Two pages being byte-identical across looks is reported as a note rather than
 an error: a page with no baby in it legitimately is the same file, and a page
@@ -326,7 +329,7 @@ reprint.
 
 ## 7. The same contract, for one order
 
-Everything above is about the **twelve pre-made looks**: a public product, the
+Everything above is about the **pre-made looks**: a public product, the
 same twenty-four pictures for every buyer, imported into the repository with
 `npm run looks:import`.
 
@@ -367,7 +370,7 @@ npm run artwork -- look <dir> 02-girl     # one look at a time, the captain's ow
 Both write the bytes into the **artwork store** — `lib/artwork/release.ts`,
 which is a directory on this machine today and a bucket when the captain has
 chosen one — and **nothing at all into the repository**. One look of
-twenty-four finished pages is 155 MB and twelve looks is the better part of two
+twenty-four finished pages is 155 MB and a full set of looks is a couple of
 gigabytes, which nobody should have to clone, and this repository is public.
 
 **Nothing has to be restamped.** The artwork is bound over the published book at

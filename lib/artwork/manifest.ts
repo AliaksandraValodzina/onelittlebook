@@ -27,7 +27,7 @@ export interface ArtworkPage {
    * The bytes, by content hash and measured size.
    *
    * An `AssetRef` and not a path, which is what lets the renderer treat this
-   * artwork exactly as it treats the twelve looks' artwork: `lib/book/derive.ts`
+   * artwork exactly as it treats the looks' own artwork: `lib/book/derive.ts`
    * puts an `image` layer on the page and the bytes arrive through the
    * `supplied` seam. Nothing downstream knows this picture came from an order
    * rather than from a release.

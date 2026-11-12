@@ -57,6 +57,36 @@ import type { Market } from "./market";
 const book = FIRST_BOOK;
 const trim = trimBox(book.page.canvas);
 
+/**
+ * **How many babies the buyer chooses between, counted and never typed.**
+ *
+ * It is the **grid they are shown** and not the book's whole list: gender is
+ * asked before the grid (`lib/book/derive.ts` § `looksFor`), so a buyer who
+ * says *a girl* chooses between the girl looks and never sees the others.
+ *
+ * `null` when the grids are not all the same size, and the sentence then drops
+ * the number rather than quoting one that is true for half the buyers. That is
+ * the whole reason this is a function of the book: the count is settled data
+ * and has already changed once — it was six per gender and is now seven — and
+ * a shop that says *twelve to choose from* out of a typed string is a shop
+ * telling a buyer something the grid contradicts. `test/look-count.test.tsx`
+ * is the gate.
+ */
+function babiesPerGrid(): number | null {
+  const grids = (book.genders ?? []).map(
+    (g) => book.looks.filter((l) => !l.gender || l.gender === g.id).length,
+  );
+  if (grids.length === 0) return book.looks.length;
+  return grids.every((n) => n === grids[0]) ? grids[0] : null;
+}
+
+/**
+ * The number to put in front of the word *babies* — or `null`, meaning say it
+ * without a number. `app/books/[slug]/page.tsx` draws the same claim in its
+ * mock of screen one and reads it from here for the same reason.
+ */
+export const BABIES = babiesPerGrid();
+
 /** `8` — whole inches where the number is whole, which this trim is. */
 export const trimInches = (trim.width / 72).toFixed(2).replace(/\.?0+$/, "");
 
@@ -159,7 +189,9 @@ export const HOW: readonly HowStep[] = [
   {
     icon: "book",
     heading: "Pick the baby",
-    line: "Twelve to choose from, so one of them looks like yours.",
+    line: BABIES
+      ? `${BABIES} to choose from, so one of them looks like yours.`
+      : "A grid of them to choose from, so one looks like yours.",
   },
   {
     icon: "pen",
@@ -315,7 +347,7 @@ export function pageQuestionsFor(market: Market): readonly Question[] {
     {
       q: "How is the book personalised?",
       a:
-        `You choose which of ${book.looks.length} babies appears throughout, type the name ` +
+        `You choose which of the ${BABIES ?? book.looks.length} babies appears throughout, type the name ` +
         "that goes on the cover and into the story, add one photograph of your own and write a " +
         "dedication for the opening spread. Nothing else is laid out by you — every page is " +
         "already composed, so it cannot come out wrong.",

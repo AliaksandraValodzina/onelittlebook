@@ -123,7 +123,7 @@ describe("the look screen — the one form that decides what is drawn", () => {
   it("draws each tile from the declared tile page, not from page one", () => {
     /**
      * The opening spread is babyless on purpose, so tiles drawn from it would
-     * be twelve identical pictures under the question "which baby?". The tile
+     * be one identical picture per look under the question "which baby?". The tile
      * page is declared and the validator refuses a babyless one; this is the
      * other half — that the grid actually draws *different babies*.
      */
