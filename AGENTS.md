@@ -81,6 +81,12 @@ that the print path does not pass — there are exactly two, `guides` and
 `ghost`, and `renderPrintSvg` takes no options object at all, which is what
 makes "it cannot print" structural rather than checked.
 
+**A screen-only treatment that is not drawn on a page is not an option at
+all**: the spread fold (`lib/book/fold.ts`) spans two pages, which no
+`PageTemplate` describes, so it is a DOM element and a stylesheet rule the
+renderer has never heard of. `test/no-fold-in-a-print-file.ts` is a file of
+calls that must not compile and `test/spread-fold.test.tsx` reads the bytes.
+
 **Nothing reads an optional field directly.** `lib/template/defaults.ts` holds
 the tolerant readers. A stored template or fill can come from a newer publisher
 or a hand-edited file, and the renderer's duty is to draw the sane thing.
@@ -162,6 +168,16 @@ different number of looks. **The ids are the captain's portrait numbering** —
 by the number in the filename and there is no table anybody maintains. Every
 entry keeps a `baby` colour triple, which is what a fresh clone and the whole
 suite draw.
+
+**A look is the whole answer, so the chooser asks once.** There is no skin,
+hair or eye axis and there must not be one: a control beside the grid reads as
+independent of it, and there is no artwork behind a baby made of one look's
+skin and another's hair — a look is a folder of finished pages, not a skin
+crossed with a hair. Nothing stores a skin — `BookFill` has nowhere to put
+one. The chooser's one large picture is `app/_book/tile.ts` § `lookPanel`,
+which prefers **a page of the real book**, then **the look's portrait**, then
+**the page drawn from numbers**; all three are live states, because the artwork
+is environment and a fresh clone has none of it.
 
 **The shelf is data** (`lib/shop/shelf.ts`) and **the flow is data**
 (`lib/shop/steps.ts`): a second title is an entry plus a template, and back,

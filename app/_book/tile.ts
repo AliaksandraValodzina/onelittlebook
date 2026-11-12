@@ -31,9 +31,15 @@
  *
  * It renders with **no name**, so a half-typed name does not flicker across
  * a full grid while somebody is still deciding.
+ *
+ * `lookPanel` at the foot of this file is the same decision for the chooser's
+ * one large picture, where the preference order is different because the space
+ * is: a whole page is the best thing to put there and the worst thing to put in
+ * a tile.
  */
 
-import { lookOf, pageFillFor, pageTemplateFor, tileIndexOf } from "../../lib/book/derive";
+import { isCover, lookOf, pageFillFor, pageTemplateFor, tileIndexOf } from "../../lib/book/derive";
+import { deliveredPagesFor } from "../../lib/book/release-art";
 import { renderPageSvg } from "../../lib/render/svg";
 import { hrefIn, type AssetAddresses } from "../../lib/assets/address";
 import type { BookTemplate } from "../../lib/book/types";
@@ -98,4 +104,65 @@ function lookTileSvg(
     }),
     { href },
   );
+}
+
+// ---------------------------------------------------------------------------
+// The chooser's big picture
+// ---------------------------------------------------------------------------
+
+/**
+ * **What the chooser's panel shows beside the grid, in three states.**
+ *
+ * The panel is the large picture of the baby being chosen, and it is here
+ * rather than in the screen for `lookTile`'s reason: *which picture is shown
+ * and of what* is a decision about the artwork the machine has, not about
+ * markup. The three arms are the three honest answers, in preference order:
+ *
+ * **`page`** — a page of the real book, with this look's delivered artwork on
+ * it. The most honest thing there is, because it is the object the buyer is
+ * choosing. The tile page is preferred so the panel and the pressed tile are
+ * the same picture; any other delivered page is better than no artwork, and a
+ * delivered cover is the last of them because a cover says *which book* where
+ * an interior page says *which baby*.
+ *
+ * **`portrait`** — this look's delivered portrait, shown large. Head and
+ * shoulders on white says which baby and nothing else, which is all the panel
+ * is for; a look with a portrait but no pages is the ordinary state of this
+ * shop today (`docs/artwork.md`).
+ *
+ * **`drawn`** — the tile page drawn from numbers, with the look's placeholder
+ * baby in it. **Unchanged, and not a legacy path**: it is the panel on a fresh
+ * clone, in CI and on every look nobody has drawn yet, which is what keeps the
+ * whole flow testable and deployable with no artwork at all.
+ *
+ * `page` and `drawn` are the same component at different indices — `BookPage`
+ * draws whatever the bound book has on that page — and they are separate arms
+ * because the difference between "the captain's artwork" and "our placeholder"
+ * is the thing a reviewer and a test need to be able to see.
+ */
+export type LookPanel =
+  | { kind: "page"; index: number }
+  | { kind: "portrait"; src: string; width: number; height: number }
+  | { kind: "drawn"; index: number };
+
+export function lookPanel(
+  book: BookTemplate,
+  lookId: string,
+  assets?: AssetAddresses,
+): LookPanel {
+  const delivered = deliveredPagesFor(book, lookId);
+  const tile = tileIndexOf(book);
+  // The tile page first, then the first interior page, then whatever is left —
+  // which can only be the cover. Nothing counts pages: the list is the book's.
+  const page = delivered.includes(tile)
+    ? tile
+    : (delivered.find((index) => !isCover(index)) ?? delivered[0]);
+  if (page !== undefined) return { kind: "page", index: page };
+
+  const look = lookOf(book, lookId);
+  if (look?.tile) {
+    const [width, height] = look.tile.px ?? [0, 0];
+    return { kind: "portrait", src: hrefIn(assets)(look.tile), width, height };
+  }
+  return { kind: "drawn", index: tile };
 }

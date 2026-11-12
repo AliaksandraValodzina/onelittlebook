@@ -1187,29 +1187,6 @@ label.f,
   border-color: var(--green);
 }
 
-.sw {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.sw i,
-.sw button {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  font-style: normal;
-  cursor: pointer;
-  border: 2px solid transparent;
-  padding: 0;
-}
-
-.sw .on,
-.sw button[aria-pressed="true"] {
-  border-color: var(--green);
-  box-shadow: 0 0 0 2px #fff inset;
-}
-
 .carou {
   display: flex;
   align-items: center;
@@ -1387,6 +1364,98 @@ label.f,
   display: grid;
   gap: 3px;
   box-shadow: 0 8px 18px -10px rgb(60 42 24 / 40%);
+}
+
+/* ── the open book ──────────────────────────────────────────────────────── */
+
+/*
+  **A two-page spread is one open book, not two pictures side by side.**
+
+  `lib/book/fold.ts` carries the whole argument, including why the fold is a
+  stylesheet rule rather than anything the renderer knows about: a gutter
+  shadow baked into a print file is a grey smear down the middle of a real
+  book. These class names come out of that module — `SPREAD_FOLD` — so the
+  preview, the stylesheet and the test that proves the treatment cannot print
+  are naming the same three elements.
+
+  The colour is the warm brown this stylesheet already shadows with (`.spread`,
+  `.coverbox .bk`) at four alphas, and the lift on the join is a warm white.
+  None of them is a palette value, which is the rule `test/theme.test.ts`
+  keeps.
+*/
+.spread-open {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  /* One container, and the page shadow on the outside edges of it. */
+  box-shadow:
+    0 14px 28px -14px rgb(60 42 24 / 45%),
+    0 2px 5px -3px rgb(60 42 24 / 30%);
+  /*
+    The four tints the crease is painted in, named here so the phone override
+    below is four numbers in one place rather than a second gradient.
+  */
+  --fold-soft: rgb(60 42 24 / 7%);
+  --fold-mid: rgb(60 42 24 / 15%);
+  --fold-deep: rgb(60 42 24 / 24%);
+  --fold-lift: rgb(255 252 245 / 26%);
+}
+
+/* The two pages meet. The gap that made them read as two pictures is gone. */
+.spread-leaves {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+
+/*
+  The gutter.
+
+  The wide soft ramp is the curvature — a cylinder of paper bending toward the
+  binding shades exactly like this, so there is no transform and nothing is
+  rasterised at an angle — and the three tight stops at the middle are the
+  crease, with a hairline lift on the join itself where the fold catches the
+  light. `aria-hidden` and no pointer events: it is a surface treatment and
+  there is nothing in it to read or to press.
+
+  The width is `foldBand()`, inline, because `SpreadFold.reach` is the only
+  place that number lives.
+*/
+.spread-fold {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  translate: -50% 0;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    rgb(60 42 24 / 0%) 0%,
+    var(--fold-soft) 30%,
+    var(--fold-mid) 42%,
+    var(--fold-deep) 49.2%,
+    var(--fold-lift) 50%,
+    var(--fold-deep) 50.8%,
+    var(--fold-mid) 58%,
+    var(--fold-soft) 70%,
+    rgb(60 42 24 / 0%) 100%
+  );
+}
+
+/*
+  On a phone a spread is a couple of hundred pixels wide and the middle of the
+  picture is most of what there is, so the crease is lightened rather than
+  narrowed: a thinner band at that size stops reading as a fold at all, while a
+  paler one still does.
+*/
+@media (max-width: 560px) {
+  .spread-open {
+    --fold-soft: rgb(60 42 24 / 4%);
+    --fold-mid: rgb(60 42 24 / 9%);
+    --fold-deep: rgb(60 42 24 / 15%);
+    --fold-lift: rgb(255 252 245 / 20%);
+    border-radius: 9px;
+  }
 }
 
 .cartbar {
