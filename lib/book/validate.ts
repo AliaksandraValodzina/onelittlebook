@@ -37,7 +37,7 @@ import { FACE_COVERAGE, unsettable } from "../render/coverage";
 import { BookArtMissing, pageFillFor, pageSequence, pageTemplateFor, storyTextFor } from "./derive";
 import { NAME_TOKEN, SLOT, TEXT_ROLES, isPhotoRole, isTextRole } from "./slots";
 import { checkPhoto } from "./photo";
-import { limitsForRole, slotsForRole } from "./name";
+import { facesTheNameIsSetIn, nameLimit, slotsForRole } from "./name";
 import type { BookFill, BookPage, BookTemplate } from "./types";
 
 /** A look id ends up in a folder name, a URL and a JSON key. */
@@ -256,8 +256,30 @@ export function validateBook(book: BookTemplate): Problem[] {
     }
   }
 
-  if (nameSlots === 0) {
-    say("book.noNameSlot", book.id, `no page carries a "${SLOT.name}" slot; the name goes nowhere`);
+  // **Does the name reach the book at all?** Asked of where the name actually
+  // lands and not of the `babyName` slots, because since 12 November this book
+  // has none of those: the captain's two lone names went and the name is set
+  // inside authored copy — the cover's title and eleven verses. A slot-counting
+  // rule would refuse a book that prints the name perfectly well.
+  //
+  // `facesTheNameIsSetIn` is the same union `checkName` guards against
+  // unwritable characters with, so the two cannot disagree about whether the
+  // name is on the pages.
+  if (nameSlots === 0 && facesTheNameIsSetIn(book).length === 0) {
+    say(
+      "book.nameGoesNowhere",
+      book.id,
+      `no "${SLOT.name}" slot and no authored copy carrying "${NAME_TOKEN}"; the name goes nowhere`,
+    );
+  }
+  // The number the name's length comes from when no box declares one. Nothing
+  // derives it, so nothing but this notices it is nonsense.
+  if (!(book.nameMaxChars >= 1)) {
+    say(
+      "book.nameMaxChars",
+      book.id,
+      `nameMaxChars is ${book.nameMaxChars}; a book that asks for a name has to say how long it may be`,
+    );
   }
   if (photoSlots !== 1) {
     say(
@@ -325,7 +347,9 @@ function storyProblems(book: BookTemplate, page: BookPage, where: string): Probl
   if (!slot || slot.kind !== "textSlot" || !page.story) return out;
 
   // The longest name the form can produce, as the worst case.
-  const longest = "M".repeat(Math.max(limitsForRole(book, SLOT.name).maxChars, 0));
+  // `nameLimit`, which is the declared limit tightened by any `babyName` slot
+  // the book has — the same number the form lets a buyer type.
+  const longest = "M".repeat(Math.max(nameLimit(book), 0));
   const worst = storyTextFor(page, longest);
   const lines = worst.split("\n");
   const length = measuredLength(slot, worst);
@@ -386,7 +410,9 @@ function dedicationDefaultProblems(book: BookTemplate): Problem[] {
     return out;
   }
 
-  const longest = "M".repeat(Math.max(limitsForRole(book, SLOT.name).maxChars, 0));
+  // `nameLimit`, which is the declared limit tightened by any `babyName` slot
+  // the book has — the same number the form lets a buyer type.
+  const longest = "M".repeat(Math.max(nameLimit(book), 0));
   const worst = copy.split(NAME_TOKEN).join(longest);
   const lines = worst.split("\n");
   const token = copy.includes(NAME_TOKEN) ? " with the longest name the form accepts" : "";

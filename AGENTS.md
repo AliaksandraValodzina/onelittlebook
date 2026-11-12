@@ -127,15 +127,21 @@ typewriter and the name slots in the hand, and the two faces' coverage
 genuinely differs, so a Vietnamese name passes a name-slots-only check and
 prints with a hole in it on eleven interior pages.
 
-**The name's *length* comes from the `babyName` slots alone, and since
-12 November the book has exactly one** — `closing-name` on `page-024`; page
-one's lone name went because the page facing it already says *"Dear {name},"*.
-That one slot is load-bearing beyond its own page: with no `babyName` slot
-`limitsForRole` returns `Infinity`, so nothing length-checks a name, and
-`validateBook` § `storyProblems` throws rather than reporting
-`book.noNameSlot` — the book stops validating, previewing and printing.
-Removing it is therefore not a data edit but a decision about where the limit
-and the confirm screen's face come from instead.
+**The book has no `babyName` slot at all, and the name's length is therefore
+declared.** Both lone names went on 12 November — page one's because the
+dedication facing it already says the name, page twenty-four's with it — so the
+name reaches the pages **only inside authored copy**: the cover's title and
+eleven verses. Three consequences, each written where it happens.
+`BookTemplate.nameMaxChars` is the limit (fourteen, unchanged — the length a
+buyer may type is a product fact and not a consequence of a layout edit), and
+`lib/book/name.ts` § `nameLimit` is the tightest of it and any slot a book
+*does* have, so the old tightest-box rule survives for books that keep one.
+`nameSlotFont` reads the first slot the name lands in, which is now the cover's
+title. `validateBook` asks whether the name reaches the book at all
+(`book.nameGoesNowhere`) rather than whether a slot exists. **What holds
+fourteen is the cover title's `maxCharsPerLine` of sixteen** — two characters of
+headroom, measured by `test/book-text.test.ts` rather than asserted, and if that
+goes to zero the cover is the thing to re-size.
 
 ## Facts the repository does not have
 
