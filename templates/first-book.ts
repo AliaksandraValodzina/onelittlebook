@@ -384,7 +384,7 @@ const STORY: readonly string[] = [
  * appears on that spread; move the slot to page six and the control moves with
  * it. Nobody writes down that it is page twelve.
  */
-const FEATURED: Record<string, { scene?: Partial<SceneSpec>; layers: Layer[] }> = {
+const FEATURED: Record<string, { scene?: Partial<SceneSpec>; layers?: Layer[] }> = {
   /**
    * **The opening spread, left-hand page — and it has no baby in it.**
    *
@@ -397,10 +397,18 @@ const FEATURED: Record<string, { scene?: Partial<SceneSpec>; layers: Layer[] }> 
    *
    * `babyless` is therefore not a drawing preference. It is the structural
    * reason this spread can carry an order.
+   *
+   * **It carries no text, and that is the captain's decision of 12 November.**
+   * It used to set the child's name alone and large in the middle of the
+   * clouds, and the page facing it opens *"Dear {name},"* — the name twice
+   * across one open spread reads as a mistake rather than as emphasis. So this
+   * entry is a scene and no layers: the name reaches the front of the book on
+   * the cover, inside "When {name} Turned One", and the dedication is where it
+   * is spoken. The lone name under the cake on `page-024` is a different
+   * moment and stays.
    */
   "page-001": {
     scene: { babyless: true },
-    layers: [nameSlot("title-name", { x: 110, y: 142, width: 392, height: 99 }, 60, "middle")],
   },
 
   /**
@@ -743,7 +751,7 @@ const LOOKS: Look[] = GENDERS.flatMap(({ id: gender }, column) =>
 export const FIRST_BOOK: BookTemplate = {
   schema: 1,
   id: "the-book-of-you",
-  rev: "2469883d",
+  rev: "41acf063",
   /**
    * **"When They Were Small".**
    *

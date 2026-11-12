@@ -38,7 +38,7 @@ import { dedicationSlot } from "../lib/book/order";
 import { NAME_TOKEN, SLOT } from "../lib/book/slots";
 import { validateBookFill } from "../lib/book/validate";
 import { blockingProblems } from "../lib/template/validate";
-import { pageFillFor, pageTemplateFor, pageWithSlot } from "../lib/book/derive";
+import { pageFillFor, pageSequence, pageTemplateFor, pageWithSlot } from "../lib/book/derive";
 import { TextOverflows, renderPageSvg } from "../lib/render/svg";
 import { assetUrl } from "../lib/assets/resolve";
 import { FACE_COVERAGE } from "../lib/render/coverage";
@@ -146,11 +146,16 @@ describe("the baby's name is refused, never quietly changed", () => {
     expect(checkName(wordless, "Thư").ok).toBe(true);
 
     // And the original half of the rule, asked of that same book: move one
-    // name slot to the other face and the answer changes back.
+    // name slot to the other face and the answer changes back. `page-024` is
+    // the book's one `babyName` page — page one's lone name went on
+    // 12 November — and it is found by asking, not by trusting the number.
+    const namePage = wordless.pages.find((p) =>
+      (p.layers ?? []).some((l) => l.kind === "textSlot" && l.slot === SLOT.name),
+    )!.id;
     const mixed: BookTemplate = {
       ...wordless,
       pages: wordless.pages.map((p) =>
-        p.id === "page-001"
+        p.id === namePage
           ? {
               ...p,
               layers: (p.layers ?? []).map((l) =>
@@ -161,7 +166,10 @@ describe("the baby's name is refused, never quietly changed", () => {
       ),
     };
     expect(checkName(mixed, "Thư").ok).toBe(false);
-    expect(limitsForRole(mixed, SLOT.name).faces.sort()).toEqual(["hand", "typewriter"]);
+    // The move registered in the name slots' own face list, which is the half
+    // of the rule that predates `{name}` in the copy.
+    expect(limitsForRole(wordless, SLOT.name).faces).toEqual(["hand"]);
+    expect(limitsForRole(mixed, SLOT.name).faces).toEqual(["typewriter"]);
   });
 
   it("takes the tightest limit of every box, not the widest", () => {
@@ -182,8 +190,50 @@ describe("the baby's name is refused, never quietly changed", () => {
     expect(checkName(tight, "Rosalind").ok).toBe(false);
   });
 
-  it("is set on more than one page, which is why any of this matters", () => {
-    expect(slotsForRole(FIRST_BOOK, SLOT.name).length).toBeGreaterThan(1);
+  it("lands in more than one place, which is why any of this matters", () => {
+    // The reason the limit is the *tightest* box and the face list is *every*
+    // face: the name is drawn in more than one place in the book. Since
+    // 12 November only one of those is a `babyName` slot — the lone name on
+    // page one went, because the page facing it already says "Dear {name},"
+    // — so the count that matters is the slots **plus** the authored copy
+    // carrying `{name}`, which is how the name reaches the cover and eleven
+    // verses. Counted off the book, never typed.
+    const slots = slotsForRole(FIRST_BOOK, SLOT.name).length;
+    const copy = [FIRST_BOOK.cover.story, ...FIRST_BOOK.pages.map((p) => p.story)].filter(
+      (story) => story?.includes(NAME_TOKEN),
+    ).length;
+    expect(slots).toBeGreaterThan(0);
+    expect(copy).toBeGreaterThan(0);
+    expect(slots + copy).toBeGreaterThan(1);
+  });
+
+  it("is nowhere on the opening spread's left-hand page, which carries no text at all", () => {
+    /**
+     * **The captain's decision of 12 November**: page one used to set the name
+     * alone and large in the clouds, and the page facing it opens
+     * *"Dear {name},"*. Said twice across one open spread it reads as a
+     * mistake, so the left-hand page carries artwork and no words.
+     *
+     * Asserted as *the name cannot reach that page*, not as "the slot is
+     * gone": the page is rendered with two different names and the two SVGs
+     * are byte-identical. The paired control is the cover, where the same two
+     * fills differ — which is what stops this passing because the renderer
+     * drew nothing.
+     */
+    const opening = pageSequence(FIRST_BOOK).findIndex((p) => p.id === "page-001");
+    // The control is the cover, whose title sets the name inside authored
+    // copy — the one place in the book the name is certain to be drawn.
+    const control = 0;
+    const draw = (index: number, name: string) =>
+      renderPageSvg(
+        pageTemplateFor(FIRST_BOOK, index, chosen),
+        pageFillFor(FIRST_BOOK, index, { ...FIXTURE_BOOK_FILL, name }),
+        { href: assetUrl },
+      );
+
+    expect(pageSequence(FIRST_BOOK)[opening].layers ?? []).toEqual([]);
+    expect(draw(opening, "Rosalind")).toBe(draw(opening, "Bo"));
+    expect(draw(control, "Rosalind")).not.toBe(draw(control, "Bo"));
   });
 
   it("never produces a fill the renderer would refuse", () => {
