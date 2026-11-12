@@ -23,7 +23,14 @@
 import { describe, expect, it } from "vitest";
 import { FIRST_BOOK } from "../templates/first-book";
 import { FIXTURE_BOOK_FILL } from "../fixtures/book-order";
-import { pageFillFor, pageTemplateFor, pageWithSlot, pageCount } from "../lib/book/derive";
+import {
+  pageFillFor,
+  pageTemplateFor,
+  pageWithSlot,
+  pagesWithSlot,
+  pageSequence,
+  pageCount,
+} from "../lib/book/derive";
 import { SLOT } from "../lib/book/slots";
 import {
   BookNotPrintable,
@@ -51,7 +58,15 @@ const SMALL: BookTemplate = {
 const COVER = 0;
 const DEDICATION = pageWithSlot(FIRST_BOOK, SLOT.dedication);
 const PHOTO = pageWithSlot(FIRST_BOOK, SLOT.photo);
-const STORY = pageWithSlot(FIRST_BOOK, SLOT.story);
+/**
+ * A **spread's verse**, which is not the first page carrying a `storyText`
+ * slot: the cover carries one too, holding the title. Asked for as "the first
+ * story page that is not the cover" so that moving the verses moves this with
+ * them and the cover's title gets its own assertion below.
+ */
+const STORY = pagesWithSlot(FIRST_BOOK, SLOT.story).find(
+  (i) => pageSequence(FIRST_BOOK)[i].id !== FIRST_BOOK.cover.id,
+)!;
 
 /** The book with one page's layers emptied — how a content test proves it can fail. */
 function withoutSlots(book: BookTemplate, index: number): BookTemplate {
@@ -140,14 +155,18 @@ describe("one page of the book, as a print file", () => {
     expect(types.indexOf("gAMA")).toBeLessThan(types.indexOf("IDAT"));
   }, 60_000);
 
-  it("puts the buyer's name on the cover in ink", async () => {
-    const name = boxOf(FIRST_BOOK, COVER, SLOT.name);
+  it("puts the title, with the buyer's name in it, on the cover in ink", async () => {
+    const title = boxOf(FIRST_BOOK, COVER, SLOT.story);
     const printed = await rasterOf(FIRST_BOOK, COVER);
     const blank = await rasterOf(withoutSlots(FIRST_BOOK, COVER), COVER);
     // The control is the whole point: the cover is drawn either way, so this
-    // is the difference the name makes and not merely "something is there".
-    expect(shareOf(printed, name, INK, 60)).toBeGreaterThan(0.02);
-    expect(shareOf(blank, name, INK, 60)).toBeLessThan(0.001);
+    // is the difference the title makes and not merely "something is there".
+    expect(shareOf(printed, title, INK, 60)).toBeGreaterThan(0.02);
+    expect(shareOf(blank, title, INK, 60)).toBeLessThan(0.001);
+    // And the ink really is the buyer's name and not only the captain's words.
+    const words = pageFillFor(FIRST_BOOK, COVER, FIXTURE_BOOK_FILL).texts[SLOT.story];
+    expect(words).toContain(FIXTURE_BOOK_FILL.name);
+    expect(words).not.toContain("{name}");
   }, 120_000);
 
   it("puts the buyer's photograph inside the window, and nothing outside it", async () => {

@@ -217,7 +217,12 @@ export default function BookProvider({
     // Stored raw and clamped on the way out by `toBookFill`, so the textarea
     // does not fight the buyer's cursor. `DedicationControl` shows the clamped
     // count live, which is the thing they need to see.
-    (raw: string) => setOrder((o) => ({ ...o, dedication: raw })),
+    //
+    // **`dedicationWritten` flips here and nowhere else, and never flips
+    // back.** This is the only path a keystroke in that box takes, so the box
+    // the buyer has edited — including one they have emptied — is theirs from
+    // this moment on and the book's default never comes back over it.
+    (raw: string) => setOrder((o) => ({ ...o, dedication: raw, dedicationWritten: true })),
     [],
   );
   const setFrom = useCallback((raw: string) => setOrder((o) => ({ ...o, from: raw })), []);

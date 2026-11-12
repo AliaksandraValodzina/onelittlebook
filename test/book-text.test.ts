@@ -26,10 +26,16 @@
 import { describe, expect, it } from "vitest";
 import { FIRST_BOOK } from "../templates/first-book";
 import { FIXTURE_BOOK_FILL } from "../fixtures/book-order";
-import { checkName, limitsForRole, nameLimit, slotsForRole } from "../lib/book/name";
+import {
+  checkName,
+  facesTheNameIsSetIn,
+  limitsForRole,
+  nameLimit,
+  slotsForRole,
+} from "../lib/book/name";
 import { acceptLines, explainLines } from "../lib/editor/lines";
 import { dedicationSlot } from "../lib/book/order";
-import { SLOT } from "../lib/book/slots";
+import { NAME_TOKEN, SLOT } from "../lib/book/slots";
 import { validateBookFill } from "../lib/book/validate";
 import { blockingProblems } from "../lib/template/validate";
 import { pageFillFor, pageTemplateFor, pageWithSlot } from "../lib/book/derive";
@@ -109,13 +115,41 @@ describe("the baby's name is refused, never quietly changed", () => {
     expect(verdict.message).toContain(String(limit));
   });
 
-  it("asks every face the name is set in, not the first one it finds", () => {
+  it("asks every face the name is set in, including the ones the captain's copy sets it in", () => {
     // The failure this closes: a name the handwritten face can write and the
     // typewriter cannot would print cleanly on the cover and as a gap on page
-    // ten. Moving one name slot to the other face must change the answer.
-    const mixed: BookTemplate = {
+    // ten. Indie Flower carries Vietnamese that Special Elite has never heard
+    // of, so "Thư" is the name that tells the two apart.
+    //
+    // **In the real book the name reaches both faces**, and it does so through
+    // the *copy* rather than through a slot: every `babyName` slot is set in
+    // Indie Flower, and the captain's verses are set in Special Elite with
+    // `{name}` inside them. A check that looked only at the name slots would
+    // accept this name and print it with a hole in it on eleven pages.
+    expect(facesTheNameIsSetIn(FIRST_BOOK).sort()).toEqual(["hand", "typewriter"]);
+    expect(checkName(FIRST_BOOK, "Thư").ok).toBe(false);
+
+    /**
+     * The control, and what makes this a test of *where the name goes* rather
+     * than of "both faces, always": take `{name}` out of the copy and the
+     * typewriter stops being a face the name is set in — same book, same
+     * slots, same faces on the page.
+     */
+    const noNameInTheCopy = (story: string | undefined) =>
+      story === undefined ? undefined : story.split(NAME_TOKEN).join("Somebody");
+    const wordless: BookTemplate = {
       ...FIRST_BOOK,
-      pages: FIRST_BOOK.pages.map((p) =>
+      cover: { ...FIRST_BOOK.cover, story: noNameInTheCopy(FIRST_BOOK.cover.story) },
+      pages: FIRST_BOOK.pages.map((p) => ({ ...p, story: noNameInTheCopy(p.story) })),
+    };
+    expect(facesTheNameIsSetIn(wordless)).toEqual(["hand"]);
+    expect(checkName(wordless, "Thư").ok).toBe(true);
+
+    // And the original half of the rule, asked of that same book: move one
+    // name slot to the other face and the answer changes back.
+    const mixed: BookTemplate = {
+      ...wordless,
+      pages: wordless.pages.map((p) =>
         p.id === "page-001"
           ? {
               ...p,
@@ -126,8 +160,6 @@ describe("the baby's name is refused, never quietly changed", () => {
           : p,
       ),
     };
-    // Indie Flower carries Vietnamese that Special Elite has never heard of.
-    expect(checkName(FIRST_BOOK, "Thư").ok).toBe(true);
     expect(checkName(mixed, "Thư").ok).toBe(false);
     expect(limitsForRole(mixed, SLOT.name).faces.sort()).toEqual(["hand", "typewriter"]);
   });

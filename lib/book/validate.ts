@@ -33,11 +33,11 @@
 import type { Problem } from "../template/validate";
 import { validateFill, validateTemplate } from "../template/validate";
 import { maxCharsPerLineOf, maxLinesOf, measuredLength } from "../template/defaults";
-import { FACE_COVERAGE } from "../render/coverage";
+import { FACE_COVERAGE, unsettable } from "../render/coverage";
 import { BookArtMissing, pageFillFor, pageSequence, pageTemplateFor, storyTextFor } from "./derive";
 import { NAME_TOKEN, SLOT, TEXT_ROLES, isPhotoRole, isTextRole } from "./slots";
 import { checkPhoto } from "./photo";
-import { limitsForRole } from "./name";
+import { limitsForRole, slotsForRole } from "./name";
 import type { BookFill, BookPage, BookTemplate } from "./types";
 
 /** A look id ends up in a folder name, a URL and a JSON key. */
@@ -280,6 +280,8 @@ export function validateBook(book: BookTemplate): Problem[] {
     // one of them being the one nobody proofread.
     say("book.fromSlotCount", book.id, `${fromSlots} from-line slots; the buyer signs once`);
   }
+  problems.push(...dedicationDefaultProblems(book));
+
   if (storySlots === 0) {
     // Not an error about drawing — a book with no narrative draws perfectly
     // well. It is a statement that the captain's words have nowhere to go, and
@@ -341,6 +343,85 @@ function storyProblems(book: BookTemplate, page: BookPage, where: string): Probl
     say(
       "text.storyOverflows",
       `a line of ${widest} characters${token}, the slot takes ${perLine} across`,
+    );
+  }
+  return out;
+}
+
+/**
+ * Whether the book's **pre-filled dedication** fits the box it is pre-filled
+ * into — with the longest name the form accepts in it.
+ *
+ * The same check `storyProblems` makes, and it has to exist separately because
+ * the default is not a page's `story`: it is the buyer's own field, arriving
+ * with words already in it. What makes it a *refusal* rather than something
+ * `acceptLines` could tidy is that `acceptLines` **wraps** — so a default whose
+ * line is wider than `maxCharsPerLine` would not be refused anywhere, it would
+ * silently come back re-flowed, and the captain's verse re-flowed is a
+ * different verse. A build error is the only outcome that says so.
+ *
+ * The name goes in at its longest for `storyProblems`' reason exactly: a
+ * default checked against the empty string is a default checked against the one
+ * buyer who will never exist.
+ */
+function dedicationDefaultProblems(book: BookTemplate): Problem[] {
+  const out: Problem[] = [];
+  const copy = book.dedicationDefault;
+  if (copy === undefined) return out;
+  const where = `${book.id} ${SLOT.dedication}`;
+  const say = (code: string, detail: string) => out.push({ code, where, detail });
+
+  const slot = slotsForRole(book, SLOT.dedication)[0];
+  if (!slot) {
+    // Reported already as `book.dedicationSlotCount`, but the words are a
+    // separate mistake: copy written for a page the book does not have.
+    say("dedication.defaultGoesNowhere", "a default dedication and no dedication slot to put it in");
+    return out;
+  }
+  if (!copy.trim()) {
+    // An empty string is not "no default" — `undefined` is. A blank one is
+    // somebody half-deleting the field, and it would pre-fill nothing while
+    // claiming to.
+    say("dedication.defaultBlank", "a declared default with nothing in it; absent is how a book has none");
+    return out;
+  }
+
+  const longest = "M".repeat(Math.max(limitsForRole(book, SLOT.name).maxChars, 0));
+  const worst = copy.split(NAME_TOKEN).join(longest);
+  const lines = worst.split("\n");
+  const token = copy.includes(NAME_TOKEN) ? " with the longest name the form accepts" : "";
+  const perLine = maxCharsPerLineOf(slot);
+  const widest = lines.reduce((most, line) => Math.max(most, line.length), 0);
+
+  if (measuredLength(slot, worst) > slot.maxChars) {
+    say(
+      "dedication.defaultOverflows",
+      `${measuredLength(slot, worst)} characters${token}, the slot takes ${slot.maxChars}`,
+    );
+  }
+  if (lines.length > maxLinesOf(slot)) {
+    say(
+      "dedication.defaultOverflows",
+      `${lines.length} lines, the slot takes ${maxLinesOf(slot)}`,
+    );
+  }
+  if (widest > perLine) {
+    say(
+      "dedication.defaultOverflows",
+      `a line of ${widest} characters${token}, the slot takes ${perLine} across — ` +
+        "`acceptLines` would wrap it, which re-flows the copy rather than refusing it",
+    );
+  }
+  // The face has to be able to write it, for `lib/book/name.ts`'s reason: a
+  // codepoint the vendored TTF lacks prints as nothing in the rasteriser while
+  // the browser substitutes and shows it correctly. `acceptLines` *drops* those
+  // characters, so an unwritable default would arrive in the box already
+  // mangled and nobody would know why.
+  const bad = unsettable(slot.font, copy.replace(/\n/g, " "));
+  if (bad.length) {
+    say(
+      "dedication.defaultUnwritable",
+      `the ${slot.font} face cannot write ${bad.map((c) => `"${c}"`).join(" ")}`,
     );
   }
   return out;

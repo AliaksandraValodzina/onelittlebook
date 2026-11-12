@@ -185,18 +185,26 @@ faces another. Even-numbered pages gutter on the left, odd on the right.
 Not the story, not the name, not the dedication, not a page number, not a
 title.
 
-**The book has three kinds of words and the renderer draws all three.**
+**The book has four kinds of words and the renderer draws all four.**
 
 | Kind | Who writes it | When |
 |---|---|---|
-| **The story** — a line or two per spread | the captain, once | fixed for every order |
+| **The verse** — six lines per spread | the captain, once | fixed for every order |
+| **The title** on the cover | the captain, once | fixed for every order |
 | **The baby's name** | the buyer | per order |
 | **The dedication**, and the optional **from-line** under it | the buyer | per order |
 
-Keeping the story out of the pictures is what makes a typo one edit rather than
+Keeping the verses out of the pictures is what makes a typo one edit rather than
 twenty-four re-generations, and it is the only thing that keeps a second
 language possible. A word painted into a picture cannot be fixed once and
 cannot be translated at all.
+
+The captain's own generation brief says *"the verse, name and photo go on in
+Canva afterwards"*. That is right for **mocking up** a spread to look at and
+wrong for production: the name in a mock-up is one child's, and the next buyer's
+is a different length. There is no path in this codebase that burns text into an
+image, and `test/book-verses.test.ts` asserts that the only words any page
+carries are a slot's.
 
 ### The areas the words go in are left empty
 

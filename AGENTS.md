@@ -38,6 +38,35 @@ pages into the `PageTemplate` the renderer has always drawn — **nothing
 downstream of `derive.ts` knows books exist.** Add a book capability there or
 in the format, never in a component.
 
+**The words are the captain's and they are verbatim.** The twelve verses
+(`templates/first-book.ts` § `STORY`, eleven entries plus the dedication's),
+the cover title and the dedication's starting text landed 12 November. The
+punctuation, the line breaks and the blank line under each heading are the
+poem — do not reflow or re-punctuate one. `{name}` is the only token
+(`lib/book/slots.ts` § `NAME_TOKEN`); `{from}` in the captain's document is the
+page's **from-line slot** and not a second token. The **cover's title is a
+`storyText` slot**, because a title is authored words with `{name}` in them,
+which is that role's whole definition — so the cover carries no `babyName` slot
+and the name reaches the front of the book inside "When {name} Turned One".
+
+**The dedication is pre-filled and `Order.dedicationWritten` is why that works.**
+`BookTemplate.dedicationDefault` is the captain's verse for spread one, and
+`lib/book/order.ts` § `dedicationOf` is the single answer to "what does the box
+hold" that the form, the preview panel and `toBookFill` all read. The flag
+distinguishes *never touched* from *deliberately cleared*; without it the
+default either goes stale when the name changes or reappears the instant
+somebody clears it, and the captain's decision is that it must be text and not
+a watermark.
+
+**A verse line is checked twice and the two checks are different.**
+`validateBook` counts characters with the longest name the form accepts
+substituted in — the renderer is not allowed to measure, so counts are the
+proxy everywhere. `test/book-verses.test.ts` is the one place the proxy is
+checked against the thing it stands for: it rasterises every page of words and
+reads the ink's bounding box out of a **difference** between two renders
+(`test/pixels.ts` § `changedBox`). Change a type size or a box in
+`templates/first-book.ts` and that file re-measures and says by how much.
+
 ## The three rules this codebase is built on
 
 **A page template is data, not code.** `lib/template/types.ts` is the format and
@@ -84,6 +113,13 @@ correctly. Neither covers Cyrillic or emoji — measured, not assumed.
 replacement string when they disagree. Everything a customer types goes through
 `lib/editor/text.ts`, whose one contract is that no input produces a fill
 `validateFill` would refuse.
+
+**The name is checked against every face it lands in, which is not the list of
+name slots.** `lib/book/name.ts` § `facesTheNameIsSetIn` adds the face of any
+slot whose authored copy carries `{name}` — the verses are set in the
+typewriter and the name slots in the hand, and the two faces' coverage
+genuinely differs, so a Vietnamese name passes a name-slots-only check and
+prints with a hole in it on eleven interior pages.
 
 ## Facts the repository does not have
 

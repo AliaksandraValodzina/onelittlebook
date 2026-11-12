@@ -34,7 +34,7 @@ export const SLOT = {
   /** The dedication. Exactly one page carries it, and it is multi-line. */
   dedication: "dedication",
   /**
-   * The authored narrative line or two for a spread.
+   * The authored words of a page: a spread's verse, or the cover's title.
    *
    * **The one role the buyer does not fill.** Its words come from the page's
    * own `story` field — the captain writes them once, for every order — and it
@@ -42,6 +42,14 @@ export const SLOT = {
    * re-render of twenty-four images, and so that a second language stays
    * possible. `docs/look-upload-contract.md` § 3 is the same rule addressed to
    * whoever generates the artwork: no text, burned in, anywhere.
+   *
+   * **The cover's title is this role and not a fourth one.** A title is
+   * authored words with `{name}` in them, checked against the longest name the
+   * form accepts and drawn by the renderer — which is the whole definition
+   * above, so a `bookTitle` role would be a second name for one mechanism and
+   * a second place to forget the check. What the cover's words *are* is the
+   * cover's business; `templates/first-book.ts` § `cover` says what they are
+   * there.
    */
   story: "storyText",
   /**

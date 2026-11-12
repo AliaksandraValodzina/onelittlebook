@@ -31,7 +31,7 @@ import { acceptLines } from "../editor/lines";
 import { DEFAULT_VIEW, cropFor, sane, type PhotoView } from "../editor/view";
 import { genderOfLook, looksFor, photoSlotOf } from "./derive";
 import { checkName } from "./name";
-import { ASKS, SLOT, type AskId } from "./slots";
+import { ASKS, NAME_TOKEN, SLOT, type AskId } from "./slots";
 import { slotsForRole } from "./name";
 import { DEFAULT_EDITION, isEdition } from "./editions";
 import type { BookFill, BookTemplate } from "./types";
@@ -95,7 +95,32 @@ export interface Order {
    */
   editionId: string;
   name: string;
+  /**
+   * What the buyer has typed in the dedication box, or `""` if they have not
+   * typed in it.
+   *
+   * **Not what the page says** — `dedicationOf` is that, and it is what
+   * `toBookFill` reads. While `dedicationWritten` is false this field is empty
+   * and the page carries `defaultDedication`.
+   */
   dedication: string;
+  /**
+   * Whether the buyer has written in the dedication box at all.
+   *
+   * **The one bit that tells "never touched" from "deliberately empty".** The
+   * book pre-fills the dedication (`BookTemplate.dedicationDefault`), so
+   * without this there are only two possible behaviours and both are wrong: a
+   * default stored into `dedication` eagerly would go stale the moment the
+   * buyer changes the name, and a default applied whenever `dedication` is
+   * empty would **refill the box the instant they cleared it** — which is a
+   * watermark pretending to be text, and the captain's decision says it must
+   * be neither.
+   *
+   * It flips on the first keystroke and never flips back, so clearing the box
+   * leaves it cleared and `Continue` says the dedication is outstanding, which
+   * is what an empty required field has always done here.
+   */
+  dedicationWritten: boolean;
   /** The optional line under the dedication. Empty is the normal state. */
   from: string;
   photo?: PhotoOrder;
@@ -124,7 +149,11 @@ export function emptyOrder(book: BookTemplate): Order {
     // yet must never already be selected.
     editionId: DEFAULT_EDITION,
     name: "",
+    // Empty, and the book's own default is what the page shows until the buyer
+    // writes — see `Order.dedicationWritten` for why the default is not stored
+    // here instead.
     dedication: "",
+    dedicationWritten: false,
     from: "",
   };
 }
@@ -132,6 +161,38 @@ export function emptyOrder(book: BookTemplate): Order {
 /** The dedication slot's limits, or null if the book has none. */
 export function dedicationSlot(book: BookTemplate) {
   return slotsForRole(book, SLOT.dedication)[0] ?? null;
+}
+
+/**
+ * The book's pre-filled dedication, with this buyer's name in it.
+ *
+ * `""` when the book declares no default, and `""` while there is **no name**:
+ * `"Dear {name},"` is a brace token in the middle of the buyer's own words,
+ * which is tolerable in authored copy under a live preview and is not tolerable
+ * in a message somebody is being asked to approve. The flow asks for the name
+ * two screens before it asks for the message, so the box is filled by the time
+ * it is seen — and `BookTemplate.dedicationDefault` says the rest.
+ *
+ * It is **not** clamped here. `validateBook` refuses a book whose default
+ * overflows its own dedication slot, so the clamp would only ever hide a build
+ * error; `toBookFill` runs `acceptLines` over the result anyway, as it does
+ * over everything else that reaches a fill.
+ */
+export function defaultDedication(book: BookTemplate, name: string): string {
+  const copy = book.dedicationDefault;
+  if (!copy || !name) return "";
+  return copy.split(NAME_TOKEN).join(name);
+}
+
+/**
+ * What the dedication box holds and what the page prints — one answer.
+ *
+ * Both the form (`app/_make/MessageScreen.tsx`) and the panel beside the
+ * preview (`app/_book/Controls.tsx`) show this and `toBookFill` prints it, so
+ * there is no screen where the buyer is shown one dedication and sold another.
+ */
+export function dedicationOf(order: Order, book: BookTemplate): string {
+  return order.dedicationWritten ? order.dedication : defaultDedication(book, order.name);
 }
 
 /** The from-line slot's limits, or null if the book has none. */
@@ -157,7 +218,7 @@ export function toBookFill(order: Order, book: BookTemplate): BookFill {
     lookId: order.lookId,
     coverId: order.coverId,
     name: verdict.ok ? verdict.name : "",
-    dedication: slot ? acceptLines(slot, order.dedication).text : "",
+    dedication: slot ? acceptLines(slot, dedicationOf(order, book)).text : "",
     // The same acceptor as the dedication, against a one-line slot — so the
     // from-line is clamped by the slot's own `maxLines: 1` rather than by a
     // second rule written here. A buyer who presses Return in it gets one line,
@@ -343,6 +404,12 @@ export function readOrder(value: unknown, book: BookTemplate): Order {
   if (slot && typeof v.dedication === "string") {
     out.dedication = acceptLines(slot, v.dedication).text;
   }
+  // **An order stored before the dedication had a default counts as written.**
+  // It has no `dedicationWritten` and it may well have a dedication somebody
+  // typed, and replacing that with the book's own words because a flag is
+  // missing would throw away exactly the part that took effort. An order with
+  // nothing in the box is the only one the default can be offered to.
+  out.dedicationWritten = v.dedicationWritten === true || out.dedication.length > 0;
   const signature = fromSlot(book);
   if (signature && typeof v.from === "string") {
     out.from = acceptLines(signature, v.from).text;

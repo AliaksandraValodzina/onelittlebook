@@ -17,15 +17,23 @@
  * | Kind | Who writes it | Where it lives |
  * |---|---|---|
  * | **Story** | the captain, once per spread | `BookPage.story`, below |
+ * | **The title** | the captain, once | `cover.story`, below |
  * | **The name** | the buyer, per order | `BookFill.name` |
- * | **The dedication** | the buyer, per order | `BookFill.dedication` |
+ * | **The dedication** | the buyer, per order, **pre-filled** | `BookFill.dedication` |
  * | **The from-line** | the buyer, per order, optional | `BookFill.from` |
  *
- * All three are **drawn by the renderer and never painted into artwork**, which
- * is what makes a typo one edit instead of twenty-four re-generations and keeps
- * a second language possible. The story may contain `{name}`, and
- * `lib/book/validate.ts` therefore checks every story line fits **with the
- * longest name the form will accept** — not merely with an empty one.
+ * All of them are **drawn by the renderer and never painted into artwork**,
+ * which is what makes a typo one edit instead of twenty-four re-generations and
+ * keeps a second language possible. The captain's own generation brief says
+ * *"the verse, name and photo go on in Canva afterwards"*; that is right for
+ * mocking up a spread and wrong for production, because a name baked into a
+ * picture cannot change for the next buyer — so no path here burns text into an
+ * image, and `docs/look-upload-contract.md` § 3 says the same thing to whoever
+ * draws the artwork.
+ *
+ * The story may contain `{name}`, and `lib/book/validate.ts` therefore checks
+ * every story line fits **with the longest name the form will accept** — not
+ * merely with an empty one.
  *
  * ## Why this file is TypeScript and why it has a `.map` in it
  *
@@ -64,16 +72,20 @@
  * ## What is a placeholder, and what is not
  *
  * Every page's artwork is `{ kind: "drawn" }` — a scene drawn from the numbers
- * below, with the chosen look's baby in it — and the story copy is stub copy.
- * **Both are stand-ins and both say so.** The production state of the artwork
- * is `{ kind: "asset" }`: the captain's finished page images by content hash,
- * written here by `npm run looks:import` from a folder that satisfies
- * `docs/look-upload-contract.md`. The production state of the copy is the
- * captain's own sentences in the same `story` fields.
+ * below, with the chosen look's baby in it — and it is a **stand-in and says
+ * so.** The production state of the artwork is `{ kind: "asset" }`: the
+ * captain's finished page images by content hash, written here by
+ * `npm run looks:import` from a folder that satisfies
+ * `docs/look-upload-contract.md`.
  *
- * Everything else — the page order, the slots, their boxes, the type sizes, the
- * limits, the gender question, the looks axis — is final and does not change
- * when the artwork and the copy land.
+ * **The copy is no longer a stand-in.** The twelve verses, the title and the
+ * dedication's starting text are the captain's own, delivered 12 November and
+ * taken in verbatim. The type sizes and the boxes under `storySlot` and the
+ * dedication slot moved with them, because the real copy is six lines where the
+ * stub was two — that arithmetic is written out where it was done.
+ *
+ * Everything else — the page order, the slots, the limits, the gender question,
+ * the looks axis — is final and does not change when the artwork lands.
  */
 
 import type { Colour, Layer } from "../lib/template/types";
@@ -171,59 +183,182 @@ function nameSlot(
 }
 
 /**
- * The story slot: the captain's line or two, at the top of a spread's page.
+ * The story slot: **one of the captain's twelve verses**, at the top of a
+ * spread's page.
  *
- * Set in the typewriter face at 17 pt in a 476 pt box, which is about
- * forty-six characters across; `maxCharsPerLine` declares forty-two, leaving
- * room for the sub-point disagreement between two shapers that
- * `lib/render/svg.ts` names as the one seam. Three lines at 33 pt is 99 pt
- * inside a 135 pt box.
+ * Every verse is the same shape — a heading, a blank line, then four rhyming
+ * lines — so the slot is six lines and not "a line or two", which is what the
+ * stub copy it replaced was sized for.
  *
- * It sits high because the baby sits low.
+ * **The blank line is a line.** `lib/render/svg.ts` § `drawTextSlot` sets every
+ * line at an absolute baseline precisely so that an empty one cannot close up
+ * between the browser and `resvg`, which is what makes the gap under the
+ * heading paint rather than luck.
+ *
+ * ## The box, and the one slot where the proxy can be checked
+ *
+ * `maxCharsPerLine` is a character count here as everywhere, for the reason
+ * `lib/render/svg.ts` opens with: two shapers disagree about advance widths by
+ * fractions of a point, so a limit that measured would be a different limit in
+ * the browser and in the print file. A count is a **proxy**, and a proxy needs
+ * a box that is generous rather than exact.
+ *
+ * This is the one text slot where the proxy can be checked against the real
+ * thing, because the copy is committed and the only part of it that varies is
+ * `{name}`. Measured in Special Elite against the vendored TTF:
+ *
+ * | | em | at 15 pt |
+ * |---|---|---|
+ * | widest line of the twelve verses — spread 5's *"With your bear tucked in close and your blanket pulled tight,"* | 32.07 | 481 pt |
+ * | widest line carrying the name, with the longest name the form accepts — spread 12's heading | 20.49 | 307 pt |
+ * | this box | | **520 pt** |
+ *
+ * — 39 pt of headroom on the worst line, inside a safe area 540 pt across.
+ *
+ * **The copy cannot be set at the 17 pt the stub was set at**: 32.07 em is
+ * 545 pt there, which is wider than the whole safe area, let alone a box
+ * inside it. That is a measurement and not a preference, and it is why this
+ * slot's type size came down with the real words.
+ *
+ * Six lines at 26 pt is 156 pt, which is what the 160 pt box holds. It sits
+ * high because the baby sits low. `test/book-verses.test.ts` is the arithmetic
+ * above as pixels, and it reads every number off this slot.
  */
 function storySlot(id: string): Layer {
   return {
     id,
     kind: "textSlot",
     slot: SLOT.story,
-    frame: { x: 68, y: 71, width: 476, height: 135 },
+    frame: { x: 46, y: 64, width: 520, height: 160 },
     font: "typewriter",
-    size: 17,
-    baseline: 23,
-    lineHeight: 33,
+    size: 15,
+    baseline: 20,
+    lineHeight: 26,
     colour: INK,
     align: "middle",
-    maxChars: 130,
-    maxLines: 3,
-    maxCharsPerLine: 42,
+    /**
+     * The longest verse is 253 characters with the longest name in it, so 300
+     * is the budget with room for a line the captain might lengthen. Six lines
+     * of sixty-two is 372, so this is the limit that binds on **bulk** and the
+     * other two that bind on **shape** — which is the division
+     * `TextSlotLayer.maxLines` argues for.
+     */
+    maxChars: 300,
+    maxLines: 6,
+    /**
+     * Sixty-two, where the widest line of the copy is sixty-one.
+     *
+     * One spare rather than a comfortable margin, deliberately: the box above
+     * is sized by measurement and this number's job is to make a *shape*
+     * change in the copy fail the build rather than the page. A verse line
+     * grown to seventy characters would still be under any generous count and
+     * would still run off the paper.
+     */
+    maxCharsPerLine: 62,
   };
 }
 
 /**
- * The stub story copy, one entry per spread that carries words.
+ * **The captain's twelve verses, verbatim** — one per spread that carries
+ * words, in spread order.
  *
- * **Placeholder sentences, and the captain replaces them.** They are here
- * rather than absent because the slot has to be exercised — by the preview, by
- * the print file, and by the check that a line still fits with a fourteen
- * character name in it — and a slot with no words proves none of that.
+ * Eleven entries for twelve verses, and that is not a gap. The captain wrote a
+ * verse for **spread one as well**, and spread one is the page the *buyer's*
+ * dedication occupies — so that verse is `FIRST_BOOK.dedicationDefault` below,
+ * pre-filled into the buyer's own box rather than printed over it. The eleven
+ * here are spreads two to twelve, which is exactly the eleven pages `interior`
+ * gives a story slot to.
  *
- * `{name}` is deliberately given its own short line wherever it appears. That
- * is the shape the captain's copy will need too: a name of up to fourteen
- * characters shares a line with whatever else is on it, so the line it is on
- * has to be the short one. The build refuses copy that forgets.
+ * **The punctuation, the line breaks and the blank line after the heading are
+ * the poem.** Nothing here is reflowed, re-punctuated or improved; the straight
+ * apostrophes and quotes and the spaced hyphens are the captain's document as
+ * it was written. `{name}` is the one token (`lib/book/slots.ts`
+ * § `NAME_TOKEN`) and `validateBook` checks every line still fits with the
+ * longest name the form accepts.
+ *
+ * The heading carries the name in ten of the eleven, which is the shape the
+ * slot above is sized for: the name shares a line only with a short one. The
+ * longest line *containing* the name is spread 12's heading at thirty-five
+ * characters; the longest line in the book carries no name at all.
  */
 const STORY: readonly string[] = [
-  "{name}\nwoke up when the light came in.",
-  "There was a whole day waiting,\nand none of it had happened yet.",
-  "Breakfast went mostly in,\nand a little on the floor.",
-  "{name}\nfound a cupboard that opens.",
-  "Outside, everything was bigger\nand much more interesting.",
-  "A duck looked back.\nNeither of them said anything.",
-  "{name}\nwas carried home half asleep.",
-  "The bath was warm\nand the flannel was a boat.",
-  "Everything got slower\nand quieter and softer.",
-  "{name}\nwas tucked in with the rabbit.",
-  "Goodnight to the day,\nand to everyone in it.",
+  // Spread 2 — Welcome to the world
+  "Dear {name},\n" +
+    "\n" +
+    "The day that you came, the whole world felt new,\n" +
+    "The stars seemed to shine just a little for you.\n" +
+    "So tiny, so perfect, wrapped snug in our arms,\n" +
+    "We fell head over heels for your sweet little charms.",
+  // Spread 3 — Smiles and giggles
+  "{name}, you smiled!\n" +
+    "\n" +
+    "One morning you grinned and our hearts melted through,\n" +
+    'Then came a big giggle, a bubbly "ah-goo!"\n' +
+    "We tickled your toes and we kissed your round tum,\n" +
+    "And you laughed till the hiccups decided to come.",
+  // Spread 4 — Tummy time
+  "Go, {name}, go!\n" +
+    "\n" +
+    "On tummy-time mornings you pushed and you tried,\n" +
+    "You wiggled and wobbled and rocked side to side.\n" +
+    "Then over you rolled with a squeak and a cheer,\n" +
+    "And we clapped for our champion - well done, my dear!",
+  // Spread 5 — Night-night
+  "Night-night, {name}\n" +
+    "\n" +
+    "When the moon climbed up high and the stars came to peep,\n" +
+    "We rocked you and hummed till you drifted to sleep.\n" +
+    "With your bear tucked in close and your blanket pulled tight,\n" +
+    'We whispered "we love you" and kissed you goodnight.',
+  // Spread 6 — First foods
+  "{name} tries something new\n" +
+    "\n" +
+    "Your very first spoonful was quite a surprise,\n" +
+    "You wrinkled your nose and you scrunched up your eyes.\n" +
+    "But soon it was pumpkin, banana and pear,\n" +
+    "On your cheeks, on your bib, and all over your hair!",
+  // Spread 7 — Bath time
+  "Splish-splash, {name}!\n" +
+    "\n" +
+    "Splish-splash in the bath with your ducks in a row,\n" +
+    "You kicked and you paddled and put on a show.\n" +
+    "Then wrapped in a towel, all rosy and sweet,\n" +
+    "From the top of your head to your ten little feet.",
+  // Spread 8 — Out and about
+  "Out we go, {name}!\n" +
+    "\n" +
+    "We took you out walking to visit the park,\n" +
+    "To hear all the birds and the dogs as they bark.\n" +
+    "You reached for the clouds and the sky up so high,\n" +
+    "And waved to each duck as it paddled on by.",
+  // Spread 9 — Crawling
+  "Here comes {name}!\n" +
+    "\n" +
+    "Then off you went crawling, so speedy and keen,\n" +
+    "To explore every corner you'd never yet seen.\n" +
+    "You opened the cupboards and pulled out the pots,\n" +
+    "And found all the crumbs in the very best spots.",
+  // Spread 10 — Loved by so many
+  "{name}, you are so loved\n" +
+    "\n" +
+    "You're loved by so many, both near and afar,\n" +
+    "Who think you're the brightest and loveliest star.\n" +
+    "With cuddles and kisses and bedtime songs too,\n" +
+    "There's no one more loved in the whole world than you.",
+  // Spread 11 — First steps
+  "Look at {name} go!\n" +
+    "\n" +
+    "Then one day you stood, holding tight to a chair,\n" +
+    "Your legs gave a wobble - but look, you were there!\n" +
+    "One step and then two, with your arms open wide,\n" +
+    "Each brave little step with our hearts by your side.",
+  // Spread 12 — Happy 1st Birthday
+  "Happy 1st Birthday, {name}!\n" +
+    "\n" +
+    "Now here is a cake with one candle so bright,\n" +
+    "A year full of wonder, of love and delight.\n" +
+    "So make a wish, little one, as we sing just for you,\n" +
+    "We love you, we love you, we always will too.",
 ];
 
 /**
@@ -278,6 +413,12 @@ const FEATURED: Record<string, { scene?: Partial<SceneSpec>; layers: Layer[] }> 
    * | dedication | 288 → 518 | 10 lines × 23 pt = 230 pt exactly |
    * | from-line | 530 → 562 | one line |
    *
+   * **The dedication arrives pre-filled**, with the captain's own verse for
+   * this spread — `FIRST_BOOK.dedicationDefault`, and `lib/book/order.ts`
+   * § `defaultDedication` is where it becomes the buyer's text. The from-line
+   * below it is where that verse's `{from}` goes, which is why its last line
+   * reads as finished without one.
+   *
    * Ten lines is Wonderbly's own dedication limit, which the research says to
    * copy exactly rather than to improve on, and it is what decides the type
    * size here rather than the other way round.
@@ -315,7 +456,24 @@ const FEATURED: Record<string, { scene?: Partial<SceneSpec>; layers: Layer[] }> 
         id: "dedication",
         kind: "textSlot",
         slot: SLOT.dedication,
-        frame: { x: 119, y: 288, width: 374, height: 230 },
+        /**
+         * **440 pt wide, where it was 374, and the verse below is why.**
+         *
+         * `dedicationDefault` pre-fills this box with the captain's own verse
+         * for this spread, and `acceptLines` *wraps* prose that is wider than
+         * `maxCharsPerLine` rather than refusing it — which is right for a
+         * buyer typing and would have been fatal here: at thirty-four
+         * characters the verse's forty-eight-character line would have come
+         * back as two, and a re-flowed poem is a different poem. So the limit
+         * is forty-eight and the box is sized for it.
+         *
+         * Forty-eight characters at the 0.6 em a character of 15 pt Special
+         * Elite is planned at is 432 pt, inside this 440. Measured, the
+         * default's widest line is 25.15 em — 377 pt — so the real headroom is
+         * 63 pt; the planning figure is the one that matters, because what a
+         * *buyer* types here is not measured in advance.
+         */
+        frame: { x: 86, y: 288, width: 440, height: 230 },
         font: "typewriter",
         size: 15,
         baseline: 19,
@@ -323,18 +481,22 @@ const FEATURED: Record<string, { scene?: Partial<SceneSpec>; layers: Layer[] }> 
         colour: INK,
         align: "middle",
         /**
-         * Ten lines, thirty-four characters each, three hundred in total.
+         * Ten lines, forty-eight characters each, three hundred in total.
          *
          * The three are not redundant. `maxLines` stops a buyer pushing line
          * eleven off the bottom of the page; `maxCharsPerLine` stops one long
          * unbroken line running off both sides, which a line count cannot see;
          * `maxChars` is the overall budget. Ten lines at 23 pt is 230 pt, which
-         * is this box exactly, and thirty-four characters of 15 pt typewriter
-         * is about 306 pt inside a 374 pt one.
+         * is this box exactly, and forty-eight characters of 15 pt typewriter
+         * is about 432 pt inside a 440 pt one.
+         *
+         * `maxChars` is **unchanged at three hundred**, because the pre-filled
+         * verse is 213 characters with the longest name the form accepts in it
+         * and the budget was never the limit the buyer meets first.
          */
         maxChars: 300,
         maxLines: 10,
-        maxCharsPerLine: 34,
+        maxCharsPerLine: 48,
       },
       {
         id: "from",
@@ -571,7 +733,7 @@ const LOOKS: Look[] = GENDERS.flatMap(({ id: gender }, column) =>
 export const FIRST_BOOK: BookTemplate = {
   schema: 1,
   id: "the-book-of-you",
-  rev: "c663bd78",
+  rev: "008fd34f",
   /**
    * **"When They Were Small".**
    *
@@ -592,8 +754,44 @@ export const FIRST_BOOK: BookTemplate = {
    */
   name: "When They Were Small",
   blurb:
-    "Twelve spreads of a day in their life, with their name through it, one of your own " +
+    "Twelve spreads of their first year, with their name through it, one of your own " +
     "photographs, and a dedication in the front.",
+
+  /**
+   * **The captain's verse for spread one, pre-filled into the buyer's own box.**
+   *
+   * The twelfth verse, and the only one that is not in `STORY`: spread one is
+   * the page the *buyer's* dedication occupies, so the captain's words for it
+   * are offered as the dedication's **starting text** rather than printed over
+   * the top of it. A buyer who writes nothing gets a finished page; a buyer who
+   * writes their own replaces it entirely, and a buyer who clears it gets an
+   * empty box that stays empty — `lib/book/order.ts` § `defaultDedication` is
+   * the whole of that behaviour and `Order.dedicationWritten` is the one bit of
+   * state it needs.
+   *
+   * **`{name}` is substituted; `{from}` is a slot and not a token.** The
+   * captain's last line is *"With all our love, {from}"*, and this page already
+   * declares a `fromLine` slot under the dedication, set in the handwritten
+   * face, holding exactly what `{from}` means. So the line is set across the
+   * two slots the page has: *"With all our love"* here and the signature
+   * beneath it, which is also why the comma is not in this string — the
+   * from-line is **optional**, and a dedication that ends in a dangling comma
+   * when nobody signs it is a typo in a printed book.
+   *
+   * It is declared on the book rather than in `lib/` because it is copy, and
+   * copy belongs to the title that says it. Absent — which is every other book
+   * — means the dedication starts empty, which is what this one did until the
+   * captain wrote this.
+   */
+  dedicationDefault:
+    "Dear {name},\n" +
+    "\n" +
+    "Here is your year, all tucked in a book,\n" +
+    "Each first and each giggle, each wide-eyed look.\n" +
+    "We'll read it together again and again,\n" +
+    "And remember how small you were back then.\n" +
+    "\n" +
+    "With all our love",
 
   page: {
     canvas: {
@@ -657,8 +855,8 @@ export const FIRST_BOOK: BookTemplate = {
    * **Page three carries story text, and a tile is drawn with no name in it.**
    * `storyTextFor` deliberately leaves `{name}` in place when there is no name
    * yet — on a full-size page that reads as "your name goes here", which is
-   * true and useful. Shrunk to a tile it is six copies of a literal brace
-   * token, which reads as a bug. Page four is the picture half of its spread
+   * true and useful. Shrunk to a tile it is a literal brace token in the
+   * middle of a verse, which reads as a bug. Page four is the picture half of its spread
    * and carries no slot at all, so the tile is the baby and nothing else —
    * which is exactly what "the choice reads as *which baby* rather than *which
    * picture*" asks for.
@@ -692,6 +890,31 @@ export const FIRST_BOOK: BookTemplate = {
 
   cover: {
     id: "cover",
+    /**
+     * **The title, and it is authored words with the buyer's name in them.**
+     *
+     * *"When {name} Turned One"* — the captain's. It is a `story` and a
+     * `storyText` slot because that is **exactly** the mechanism it needs and
+     * there is no second one worth building: words written once for every
+     * order, `{name}` substituted per order, checked by `validateBook` against
+     * the longest name the form accepts, and drawn by the renderer so that the
+     * artwork under it stays wordless. `lib/book/slots.ts` § `SLOT.story` says
+     * the same thing from the other end.
+     *
+     * **Three lines, because the name is the long one.** One line would put
+     * the title's twenty-six characters and a fourteen-character name on the
+     * same line, and a cover whose type is sized for the longest name the form
+     * takes is a cover set in 29 pt. Stacked, the widest line is the name
+     * itself and the title can be set at 44.
+     *
+     * **There is no separate name slot on the cover any more**, and there must
+     * not be: the name is *in* the title, and a second one would print the
+     * child's name twice on the front of the book. The name still has its own
+     * slots on page one and page twenty-four, which is what keeps
+     * `NAME_CHARS` the tightest limit in the book and `checkName` answering
+     * about the face this title is set in.
+     */
+    story: "When\n{name}\nTurned One",
     art: artFor({
       // Replaced by the chosen cover's colour. The only page that does this,
       // and `validateBook` refuses any interior page that tries.
@@ -711,14 +934,49 @@ export const FIRST_BOOK: BookTemplate = {
         shape: {
           kind: "rect",
           radius: 20,
-          // Cream, and not the cover colour: the name is set on this panel and
+          // Cream, and not the cover colour: the title is set on this panel and
           // has to stay legible against all three choices.
           fill: "#FBF6EC",
           stroke: { colour: "#FFFFFF", width: 4 },
           shadow: { colour: "#2A1C12", blur: 10, dx: 0, dy: 6 },
         },
       },
-      nameSlot("cover-name", { x: 106, y: 255, width: 400, height: 106 }, 62, "middle"),
+      {
+        id: "cover-title",
+        kind: "textSlot",
+        slot: SLOT.story,
+        /**
+         * Inside the panel above, which is 212 → 400.
+         *
+         * Three baselines at 226 + 48 + 52 n are 274, 326 and 378, so the
+         * first line's ascenders clear 212 and the last line's descenders stop
+         * short of 400 — the panel holds the title rather than the title
+         * crossing it.
+         *
+         * 402 pt across: fourteen characters of 44 pt Indie Flower is 374 pt
+         * measured against the vendored TTF, which is the longest line this
+         * slot can be given.
+         */
+        frame: { x: 105, y: 226, width: 402, height: 160 },
+        font: "hand",
+        size: 44,
+        baseline: 48,
+        lineHeight: 52,
+        colour: INK,
+        align: "middle",
+        /**
+         * Sixteen across, where the name's own limit is fourteen and *"Turned
+         * One"* is ten.
+         *
+         * The two numbers are deliberately close. Raise `NAME_CHARS` past
+         * sixteen and this slot refuses at build time with
+         * `text.storyOverflows` — which is the build saying that the cover no
+         * longer holds the name, rather than the cover saying it in print.
+         */
+        maxChars: 32,
+        maxLines: 3,
+        maxCharsPerLine: 16,
+      },
     ],
   },
 

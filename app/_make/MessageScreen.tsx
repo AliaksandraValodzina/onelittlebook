@@ -28,7 +28,7 @@
 
 import { useMemo, useState } from "react";
 import { acceptLines, explainLines } from "../../lib/editor/lines";
-import { dedicationSlot } from "../../lib/book/order";
+import { dedicationOf, dedicationSlot } from "../../lib/book/order";
 import { FACES } from "../../lib/render/fonts";
 import { next, stepFor } from "../../lib/shop/steps";
 import { useBook } from "../_book/BookProvider";
@@ -41,10 +41,14 @@ export default function MessageScreen({ closeTo }: { closeTo: string }) {
   const slot = dedicationSlot(book);
   const onward = next("message")!;
   const [touched, setTouched] = useState(false);
-  const accepted = useMemo(
-    () => (slot ? acceptLines(slot, order.dedication) : null),
-    [slot, order.dedication],
-  );
+  /**
+   * **What is in the box**, which is the book's own verse until the buyer
+   * writes — `dedicationOf` is the one answer, shared with the panel beside the
+   * preview and with `toBookFill`, so no screen can show one dedication while
+   * another prints a different one.
+   */
+  const written = dedicationOf(order, book);
+  const accepted = useMemo(() => (slot ? acceptLines(slot, written) : null), [slot, written]);
 
   if (!slot || !accepted) {
     return (
@@ -63,20 +67,28 @@ export default function MessageScreen({ closeTo }: { closeTo: string }) {
 
   return (
     <Screen step={step} closeTo={closeTo} width={620}>
-      <p className="say">It goes on the first page, opposite your photograph.</p>
+      <p className="say">
+        It goes on the first page, opposite your photograph.
+        {/*
+          Said only when the box holds the book's own words, because that is the
+          only time it is true — and it has to be said: a buyer who does not
+          know the text is theirs will leave it alone out of politeness.
+        */}
+        {order.dedicationWritten ? null : " We have started it off — change it, or clear it and write your own."}
+      </p>
 
       <label className="sr-only" htmlFor="dedication">
         Your message to {who}
       </label>
       <textarea
         id="dedication"
-        className={`fld ${order.dedication.length > 0 ? "on" : ""} min-h-[140px] leading-[1.7]`}
-        value={order.dedication}
+        className={`fld ${written.length > 0 ? "on" : ""} min-h-[140px] leading-[1.7]`}
+        value={written}
         onChange={(e) => setDedication(e.target.value)}
         onBlur={() => {
           setTouched(true);
           // What will print, put back in the box.
-          if (accepted.text !== order.dedication) setDedication(accepted.text);
+          if (accepted.text !== written) setDedication(accepted.text);
         }}
         rows={6}
         data-testid="dedication"
@@ -94,7 +106,7 @@ export default function MessageScreen({ closeTo }: { closeTo: string }) {
         ) : null}
       </p>
       <p className="warn" data-testid="dedication-warning">
-        {touched || order.dedication.length > 0
+        {touched || written.length > 0
           ? "Read it back on the page before you order — a printed page cannot be changed."
           : "Whatever you write is set on the page itself. Read it back there before you order."}
       </p>

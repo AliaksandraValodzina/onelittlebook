@@ -294,6 +294,13 @@ export interface BookPage {
    * not merely with the empty string. A story line that fits "Jo" and overflows
    * "Clementine" is a book that prints wrong for one buyer in ten.
    *
+   * **The cover's authored words are its title**, and they live in this same
+   * field. One mechanism rather than two: a title is words written once for
+   * every order with `{name}` in them, checked against the longest name the
+   * form accepts, drawn by the renderer so the artwork stays wordless — which
+   * is this field's definition, word for word. `lib/book/slots.ts`
+   * § `SLOT.story` makes the same argument from the slot's end.
+   *
    * Absent means the page carries no story, which most pages of this book do
    * not. A page with `story` and no `storyText` slot is a refusal, and so is
    * the reverse: both are words that would silently go nowhere.
@@ -360,6 +367,35 @@ export interface BookTemplate {
    * `lib/product.ts` is where a claim has to earn a `confirmed: true` arm.
    */
   blurb: string;
+  /**
+   * **What the dedication box already says when the buyer first sees it.**
+   *
+   * A *starting value*, not a placeholder and not a watermark: it is the
+   * buyer's text from the first keystroke, it prints exactly as it reads, and
+   * clearing it leaves it cleared. `lib/book/order.ts` § `defaultDedication`
+   * holds the mechanism and `Order.dedicationWritten` is the single bit that
+   * tells "never touched" from "deliberately empty" — without it the box would
+   * either refill itself after being cleared or never fill at all.
+   *
+   * **`{name}` is substituted, exactly as in `BookPage.story`.** Until there
+   * is a name there is no default either, because a dedication reading
+   * "Dear {name}," is a brace token in the buyer's own words — which is
+   * tolerable in authored copy on a live preview and is not tolerable here.
+   * The flow asks for the name before it asks for the message, so in practice
+   * the box is already filled when it is first seen.
+   *
+   * `{from}` is **not** a token. The one book that uses this field has a
+   * `fromLine` slot under its dedication, which is what `{from}` means, so the
+   * signature goes there — see `templates/first-book.ts`
+   * § `dedicationDefault`.
+   *
+   * **Absent means the dedication starts empty**, which is the normal state of
+   * a book whose copy nobody has written for that page. `./validate.ts` checks
+   * a declared default against the dedication slot's own limits with the
+   * longest name the form accepts in it, so a default that cannot print is a
+   * build refusal rather than a clamp the buyer never asked for.
+   */
+  dedicationDefault?: string;
   /**
    * **The page size, declared once for every page of the book.**
    *
