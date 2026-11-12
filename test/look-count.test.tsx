@@ -86,14 +86,15 @@ describe("the chooser renders the list it is given", () => {
   // Deliberately not fourteen, and on both sides of it: a grid that counted
   // would pass against the real book and fail here.
   for (const howMany of [1, 5, 9, 20]) {
-    it(`offers exactly ${howMany} tile(s) and ${howMany} swatch(es) for a book of ${howMany} looks`, () => {
+    it(`offers exactly ${howMany} tile(s) for a book of ${howMany} looks`, () => {
       const book = bookWithLooks(howMany);
       const ids = testIds(lookScreen(book));
-      // `skin-row` is the row itself and `look-grid` is the grid itself; every
-      // other `skin-…` and `look-…` is one look.
-      expect(ids.filter((id) => /^skin-(?!row$)/.test(id))).toHaveLength(howMany);
+      // `look-grid` is the grid itself; every other `look-…` is one look.
       expect(ids.filter((id) => /^look-(?!grid$)/.test(id))).toHaveLength(howMany);
       for (const look of book.looks) expect(ids, look.id).toContain(`look-${look.id}`);
+      // And one control per look, not a tile plus a swatch: the skin-tone row
+      // this screen used to carry implied an axis no artwork is behind.
+      expect(ids.filter((id) => /^skin-/.test(id))).toEqual([]);
     });
   }
 

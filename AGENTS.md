@@ -127,6 +127,16 @@ by the number in the filename and there is no table anybody maintains. Every
 entry keeps a `baby` colour triple, which is what a fresh clone and the whole
 suite draw.
 
+**A look is the whole answer, so the chooser asks once.** There is no skin,
+hair or eye axis and there must not be one: a control beside the grid reads as
+independent of it, and there is no artwork behind a baby made of one look's
+skin and another's hair — a look is a folder of finished pages, not a skin
+crossed with a hair. Nothing stores a skin — `BookFill` has nowhere to put
+one. The chooser's one large picture is `app/_book/tile.ts` § `lookPanel`,
+which prefers **a page of the real book**, then **the look's portrait**, then
+**the page drawn from numbers**; all three are live states, because the artwork
+is environment and a fresh clone has none of it.
+
 **The shelf is data** (`lib/shop/shelf.ts`) and **the flow is data**
 (`lib/shop/steps.ts`): a second title is an entry plus a template, and back,
 next, the counter and the route table all read the step list. The copy is data

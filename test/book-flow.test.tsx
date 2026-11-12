@@ -43,6 +43,9 @@ import Confirm from "../app/_book/Confirm";
 import { EDITIONS, priceLabel } from "../lib/book/editions";
 import { DEFAULT_MARKET } from "../lib/shop/market";
 import { pageSequence, pageWithSlot, tileIndexOf } from "../lib/book/derive";
+import { assetKey } from "../lib/assets/address";
+import type { AssetRef } from "../lib/template/types";
+import type { BookTemplate } from "../lib/book/types";
 import { ASKS, SLOT } from "../lib/book/slots";
 import { next, position, stepFor } from "../lib/shop/steps";
 import { nameSlotFont } from "../lib/book/name";
@@ -109,9 +112,29 @@ describe("the look screen — the one form that decides what is drawn", () => {
     const ids = testIds(answered);
     expect(ids).toContain("look-grid");
     for (const one of book.looks) expect(ids).toContain(`look-${one.id}`);
-    // And the skin-tone row the approved screen asks for, one swatch per look —
-    // never an axis that could compose a baby the interior cannot draw.
-    for (const one of book.looks) expect(ids).toContain(`skin-${one.id}`);
+  });
+
+  it("offers one control per look and no second axis beside it", () => {
+    /**
+     * The screen used to carry a *Skin tone* row under the tiles — one swatch
+     * per look, in that look's own `baby.skin`. It could not compose a baby the
+     * interior cannot draw, and it still read as though it could: a control
+     * beside the grid reads as independent of the grid, as though the blonde
+     * baby could be made deep brown. There are seven looks and each is a folder
+     * of artwork, not seven skins times seven hairs.
+     *
+     * Asserted as an absence because that is the mistake worth guarding: this
+     * is the kind of row somebody adds back as a kindness. The paired positive
+     * is the test above — every look still has exactly one control.
+     */
+    const answered = answeredMarkup();
+    const ids = testIds(answered);
+    expect(ids).not.toContain("skin-row");
+    for (const one of book.looks) expect(ids, one.id).not.toContain(`skin-${one.id}`);
+    expect(answered).not.toContain("Skin tone");
+    // One control per look, and it is the tile. A second control per look would
+    // pass the three assertions above under any other name.
+    expect(ids.filter((id) => /^look-(?!grid$)/.test(id))).toHaveLength(book.looks.length);
   });
 
   it("will not go on until there is a name and a baby", () => {
@@ -137,6 +160,184 @@ describe("the look screen — the one form that decides what is drawn", () => {
     // the same string.
     const skins = new Set(book.looks.map((l) => l.baby!.skin));
     for (const skin of skins) expect(answered).toContain(skin);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The panel: the chosen look, as large as this machine can show it
+// ---------------------------------------------------------------------------
+
+/**
+ * **The three states of the chooser's big picture, and all three are real.**
+ *
+ * `app/_book/tile.ts` § `lookPanel` prefers a page of the real book, then this
+ * look's portrait, then the page drawn from numbers — and the last of those is
+ * not a tidy-up for the unlikely case. It is a fresh clone, it is CI, and it is
+ * every look the captain has not finished, so each state is rendered here
+ * against a book put into it rather than against whatever this machine happens
+ * to have imported. Nothing in these tests reads the artwork store: the
+ * pictures are references with made-up digests, which is all a render needs,
+ * and `test/release-artwork.test.ts` is where the binding itself is tested.
+ */
+describe("the panel beside the grid", () => {
+  /** A picture that does not exist, named the way a real one would be. */
+  function ref(label: string, px: [number, number]): AssetRef {
+    return { sha256: label.padEnd(64, "0"), mime: "image/png", px, label };
+  }
+
+  /** The book with no gender question, which is how a static render answers it. */
+  const asked = { ...book, genders: [] };
+  /** The look a fresh order starts on — the panel's subject, never typed here. */
+  const chosen = book.looks[0];
+
+  /** The named pages of the book given delivered artwork for one look. */
+  function delivered(
+    lookId: string,
+    pages: Record<string, AssetRef>,
+  ): BookTemplate {
+    const give = (page: typeof book.cover) =>
+      pages[page.id]
+        ? {
+            ...page,
+            art: {
+              kind: "asset" as const,
+              byLook: { [lookId]: pages[page.id] },
+              scene: page.art.scene,
+            },
+          }
+        : page;
+    return { ...asked, cover: give(asked.cover), pages: asked.pages.map(give) };
+  }
+
+  /** The page id at an index of the sequence, which is how a page is named. */
+  function idAt(index: number): string {
+    return pageSequence(book)[index].id;
+  }
+
+  function panelOf(template: BookTemplate): { ids: string[]; markup: string } {
+    const markup = renderToStaticMarkup(
+      <BookProvider book={template} market={DEFAULT_MARKET}>
+        <LookScreen closeTo="/books/when-they-were-small" />
+      </BookProvider>,
+    );
+    return { ids: testIds(markup), markup };
+  }
+
+  it("shows a page of the real book when this look has one", () => {
+    const tile = tileIndexOf(book);
+    const art = ref("deliveredtilepage", [3600, 3600]);
+    const { ids, markup } = panelOf(delivered(chosen.id, { [idAt(tile)]: art }));
+
+    expect(ids).toContain("panel-page");
+    // The tile page is preferred, so the panel and the pressed tile agree.
+    expect(markup).toContain(`data-page="${tile}"`);
+    expect(markup).toContain(assetKey(art));
+    // The paired negative: the same screen, the same page, no artwork — the
+    // picture is not in the markup and the panel says it is the placeholder.
+    const without = panelOf(asked);
+    expect(without.markup).not.toContain(assetKey(art));
+    expect(without.ids).toContain("panel-drawn");
+  });
+
+  it("prefers that page to the portrait, because a page is what is being bought", () => {
+    const art = ref("deliveredtilepage", [3600, 3600]);
+    const portrait = ref("deliveredportrait", [1254, 1254]);
+    const both = delivered(chosen.id, { [idAt(tileIndexOf(book))]: art });
+    const { ids, markup } = panelOf({
+      ...both,
+      looks: both.looks.map((one) => (one.id === chosen.id ? { ...one, tile: portrait } : one)),
+    });
+
+    expect(ids).toContain("panel-page");
+    expect(ids).not.toContain("panel-portrait");
+    expect(markup).toContain(assetKey(art));
+    // The portrait is still the look's *tile*, which is the grid and not the
+    // panel — so it is in the markup, and the panel is not it.
+    expect(markup).toContain(assetKey(portrait));
+  });
+
+  it("shows another delivered page when the tile page is not one", () => {
+    // A partial import is a legitimate state and it does not arrive in page
+    // order. The page is found, not counted: whichever one has artwork.
+    const tile = tileIndexOf(book);
+    const other = pageSequence(book).findIndex(
+      (page, index) => index !== tile && index !== 0,
+    );
+    const art = ref("deliveredotherpage", [3600, 3600]);
+    const { ids, markup } = panelOf(delivered(chosen.id, { [idAt(other)]: art }));
+
+    expect(ids).toContain("panel-page");
+    expect(markup).toContain(`data-page="${other}"`);
+    expect(markup).not.toContain(`data-page="${tile}"`);
+    expect(markup).toContain(assetKey(art));
+  });
+
+  it("leaves a delivered cover last, because a cover says which book and not which baby", () => {
+    const tile = tileIndexOf(book);
+    const inside = pageSequence(book).findIndex((_, index) => index !== tile && index !== 0);
+    const coverArt = ref("deliveredcover", [3600, 3600]);
+    const insideArt = ref("deliveredinside", [3600, 3600]);
+    const { ids, markup } = panelOf(
+      delivered(chosen.id, { [idAt(0)]: coverArt, [idAt(inside)]: insideArt }),
+    );
+
+    expect(ids).toContain("panel-page");
+    expect(markup).toContain(`data-page="${inside}"`);
+    expect(markup).toContain(assetKey(insideArt));
+    expect(markup).not.toContain(`data-page="0"`);
+  });
+
+  it("shows the tile page when every page is delivered, so the panel and the tile agree", () => {
+    // The preference, with something for it to prefer: a complete import, where
+    // picking the first page in reading order would be a different page.
+    const tile = tileIndexOf(book);
+    const tileArt = ref("deliveredtilepage", [3600, 3600]);
+    const everyPage = Object.fromEntries(
+      pageSequence(book).map((page, index) => [
+        page.id,
+        index === tile ? tileArt : ref(`delivered${index}`, [3600, 3600]),
+      ]),
+    );
+
+    const { ids, markup } = panelOf(delivered(chosen.id, everyPage));
+    expect(ids).toContain("panel-page");
+    expect(markup).toContain(`data-page="${tile}"`);
+    expect(markup).toContain(assetKey(tileArt));
+    // One page in the panel, and it is that one.
+    expect([...markup.matchAll(/data-page="(\d+)"/g)].map((m) => Number(m[1]))).toEqual([tile]);
+  });
+
+  it("shows this look's portrait, large, when there are no pages for it", () => {
+    const portrait = ref("deliveredportrait", [1254, 1254]);
+    const { ids, markup } = panelOf({
+      ...asked,
+      looks: asked.looks.map((one) => (one.id === chosen.id ? { ...one, tile: portrait } : one)),
+    });
+
+    expect(ids).toContain("panel-portrait");
+    expect(markup).toContain(assetKey(portrait));
+    // Large: it is the panel's own picture and not a page with a baby in it,
+    // so there is no page drawn in the panel at all.
+    expect(markup).not.toContain(`data-page="${tileIndexOf(book)}"`);
+    // And the paired negative, which is the only thing that makes the line
+    // above mean "the portrait is the panel" rather than "nothing is".
+    expect(panelOf(asked).markup).not.toContain(assetKey(portrait));
+  });
+
+  it("falls back to the page drawn from numbers, which is what a clone shows", () => {
+    // `book` is what is committed: no page artwork and no portrait anywhere.
+    // This is therefore the state CI and every fresh clone render in, and the
+    // panel has to be a real picture of the chosen baby in it.
+    const { ids, markup } = panelOf(asked);
+    expect(ids).toContain("panel-drawn");
+    expect(markup).toContain(`data-page="${tileIndexOf(book)}"`);
+    // Drawn, and drawn as *this* look: the chosen baby's own skin is in the
+    // panel's page. The paired negative is another look's, which is not.
+    const page = new RegExp(`data-page="${tileIndexOf(book)}"[\\s\\S]*?</div>`);
+    const inPanel = markup.match(page)![0];
+    expect(inPanel).toContain(chosen.baby!.skin);
+    const another = book.looks.find((one) => one.baby!.skin !== chosen.baby!.skin)!;
+    expect(inPanel).not.toContain(another.baby!.skin);
   });
 });
 

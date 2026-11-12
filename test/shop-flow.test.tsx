@@ -208,22 +208,24 @@ describe("screen one — the fork, and the half that is not built", () => {
 // ---------------------------------------------------------------------------
 
 describe("screen two — the look, and nothing the interior cannot draw", () => {
-  it("offers one tile and one swatch per look, and no free axis", () => {
+  it("offers one tile per look, and no axis beside them", () => {
     const answered = renderToStaticMarkup(
       <BookProvider book={{ ...book, genders: [] }} market={market}>
         <MakeScreen id={"look" as never} closeTo={closeTo} />
       </BookProvider>,
     );
     const ids = testIds(answered);
-    for (const look of book.looks) {
-      expect(ids, look.id).toContain(`look-${look.id}`);
-      expect(ids, look.id).toContain(`skin-${look.id}`);
-    }
+    for (const look of book.looks) expect(ids, look.id).toContain(`look-${look.id}`);
     // The count is the data's, not a number anybody typed here.
-    // `skin-row` is the row itself; every other `skin-…` is one look.
-    expect(ids.filter((id) => /^skin-(?!row$)/.test(id))).toHaveLength(book.looks.length);
-    // And every swatch is a look's own colour, so none of them composes a baby
-    // that does not exist.
+    // `look-grid` is the grid itself; every other `look-…` is one look.
+    expect(ids.filter((id) => /^look-(?!grid$)/.test(id))).toHaveLength(book.looks.length);
+    // One control per look and nothing composable beside it: a skin-tone row
+    // would read as an axis of its own, and there is no artwork behind a baby
+    // made of one look's skin and another's hair. `test/book-flow.test.tsx`
+    // § the panel beside the grid holds the rest of that absence.
+    expect(ids.filter((id) => /^skin-/.test(id))).toEqual([]);
+    // And every look's own baby is still drawn in its own colours, which is
+    // what makes the tiles a choice between babies rather than one picture.
     for (const look of book.looks) expect(answered, look.id).toContain(look.baby!.skin);
   });
 
