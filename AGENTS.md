@@ -427,6 +427,31 @@ the placeholder baby for the rest, which is what lets one look be real while
 the others are still being drawn. With every look delivered the fallback is dropped and `art.lookMissing`
 comes back on its own.
 
+**The screen is served a 1600 px copy and the press is served the master, and
+that is a type rather than a habit.** A page is 3600 px and a spread is shown
+about 700 px wide, so `npm run artwork:upload` writes a WebP beside each master
+(`lib/artwork/screen.ts`, keyed on the master's own digest by
+`lib/artwork/keys.ts` § `screenKey`) and the preview resolves it through
+**`lib/assets/screen.ts` § `screenHrefIn`, the one module the print path may
+not import**. The renderer is still single: what differs between the two uses
+is only *which resolution is resolved*, which is the `href` seam
+`renderPageSvg` always had. A derivative is **never an `AssetRef`** — the store
+carries it as a `ScreenAddress` — so it cannot be loaded, inlined, put in
+`byLook` or drawn as a layer; `test/no-derivative-in-a-print-file.ts` is the
+compiler's half and `test/screen-derivatives.test.ts` walks the import graph
+and reads both renders of one page. Derivatives live only in the **public**
+store: the private one has no such method, because a derivative exists to have
+a URL. The command is idempotent and store-driven, so
+`npm run artwork:upload -- --screens` backfills everything already uploaded.
+
+**The preview paints as the reader arrives.** `lib/book/reveal.ts` holds the
+three numbers — the first spread in the server's markup, two more on mount, two
+ahead of the furthest reached — and the frontier only ever grows, so scrolling
+back never re-fetches. An undrawn page keeps its square and names itself
+(`app/_book/BookPage.tsx` § The resting state): **no spinner**, for the reason
+nothing else in this shop has one. The whole book is still in the markup, which
+is what `test/preview-lazy.test.tsx` asserts beside the no-wall promise.
+
 **Preview artwork is a different type, so it cannot print.** `PreviewAsset`
 (`lib/book/preview-art.ts`) carries its hash in `digest` and not `sha256`, so
 TypeScript refuses it everywhere an `AssetRef` goes — `PageArt.byLook`, an

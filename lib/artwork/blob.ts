@@ -18,9 +18,16 @@
  * ## The layout, and why the bytes are content-addressed
  *
  * ```
- *   assets/<sha256>.png        the bytes, named by their own content
- *   sets/<set>/v0001.json      one version's manifest
+ *   assets/<sha256>.png            the bytes, named by their own content
+ *   sets/<set>/v0001.json          one version's manifest
+ *   screen/<sha256>-w1600.webp     a screen-sized copy of those bytes
  * ```
+ *
+ * The third line is the only one named after **another** picture's content
+ * rather than its own, and `./keys.ts` § `screenKey` says why: a reader holds
+ * the master's digest and needs to know whether a screen-sized copy of it
+ * exists without a second manifest to consult. It is read by
+ * `blobScreenStore` below, which only the public store composes in.
  *
  * **A picture's key is its digest**, which buys three things this path actually
  * needs. A corrected page is *different bytes*, so it lands on a new key and no
@@ -64,7 +71,16 @@
 
 import { value } from "../env";
 import { isReference } from "../orders/record";
-import { NotAnOrderReference, isArtworkPageId, isReleaseSet, versionDir, versionOfDir } from "./keys";
+import {
+  NotAnOrderReference,
+  SCREEN_PREFIX,
+  isArtworkPageId,
+  isReleaseSet,
+  screenKey,
+  screenKeyOf,
+  versionDir,
+  versionOfDir,
+} from "./keys";
 import {
   artworkPageFor,
   manifestBytes,
@@ -72,7 +88,13 @@ import {
   type ArtworkPage,
   type ArtworkVersion,
 } from "./manifest";
-import type { ArtworkStore, PrivateArtworkStore, PublicArtworkStore } from "./store";
+import type {
+  ArtworkStore,
+  PrivateArtworkStore,
+  PublicArtworkStore,
+  ScreenAddress,
+  ScreenUpload,
+} from "./store";
 
 /** The public store's read-write token. The captain's name for it; not ours. */
 export const LOOKS_TOKEN_VAR = "BLOB_READ_WRITE_TOKEN";
@@ -383,6 +405,77 @@ function blobArtworkStore(api: BlobApi, config: BlobStoreConfig): ArtworkStore {
   };
 }
 
+/**
+ * **The screen-sized half of the public store.**
+ *
+ * Two operations, and they are a **separate factory from
+ * `blobArtworkStore`** rather than two more cases inside it. The reason is the
+ * wall this module is built around: if the shared implementation grew a
+ * `putScreens`, the *private* store would have the method too — an object with
+ * a way to write a photograph-derived page of somebody's child under a
+ * guessable `screen/<digest>-w1600.webp` key. `PrivateArtworkStore` not
+ * declaring it would be a type keeping a secret from a runtime that had it.
+ * So only `looksBlobStore` composes this in, and `ordersBlobStore` has no such
+ * function to call.
+ *
+ * The layout is one flat prefix (`./keys.ts` § `screenKey`), so **one listing
+ * answers "what derivatives exist"** and there is no manifest to keep in step
+ * with the one the masters already have.
+ */
+function blobScreenStore(
+  api: BlobApi,
+  publicBase: string | null,
+): Pick<PublicArtworkStore, "screens" | "putScreens"> {
+  const addressOf = (of: string, width: number): ScreenAddress | null =>
+    publicBase
+      ? { kind: "screen", url: `${publicBase}/${screenKey(of, width)}`, width }
+      : // A store whose token named no store id has no origin to serve from,
+        // so there is no address to report and the preview draws the master.
+        // Never a guessed URL: a 404 in an `<image href>` draws a hole.
+        null;
+
+  return {
+    async screens() {
+      const out: Record<string, ScreenAddress> = {};
+      for (const pathname of await api.pathnames(SCREEN_PREFIX)) {
+        const parsed = screenKeyOf(pathname);
+        if (!parsed) continue;
+        const address = addressOf(parsed.of, parsed.width);
+        // Widest wins, so a store that still holds a derivative made at an
+        // earlier `SCREEN_WIDTH` serves the sharper of the two rather than
+        // whichever the listing happened to reach second.
+        if (address && (out[parsed.of]?.width ?? 0) < parsed.width) out[parsed.of] = address;
+      }
+      return out;
+    },
+
+    async putScreens(items: readonly ScreenUpload[]) {
+      const out: Record<string, ScreenAddress> = {};
+      for (const item of items) {
+        if (!/^[0-9a-f]{64}$/.test(item.of)) {
+          // The key is built out of this string. A digest is the only thing it
+          // is ever allowed to be, checked before it becomes a pathname for
+          // `blobArtworkStore`'s reason.
+          throw new NotAnOrderReference(`${JSON.stringify(item.of)} is not a content digest`);
+        }
+        const address = addressOf(item.of, item.width);
+        if (!address) continue;
+        const pathname = screenKey(item.of, item.width);
+        // **The idempotence, in one line.** The key is a function of the
+        // master's digest and the width, so a derivative already there is the
+        // derivative of those exact bytes: re-running the upload uploads
+        // nothing, and running it against a store that already holds the
+        // masters uploads only what is missing.
+        if (!(await api.has(pathname))) {
+          await api.put(pathname, item.bytes, { access: "public", contentType: "image/webp" });
+        }
+        out[item.of] = address;
+      }
+      return out;
+    },
+  };
+}
+
 /** The URL a public pathname is served at, or the pathname's own url for a private one. */
 function publicUrl(config: BlobStoreConfig, pathname: string): string {
   return config.publicBase ? `${config.publicBase}/${pathname}` : pathname;
@@ -398,9 +491,11 @@ function publicUrl(config: BlobStoreConfig, pathname: string): string {
 export function looksBlobStore(token: string, api?: BlobApi): PublicArtworkStore {
   const storeId = storeIdOfToken(token);
   const base = storeId ? publicBaseFor(storeId) : null;
+  const reach = api ?? vercelBlobApi({ kind: "token", token });
   return {
     holds: "released",
-    ...blobArtworkStore(api ?? vercelBlobApi({ kind: "token", token }), {
+    ...blobScreenStore(reach, base),
+    ...blobArtworkStore(reach, {
       describe: storeId
         ? `the public Vercel Blob store ${storeId} (olb-looks), served from ${base}`
         : "a public Vercel Blob store (olb-looks)",

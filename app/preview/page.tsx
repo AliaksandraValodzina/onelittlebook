@@ -67,7 +67,7 @@ export default async function PreviewPage(props: {
    * the pages, as `BookPage.ghost`, which is a type the print path cannot
    * accept.
    */
-  const { book, assets } = await deliveredBook(FIRST_BOOK);
+  const { book, assets, screen } = await deliveredBook(FIRST_BOOK);
 
   return (
     <>
@@ -80,7 +80,7 @@ export default async function PreviewPage(props: {
           </a>
         </p>
 
-        <BookProvider book={book} market={market} assets={assets}>
+        <BookProvider book={book} market={market} assets={assets} screen={screen}>
           <div className="mt-4">
             <Preview photoPath={photoPath} />
           </div>

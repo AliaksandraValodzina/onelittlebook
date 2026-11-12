@@ -90,6 +90,7 @@
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { sha256 } from "../assets/digest";
+import { NO_SCREEN_ADDRESSES, type ScreenAddresses } from "../assets/address";
 import { isReference } from "../orders/record";
 import { value } from "../env";
 import { NotAnOrderReference, isArtworkPageId, versionDir, versionOfDir } from "./keys";
@@ -108,8 +109,15 @@ import {
   ordersStoreNamedButUnreachable,
 } from "./blob";
 
-export { NotAnOrderReference };
+export { NotAnOrderReference, NO_SCREEN_ADDRESSES };
 export type { ArtworkPage, ArtworkVersion };
+/**
+ * Re-exported from `lib/assets/address.ts`, where it lives beside
+ * `AssetAddresses` so the two can be read against each other — and because a
+ * client component needs the type and may not import this module, which reads
+ * a filesystem.
+ */
+export type { ScreenAddress, ScreenAddresses } from "../assets/address";
 
 /**
  * The store, as everything above this line sees it.
@@ -159,9 +167,46 @@ export interface ArtworkStore {
  * other. A store is minted by exactly four constructors — `localOrderStore`
  * below, `localReleaseStore` in `./release.ts`, and `looksBlobStore` /
  * `ordersBlobStore` in `./blob.ts` — and that is the whole of the surface.
+ *
+ * **It has two operations the interface above does not**, and they are here
+ * rather than there for the same reason the tag is: a screen-sized copy exists
+ * to be fetched from a CDN, and the private store has no URLs at all. A
+ * `putScreens` on `ArtworkStore` would be a way to write a page regenerated
+ * from a photograph of one family's child to a guessable public key, which is
+ * the one thing this file exists to make impossible. `./blob.ts`
+ * § `blobScreenStore` is the implementation and is composed only into the
+ * public store, so the private one has no such method at runtime either.
  */
 export interface PublicArtworkStore extends ArtworkStore {
   readonly holds: "released";
+  /**
+   * **Every screen-sized derivative this store holds, by the digest of the
+   * master it was made from.**
+   *
+   * One listing of one prefix, exactly as `sets` is: the keys carry the master
+   * digest and the width (`./keys.ts` § `screenKey`), so there is no second
+   * manifest and nothing to keep in step with the one that already exists.
+   *
+   * `{}` is an ordinary answer and the one a fresh clone gets.
+   */
+  screens(): Promise<ScreenAddresses>;
+  /**
+   * Adds the derivatives that are not there yet, and answers with the
+   * addresses of **all** of the ones asked about.
+   *
+   * **Idempotent, which is the whole point of it**: the key is a function of
+   * the master's digest, so a second run uploads nothing and a run against a
+   * store that already holds the masters uploads only the derivatives. That is
+   * the backfill, and it is a property of the key rather than of a flag.
+   */
+  putScreens(items: readonly ScreenUpload[]): Promise<ScreenAddresses>;
+}
+
+/** One derivative to store, already made. `of` is the master's digest. */
+export interface ScreenUpload {
+  of: string;
+  width: number;
+  bytes: Uint8Array;
 }
 
 /**

@@ -28,13 +28,13 @@ export const metadata: Metadata = {
 
 export default async function BasketPage() {
   const market = await currentMarket();
-  const { book, assets } = await deliveredBook(FIRST_BOOK);
+  const { book, assets, screen } = await deliveredBook(FIRST_BOOK);
 
   return (
     <>
       <Ribbon market={market} />
       <ShopNav market={market} basketCount={1} />
-      <BookProvider book={book} market={market} assets={assets}>
+      <BookProvider book={book} market={market} assets={assets} screen={screen}>
         <Basket />
       </BookProvider>
       <ShopFooter />

@@ -34,7 +34,7 @@ export default async function MakeLayout({ children }: { children: React.ReactNo
   // unchanged when nothing has been delivered. `assets` comes out of the same
   // read: it is where those pictures are publicly readable, which only the
   // server can know and the chooser's tiles need in the browser.
-  const { book, assets } = await deliveredBook(FIRST_BOOK);
+  const { book, assets, screen } = await deliveredBook(FIRST_BOOK);
 
   return (
     <>
@@ -46,7 +46,7 @@ export default async function MakeLayout({ children }: { children: React.ReactNo
       */}
       <Ribbon market={market} />
       <ShopNav market={market} />
-      <BookProvider book={book} market={market} assets={assets}>
+      <BookProvider book={book} market={market} assets={assets} screen={screen}>
         {children}
       </BookProvider>
       <ShopFooter />

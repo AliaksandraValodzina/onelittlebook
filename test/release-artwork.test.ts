@@ -31,7 +31,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { PNG } from "pngjs";
 import { FIRST_BOOK } from "../templates/first-book";
 import { FIXTURE_BOOK_FILL } from "../fixtures/book-order";
-import { localArtworkStore, type ArtworkStore } from "../lib/artwork/store";
+import { localArtworkStore, type PublicArtworkStore } from "../lib/artwork/store";
 import {
   DEFAULT_RELEASE_ARTWORK_DIR,
   GHOSTS_SET,
@@ -42,6 +42,7 @@ import {
   bookAsDelivered,
   forgetReleaseArtwork,
   isReleaseSet,
+  localReleaseStore,
   lookSet,
   releaseArtworkFor,
   tilePageId,
@@ -126,12 +127,19 @@ function square(
   return bytes;
 }
 
-/** A store rooted in a fresh directory, and the environment pointed at it. */
-async function store(): Promise<ArtworkStore> {
+/**
+ * A store rooted in a fresh directory, and the environment pointed at it.
+ *
+ * `localReleaseStore` and not the untagged shared implementation, which
+ * `lib/artwork/store.ts` says is "not a store anybody above this line may
+ * use": the released artwork store is the **public** one, and that is what
+ * `releaseArtworkFor` now asks for by type.
+ */
+async function store(): Promise<PublicArtworkStore> {
   const root = await directory();
   process.env[RELEASE_ARTWORK_DIR_VAR] = root;
   forgetReleaseArtwork();
-  return localArtworkStore(root, isReleaseSet);
+  return localReleaseStore(root);
 }
 
 const NOW = new Date("2026-11-10T09:00:00.000Z");

@@ -51,7 +51,12 @@ import { DEFAULT_VIEW, type PhotoView } from "../../lib/editor/view";
 import { checkPhoto } from "../../lib/book/photo";
 import { PhotoUnreadable, preparePhoto } from "../../lib/editor/photo";
 import type { AskId } from "../../lib/book/slots";
-import { NO_ASSET_ADDRESSES, type AssetAddresses } from "../../lib/assets/address";
+import {
+  NO_ASSET_ADDRESSES,
+  NO_SCREEN_ADDRESSES,
+  type AssetAddresses,
+  type ScreenAddresses,
+} from "../../lib/assets/address";
 
 export interface BookContext {
   book: BookTemplate;
@@ -70,6 +75,21 @@ export interface BookContext {
    * `lib/assets/address.ts` § `hrefIn` is the one place that decision is made.
    */
   assets: AssetAddresses;
+  /**
+   * **Where the screen-sized copy of each of those pictures is.**
+   *
+   * The preview resolves this first: a spread is shown about 700 px wide and a
+   * page is 3600 px, so the browser fetches a 1600 px WebP and the whole book
+   * is a couple of megabytes instead of sixty-two.
+   * `lib/assets/screen.ts` § `screenHrefIn` is the one place that preference
+   * is expressed, and `lib/assets/address.ts` § `ScreenAddress` says why it is
+   * a second map rather than entries in the first.
+   *
+   * `{}` is an ordinary state — no derivatives uploaded, a local import, a
+   * fresh clone — and it means every picture is drawn at full resolution
+   * exactly as it was before any of this existed.
+   */
+  screen: ScreenAddresses;
   /**
    * **The market every price in the flow is shown in.**
    *
@@ -149,12 +169,15 @@ export default function BookProvider({
   book,
   market,
   assets = NO_ASSET_ADDRESSES,
+  screen = NO_SCREEN_ADDRESSES,
   children,
 }: {
   book: BookTemplate;
   market: Market;
   /** Optional: a route with no artwork delivered has nothing to pass. */
   assets?: AssetAddresses;
+  /** Optional, and absent is the ordinary state — see `BookContext.screen`. */
+  screen?: ScreenAddresses;
   children: ReactNode;
 }) {
   const [order, setOrder] = useState<Order>(() => emptyOrder(book));
@@ -287,6 +310,7 @@ export default function BookProvider({
     () => ({
       book,
       assets,
+      screen,
       market,
       order,
       typedName,
@@ -313,6 +337,7 @@ export default function BookProvider({
     [
       book,
       assets,
+      screen,
       market,
       order,
       typedName,

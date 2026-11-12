@@ -31,6 +31,22 @@
  * **The controls are on the pages they affect** — see `./Controls.tsx`, which
  * asks the template which page carries which slot rather than being told.
  *
+ * **The pages are drawn as the reader reaches them.** The first spread is in
+ * this component's server markup; two more are drawn on mount, and reaching a
+ * spread draws two beyond it — `lib/book/reveal.ts` is the arithmetic and the
+ * argument for those three numbers. The reason is measured rather than
+ * supposed: a page asset is 2.6 MB, so twenty-four of them at once is 62 MB
+ * before the first spread has finished arriving, and the captain's screenshot
+ * of a half-painted book is what a visitor saw. An undrawn page **keeps its
+ * square and names itself** (`./BookPage.tsx` § The resting state) so nothing
+ * reflows and nothing reads as broken.
+ *
+ * The whole book is still here, with nothing in front of it: every page is in
+ * the list, labelled, in order, and the only thing that waits is the fetching
+ * of a picture. **An `IntersectionObserver` is the only browser API in this
+ * component**, and the state a visitor arrives in — the one the suite can see
+ * without a DOM — is the complete book with its first spread painted.
+ *
  * **`photoPath` draws the other route's preview.** On the photo path the child
  * is drawn by hand after the order, so their place is held by a glowing
  * silhouette — `lib/book/ghost.ts`. It is a prop rather than a thing read off
@@ -40,7 +56,7 @@
  * screen affordance that the print path cannot express.
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   pageSequence,
   pageWithSlot,
@@ -48,6 +64,7 @@ import {
 } from "../../lib/book/derive";
 import { SLOT } from "../../lib/book/slots";
 import { SPREAD_FOLD, foldBand } from "../../lib/book/fold";
+import { isShown, pagesAfterMount, pagesOnArrival, reached } from "../../lib/book/reveal";
 import BookPage from "./BookPage";
 import Bar from "./Bar";
 import { DedicationControl, UpgradeControl } from "./Controls";
@@ -63,6 +80,51 @@ export default function Preview({ photoPath = false }: { photoPath?: boolean }) 
   const [two, setTwo] = useState(true);
   const sequence = pageSequence(book);
   const groups = two ? spreadsOf(book) : sequence.map((_, i) => [i]);
+
+  /**
+   * How far the drawing has got. **Only ever forwards** — `reached` is a
+   * `Math.max`, so a spread that has been painted stays painted and scrolling
+   * back up never fetches anything twice.
+   *
+   * It starts at what the server drew, so the markup this hydrates into is the
+   * markup it was given; the effect below then runs ahead of the reader.
+   */
+  const [shown, setShown] = useState(() => pagesOnArrival(groups));
+  const marks = useRef<Array<HTMLLIElement | null>>([]);
+
+  useEffect(() => {
+    // Drawn on mount rather than in the markup: the first paint should not be
+    // racing six pictures when two of them are the ones on screen.
+    setShown((was) => Math.max(was, pagesAfterMount(groups)));
+
+    if (typeof IntersectionObserver === "undefined") {
+      // No observer — an old browser, or a test environment. Everything is
+      // drawn, which is the behaviour this component had before any of this
+      // and is the one state that cannot show a reader less than the book.
+      setShown(sequence.length);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          const index = Number((entry.target as HTMLElement).dataset.group);
+          if (Number.isFinite(index)) setShown((was) => reached(index, groups, was));
+        }
+      },
+      // **No margin.** The looking-ahead is `PRELOAD_GROUPS`, which draws two
+      // groups beyond the furthest one reached; a generous `rootMargin` on top
+      // of that reaches groups nobody has scrolled near and paints most of the
+      // book on arrival, which is the thing being fixed.
+      { rootMargin: "0px" },
+    );
+    for (const mark of marks.current) if (mark) observer.observe(mark);
+    return () => observer.disconnect();
+    // `groups.length` and not `groups`: the array is rebuilt every render, and
+    // what actually changes is whether the reader is looking at spreads or
+    // single pages. The frontier is in **pages**, so it survives that switch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groups.length]);
 
   const photoPage = pageWithSlot(book, SLOT.photo);
   const dedicationPage = pageWithSlot(book, SLOT.dedication);
@@ -99,7 +161,10 @@ export default function Preview({ photoPath = false }: { photoPath?: boolean }) 
     </>
   );
 
-  /** The pages of one group, drawn by the one renderer. */
+  /**
+   * The pages of one group, drawn by the one renderer — or resting, if the
+   * reader has not got here yet.
+   */
   const leaves = (group: number[]) =>
     group.map((index) => (
       <BookPage
@@ -107,6 +172,7 @@ export default function Preview({ photoPath = false }: { photoPath?: boolean }) 
         index={index}
         label={nameOf(sequence[index].id)}
         photoPath={photoPath}
+        drawn={isShown(group, shown)}
       />
     ));
 
@@ -138,7 +204,13 @@ export default function Preview({ photoPath = false }: { photoPath?: boolean }) 
 
       <ol className="mt-5 space-y-8" data-testid="pages">
         {groups.map((group, index) => (
-          <li key={group.join("-")}>
+          <li
+            key={group.join("-")}
+            ref={(node) => {
+              marks.current[index] = node;
+            }}
+            data-group={index}
+          >
             {group.length === 2 ? (
               /*
                 **Two pages are one open book.** One container, the page shadow

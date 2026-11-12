@@ -2,6 +2,7 @@
  * **Push the captain's delivered artwork to the public Blob store.**
  *
  *     npm run artwork:upload
+ *     npm run artwork:upload -- --screens      # derivatives only — the backfill
  *     npm run artwork:upload -- --dry-run
  *     npm run artwork:upload -- --only portraits
  *     npm run artwork:upload -- --pages ~/art/pages --portraits ~/art/tiles --ghosts ~/art/gold
@@ -37,6 +38,26 @@
  *    URL of the first picture of each set, which is the thing to paste into a
  *    browser when the question is "is it actually there".
  *
+ * ## The second phase: the screen-sized copies
+ *
+ * A page is 3600 × 3600 and about 2.6 MB; the preview shows a spread about
+ * 700 px wide. So after the masters are in, this writes a **1600 px WebP beside
+ * each of them** — `lib/artwork/screen.ts` makes them, `lib/artwork/keys.ts`
+ * § `screenKey` names them after the master's own digest, and
+ * `lib/assets/screen.ts` is the only thing that ever turns one into a URL. A
+ * twenty-four page preview goes from roughly 62 MB to roughly 2 MB.
+ *
+ * **It is driven by the store and not by the folders**, which is what makes it
+ * a backfill: the masters for `girl-01`, `girl-02`, `girl-03`, the portraits
+ * and the golden halves are already up there, so
+ *
+ *     npm run artwork:upload -- --screens
+ *
+ * reads the current version of every set the store holds, makes the derivative
+ * for every page that has not got one, and uploads nothing else. Running it
+ * again does nothing: the key is a function of the master's digest, so "is
+ * there already one of these" is a `head` and not a judgement.
+ *
  * ## Why a corrected page cannot be served stale
  *
  * The captain is replacing `02-girl` and `08-boy` for edge fringing. A
@@ -66,6 +87,7 @@ import {
 import { LOOKS_TOKEN_VAR, looksBlobStore, looksTokenIn } from "../lib/artwork/blob";
 import type { PublicArtworkStore } from "../lib/artwork/store";
 import { sha256 } from "../lib/assets/digest";
+import { backfillScreens, type ScreenBackfill } from "../lib/artwork/screen";
 import { portraitName, type ImportFile } from "../lib/artwork/import";
 import {
   pagesForStore,
@@ -107,6 +129,8 @@ function usage(): never {
       "  --ghosts <dir>      the 12 golden spreads        (default ~/Downloads/golden-spreads)",
       "  --look <id|NN-sex>  which look the pages are for (default 02-girl)",
       "  --only <set>        pages | portraits | ghosts, repeatable",
+      "  --screens           only the screen-sized derivatives, read from the store",
+      "  --no-screens        upload masters and make no derivatives",
       "  --dry-run           prepare and compare, write nothing",
       "",
       `It writes to the public Blob store and needs ${LOOKS_TOKEN_VAR}.`,
@@ -122,6 +146,10 @@ interface Options {
   look: string;
   only: SetName[];
   dryRun: boolean;
+  /** Make the screen derivatives. On by default — see § The second phase. */
+  screens: boolean;
+  /** Make *only* the derivatives: read no folders and upload no masters. */
+  screensOnly: boolean;
 }
 
 function parse(argv: string[]): Options {
@@ -129,6 +157,8 @@ function parse(argv: string[]): Options {
   let look = DEFAULT_LOOK;
   const only: SetName[] = [];
   let dryRun = false;
+  let screens = true;
+  let screensOnly = false;
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -145,11 +175,20 @@ function parse(argv: string[]): Options {
       const set = next();
       if (set !== "pages" && set !== "portraits" && set !== "ghosts") usage();
       only.push(set);
-    } else if (arg === "--dry-run") dryRun = true;
+    } else if (arg === "--screens") screensOnly = true;
+    else if (arg === "--no-screens") screens = false;
+    else if (arg === "--dry-run") dryRun = true;
     else usage();
   }
 
-  return { dirs, look, only: only.length ? only : ["pages", "portraits", "ghosts"], dryRun };
+  return {
+    dirs,
+    look,
+    only: only.length ? only : ["pages", "portraits", "ghosts"],
+    dryRun,
+    screens,
+    screensOnly,
+  };
 }
 
 /** A look id out of either spelling. The same rule `npm run artwork` uses. */
@@ -190,7 +229,7 @@ async function pngsIn(dir: string): Promise<ImportFile[] | null> {
 /** What happened to one set, for the summary at the end. */
 interface Outcome {
   set: string;
-  state: "uploaded" | "unchanged" | "absent" | "refused" | "would-upload";
+  state: "uploaded" | "would-upload" | ScreenBackfill["state"];
   detail: string;
 }
 
@@ -294,7 +333,7 @@ async function main() {
   const lookId = resolveLook(FIRST_BOOK, options.look);
   const outcomes: Outcome[] = [];
 
-  for (const which of options.only) {
+  for (const which of options.screensOnly ? [] : options.only) {
     const dir = options.dirs[which];
     const files = await pngsIn(dir);
     const set = which === "pages" ? lookSet(lookId) : which === "portraits" ? TILES_SET : GHOSTS_SET;
@@ -329,6 +368,28 @@ async function main() {
     }
   }
 
+  /**
+   * **The second phase, over every set the store holds.**
+   *
+   * Driven by `sets()` and not by the folders or by `--only`, so one run
+   * backfills everything that is up there — including the two looks whose
+   * folders are not on this machine any more. A set that was just uploaded is
+   * in that listing too, so a normal run makes the derivatives for it in the
+   * same pass.
+   */
+  if (options.screens) {
+    console.log(options.screensOnly ? "\nscreen copies only" : "\n— screen copies —");
+    for (const set of (await store.sets()).sort()) {
+      // The work is `lib/artwork/screen.ts` § `backfillScreens`, which is
+      // where it can be tested against an in-memory bucket; this prints.
+      const done = await backfillScreens(store, set, { dryRun: options.dryRun });
+      if (done.lines.length) console.log(`\n${set}`);
+      for (const line of done.lines) console.log(`  ${line}`);
+      if (done.url) console.log(`  one of them is at ${done.url}`);
+      outcomes.push({ set, state: done.state, detail: done.detail });
+    }
+  }
+
   console.log("\n— what happened —");
   for (const outcome of outcomes) {
     console.log(`  ${outcome.state.padEnd(13)} ${outcome.set.padEnd(16)} ${outcome.detail}`);
@@ -339,8 +400,12 @@ async function main() {
     process.exitCode = 1;
     return;
   }
-  if (outcomes.every((o) => o.state === "absent")) {
-    console.error("\nNothing was uploaded: none of the directories exist.");
+  if (outcomes.length === 0 || outcomes.every((o) => o.state === "absent")) {
+    console.error(
+      options.screensOnly
+        ? "\nNothing was made: the store holds no artwork to make screen copies of."
+        : "\nNothing was uploaded: none of the directories exist.",
+    );
     process.exitCode = 1;
     return;
   }
