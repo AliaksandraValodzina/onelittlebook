@@ -17,6 +17,17 @@
  * does the pairing, so the preview, the gutter rule in the upload contract and
  * the print file all agree about which page faces which.
  *
+ * **Two pages are drawn as one open book.** No gap, one container, the page
+ * shadow on its outside edges, and a soft gutter over the join — the captain's
+ * generation brief composes every spread around that fold (*"no face, hand or
+ * key object within 8% of it"*), so drawing it is what makes the quiet middle
+ * read as deliberate rather than as an empty gap between two pictures.
+ * `lib/book/fold.ts` is the fold, and carries the argument for why it is a
+ * stylesheet rule the renderer has never heard of rather than a render option
+ * the print path declines to pass: a gutter shadow in a print file is a grey
+ * smear down the middle of a real book. **One page has no fold**, and that
+ * branch is the panel it always was.
+ *
  * **The controls are on the pages they affect** — see `./Controls.tsx`, which
  * asks the template which page carries which slot rather than being told.
  *
@@ -36,6 +47,7 @@ import {
   spreads as spreadsOf,
 } from "../../lib/book/derive";
 import { SLOT } from "../../lib/book/slots";
+import { SPREAD_FOLD, foldBand } from "../../lib/book/fold";
 import BookPage from "./BookPage";
 import Bar from "./Bar";
 import { DedicationControl, UpgradeControl } from "./Controls";
@@ -87,6 +99,17 @@ export default function Preview({ photoPath = false }: { photoPath?: boolean }) 
     </>
   );
 
+  /** The pages of one group, drawn by the one renderer. */
+  const leaves = (group: number[]) =>
+    group.map((index) => (
+      <BookPage
+        key={index}
+        index={index}
+        label={nameOf(sequence[index].id)}
+        photoPath={photoPath}
+      />
+    ));
+
   return (
     <section aria-label="Your whole book">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -116,20 +139,28 @@ export default function Preview({ photoPath = false }: { photoPath?: boolean }) 
       <ol className="mt-5 space-y-8" data-testid="pages">
         {groups.map((group, index) => (
           <li key={group.join("-")}>
-            <div
-              className={`grid gap-1 overflow-hidden rounded-xl shadow-xl shadow-black/15 ${
-                group.length === 2 ? "grid-cols-2" : "grid-cols-1"
-              }`}
-            >
-              {group.map((index) => (
-                <BookPage
-                  key={index}
-                  index={index}
-                  label={nameOf(sequence[index].id)}
-                  photoPath={photoPath}
+            {group.length === 2 ? (
+              /*
+                **Two pages are one open book.** One container, the page shadow
+                on its outside edges, the two leaves meeting with no gap, and
+                the gutter laid over the join — `lib/book/fold.ts` for why that
+                last one is a stylesheet rule and not anything the renderer has
+                heard of, and `app/shop.css` § the open book for the gradient.
+              */
+              <div className={SPREAD_FOLD.open}>
+                <div className={SPREAD_FOLD.leaves}>{leaves(group)}</div>
+                <div
+                  className={SPREAD_FOLD.crease}
+                  style={{ width: foldBand() }}
+                  aria-hidden="true"
                 />
-              ))}
-            </div>
+              </div>
+            ) : (
+              /* A single page has no fold. This is the panel it always was. */
+              <div className="grid grid-cols-1 gap-1 overflow-hidden rounded-xl shadow-xl shadow-black/15">
+                {leaves(group)}
+              </div>
+            )}
             <p className="mt-1.5 text-[0.72rem] uppercase tracking-wide opacity-50">
               {group.map((i) => nameOf(sequence[i].id)).join(" · ")}
             </p>
