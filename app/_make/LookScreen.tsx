@@ -5,9 +5,12 @@
  * name.**
  *
  * The artefact puts the live character on the left so every change is visible
- * immediately, and that is exactly what this does: the picture is
- * `tilePage` of the real book drawn with the chosen look, by the one renderer,
- * so what updates as they choose is the book.
+ * immediately, and that is exactly what this does: the picture is the chosen
+ * look's own artwork where this machine has it — a page of the real book, drawn
+ * by the one renderer — and the look's portrait or the drawn placeholder where
+ * it does not. `app/_book/tile.ts` § `lookPanel` is that preference order and
+ * why; the three states are all real states, because the artwork is not in the
+ * repository and a fresh clone has none of it.
  *
  * **The question comes before the grid.** The captain reversed the brief on
  * 6 November after reviewing two sellers that both ask it first; the looks then
@@ -34,18 +37,23 @@
  * Until that resolution is built — it needs generated artwork, which is out of
  * scope — the honest surface is the looks themselves: the captain's portrait
  * of each where there is one, and otherwise the tile drawn from the book it
- * will print. `app/_book/tile.ts` carries that choice and its reasoning. The
- * skin tone of each is the look's own
- * `baby.skin`, so the row the artefact labelled *Skin tone* is here as the
- * swatches under the tiles: one swatch per look, every one of them a baby the
- * interior can draw.
+ * will print. `app/_book/tile.ts` carries that choice and its reasoning.
+ *
+ * **There is no separate skin-tone control, and there must not be one.** A row
+ * of swatches beside the grid read as an axis of its own — as though the blonde
+ * baby could be made deep brown — and a look is a folder of finished artwork,
+ * not a skin crossed with a hair. The row existed as one swatch per look in
+ * the look's own `baby.skin`, which could not compose a baby the interior
+ * cannot draw but could still be read as offering to; a portrait with a plain
+ * label is simply the better control for the only question being asked. Nothing ever stored a skin: the look is the whole answer, and
+ * `BookFill` has nowhere to put a second one.
  */
 
-import { looksFor, tileIndexOf } from "../../lib/book/derive";
+import { looksFor } from "../../lib/book/derive";
 import { nameLimit } from "../../lib/book/name";
 import { next, stepFor } from "../../lib/shop/steps";
 import BookPage from "../_book/BookPage";
-import { lookTile } from "../_book/tile";
+import { lookPanel, lookTile, type LookPanel } from "../_book/tile";
 import type { AssetAddresses } from "../../lib/assets/address";
 import type { BookTemplate } from "../../lib/book/types";
 import { useBook } from "../_book/BookProvider";
@@ -92,10 +100,37 @@ function LookTileImage({
   return <span className="block w-full" dangerouslySetInnerHTML={{ __html: tile.svg }} />;
 }
 
+/**
+ * The large picture of the baby being chosen.
+ *
+ * Three states and two kinds of markup, decided by `lookPanel` and not here:
+ * a page of the real book — delivered artwork or the drawn placeholder, the
+ * same component either way, because `BookPage` draws whatever that page of
+ * the bound book has — or this look's portrait, large. The `<img>` is the
+ * grid tile's, for the reason given there: content-addressed immutable bytes
+ * have nothing for an optimiser to add.
+ */
+function LookPanelPicture({ panel }: { panel: LookPanel }) {
+  if (panel.kind === "portrait") {
+    return (
+      <img
+        className="block aspect-square w-full object-cover"
+        src={panel.src}
+        width={panel.width || undefined}
+        height={panel.height || undefined}
+        alt=""
+        decoding="async"
+      />
+    );
+  }
+  return <BookPage index={panel.index} label="The baby you have chosen" />;
+}
+
 export default function LookScreen({ closeTo }: { closeTo: string }) {
   const { book, assets, order, typedName, nameVerdict, setName, setGender, setLook, done, flush } =
     useBook();
   const genders = book.genders ?? [];
+  const panel = lookPanel(book, order.lookId, assets);
   const grid = looksFor(book, order.genderId);
   const limit = nameLimit(book);
   const onward = next("look")!;
@@ -104,9 +139,9 @@ export default function LookScreen({ closeTo }: { closeTo: string }) {
   return (
     <Screen step={step} closeTo={closeTo}>
       <div className="live">
-        <div className="av">
+        <div className="av" data-testid={`panel-${panel.kind}`}>
           {/* The real page, not an avatar. It is the book, drawn as they choose. */}
-          <BookPage index={tileIndexOf(book)} label="The baby you have chosen" />
+          <LookPanelPicture panel={panel} />
           <span className="tag">updates as you choose</span>
         </div>
 
@@ -154,26 +189,6 @@ export default function LookScreen({ closeTo }: { closeTo: string }) {
                     </button>
                   ))}
                 </div>
-              </div>
-              {/*
-                The artefact's "Skin tone" row, honoured by the only thing the
-                interior can honour: one swatch per look, in that look's own
-                `baby.skin`. A swatch that could be combined with any hair
-                colour would offer a baby this book cannot draw.
-              */}
-              <p className="f">Skin tone</p>
-              <div className="sw" data-testid="skin-row">
-                {grid.map((look) => (
-                  <button
-                    key={look.id}
-                    type="button"
-                    onClick={() => setLook(look.id)}
-                    aria-pressed={order.lookId === look.id}
-                    aria-label={look.label}
-                    data-testid={`skin-${look.id}`}
-                    style={{ background: look.baby?.skin ?? "transparent" }}
-                  />
-                ))}
               </div>
             </div>
           ) : null}

@@ -120,6 +120,24 @@ export function showcaseLook(book: BookTemplate): Look {
   return book.looks.find((look) => delivered.has(look.id)) ?? book.looks[0];
 }
 
+/**
+ * The pages this machine has the captain's artwork for, for one look, as
+ * indices into `pageSequence`.
+ *
+ * **Derived from the pages and not from a manifest**, for `showcaseLook`'s
+ * reason: which looks are delivered is environment state
+ * (`lib/artwork/release.ts` § Why none of it is in the repository), so the only
+ * honest answer is the one the bound book itself carries. Empty is the ordinary
+ * state of a fresh clone and of every look still being drawn — a caller that
+ * wants to show real artwork has to say what it does with nothing, which is the
+ * whole point of returning a list rather than a page.
+ */
+export function deliveredPagesFor(book: BookTemplate, lookId: string): number[] {
+  return pageSequence(book).flatMap((page, index) =>
+    page.art.kind === "asset" && page.art.byLook[lookId] ? [index] : [],
+  );
+}
+
 /** Which pages of the book this binding actually changed, in reading order. For the admin page. */
 export function releaseArtworkPageIds(book: BookTemplate, art: ReleaseArtwork): string[] {
   const covered = new Set(

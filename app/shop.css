@@ -1187,29 +1187,6 @@ label.f,
   border-color: var(--green);
 }
 
-.sw {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.sw i,
-.sw button {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  font-style: normal;
-  cursor: pointer;
-  border: 2px solid transparent;
-  padding: 0;
-}
-
-.sw .on,
-.sw button[aria-pressed="true"] {
-  border-color: var(--green);
-  box-shadow: 0 0 0 2px #fff inset;
-}
-
 .carou {
   display: flex;
   align-items: center;
