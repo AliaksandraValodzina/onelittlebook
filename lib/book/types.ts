@@ -420,6 +420,31 @@ export interface BookTemplate {
     minPhotoDpi: number;
   };
   /**
+   * **How long the buyer's name may be, in characters.**
+   *
+   * Declared on the book because since 12 November it has nowhere else to come
+   * from. It used to be read off the `babyName` slots — the tightest box in the
+   * book — and that worked only while a box existed: the captain's two lone
+   * names went (page one's because the dedication facing it already says the
+   * name, page twenty-four's with it), so **the name now reaches the pages only
+   * inside authored copy**, on the cover's title and in eleven verses. A story
+   * slot's `maxChars` is a budget for a whole verse and says nothing about how
+   * long a name may be, so a limit derived from the copy is not a limit at all.
+   *
+   * It stays the number it was. The captain's decision of 12 November is
+   * explicit that the length a buyer may type is a product fact and not a
+   * consequence of a layout edit, so removing the boxes does not get to move
+   * it — `./name.ts` § `nameLimit` takes the **tightest** of this and every
+   * `babyName` slot that does exist, which keeps the old rule intact for any
+   * book that still has one and gives this book an answer.
+   *
+   * It is also the length `./validate.ts` substitutes into every `{name}` in
+   * the story copy, so this is the number that decides whether a verse
+   * overflows. Raising it is a build refusal rather than a printed page that
+   * does not fit.
+   */
+  nameMaxChars: number;
+  /**
    * What the buyer is asked **before** the grid of looks.
    *
    * Absent or empty means the question is not asked and the grid shows every

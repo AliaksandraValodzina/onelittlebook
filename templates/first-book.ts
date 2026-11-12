@@ -142,45 +142,25 @@ const INK = "#3B2A20";
  * The name's limit, in characters, and the number the whole name design turns
  * on.
  *
- * Every `babyName` slot declares it, so the tightest is this and
- * `lib/book/name.ts` has one answer to give a buyer. The boxes are sized so
- * fourteen characters of the handwritten face fit inside the narrowest of them
- * with room to spare — the renderer measures nothing
- * (`docs/template-format.md` § The text that did not fit), so a box has to be
- * generous rather than exact.
+ * It used to be declared on every `babyName` slot and read back as the
+ * tightest box in the book. **Both lone names went on 12 November** — page
+ * one's because the dedication facing it already says the name, page
+ * twenty-four's with it — so there is no box left to read it off, and it is
+ * declared on the book as `nameMaxChars`. `lib/book/types.ts` carries why that
+ * is a field and not a derivation.
  *
- * It is also the length `validateBook` substitutes into every `{name}` in the
- * story copy, so raising it is a change that can make a story line overflow —
- * and the build says so rather than the book.
+ * **Fourteen is unchanged, deliberately.** The captain's decision is that the
+ * length a buyer may type is a product fact: a layout edit does not get to
+ * move it, and the suite proves fourteen still fits rather than this file
+ * asserting that it does — `validateBook` substitutes fourteen M's into every
+ * `{name}` in the copy and refuses the build if a verse or the cover's title
+ * overflows, and `test/book-text.test.ts` is where that is read back.
  */
 const NAME_CHARS = 14;
 
 // ---------------------------------------------------------------------------
 // The slots
 // ---------------------------------------------------------------------------
-
-/** A name slot: the same declaration everywhere but the box and the size. */
-function nameSlot(
-  id: string,
-  frame: { x: number; y: number; width: number; height: number },
-  size: number,
-  align: "start" | "middle",
-): Layer {
-  return {
-    id,
-    kind: "textSlot",
-    slot: SLOT.name,
-    frame,
-    font: "hand",
-    size,
-    // Declared rather than derived from the face's ascent, which is a number
-    // only a shaping engine knows and the browser's would not be `resvg`'s.
-    baseline: size * 1.2,
-    colour: INK,
-    align,
-    maxChars: NAME_CHARS,
-  };
-}
 
 /**
  * The story slot: **one of the captain's twelve verses**, at the top of a
@@ -384,7 +364,7 @@ const STORY: readonly string[] = [
  * appears on that spread; move the slot to page six and the control moves with
  * it. Nobody writes down that it is page twelve.
  */
-const FEATURED: Record<string, { scene?: Partial<SceneSpec>; layers: Layer[] }> = {
+const FEATURED: Record<string, { scene?: Partial<SceneSpec>; layers?: Layer[] }> = {
   /**
    * **The opening spread, left-hand page — and it has no baby in it.**
    *
@@ -397,10 +377,18 @@ const FEATURED: Record<string, { scene?: Partial<SceneSpec>; layers: Layer[] }> 
    *
    * `babyless` is therefore not a drawing preference. It is the structural
    * reason this spread can carry an order.
+   *
+   * **It carries no text, and that is the captain's decision of 12 November.**
+   * It used to set the child's name alone and large in the middle of the
+   * clouds, and the page facing it opens *"Dear {name},"* — the name twice
+   * across one open spread reads as a mistake rather than as emphasis. So this
+   * entry is a scene and no layers: the name reaches the front of the book on
+   * the cover, inside "When {name} Turned One", and the dedication is where it
+   * is spoken. The lone name under the cake on `page-024` is a different
+   * moment and stays.
    */
   "page-001": {
     scene: { babyless: true },
-    layers: [nameSlot("title-name", { x: 110, y: 142, width: 392, height: 99 }, 60, "middle")],
   },
 
   /**
@@ -540,9 +528,17 @@ const FEATURED: Record<string, { scene?: Partial<SceneSpec>; layers: Layer[] }> 
     ],
   },
 
+  /**
+   * **The last page, and it carries no text either.**
+   *
+   * It set the name alone under the birthday scene — the closing beat of the
+   * book — and the captain's decision of 12 November took it with page one's.
+   * The consequence is the one worth knowing: **this book has no `babyName`
+   * slot at all**, so the name reaches the pages only inside authored copy,
+   * and `nameMaxChars` below is where its length is declared.
+   */
   "page-024": {
     scene: { babyAt: { x: 0.5, y: 0.78 }, babySize: 0.28 },
-    layers: [nameSlot("closing-name", { x: 110, y: 106, width: 392, height: 99 }, 60, "middle")],
   },
 };
 
@@ -743,7 +739,7 @@ const LOOKS: Look[] = GENDERS.flatMap(({ id: gender }, column) =>
 export const FIRST_BOOK: BookTemplate = {
   schema: 1,
   id: "the-book-of-you",
-  rev: "2469883d",
+  rev: "24cb8aeb",
   /**
    * **"When They Were Small".**
    *
@@ -837,6 +833,9 @@ export const FIRST_BOOK: BookTemplate = {
     minPhotoDpi: 200,
   },
 
+  /** Fourteen characters — § `NAME_CHARS` above argues the number. */
+  nameMaxChars: NAME_CHARS,
+
   /** The question asked **before** the grid — § `GENDERS` above. */
   genders: GENDERS,
 
@@ -917,12 +916,13 @@ export const FIRST_BOOK: BookTemplate = {
      * takes is a cover set in 29 pt. Stacked, the widest line is the name
      * itself and the title can be set at 44.
      *
-     * **There is no separate name slot on the cover any more**, and there must
-     * not be: the name is *in* the title, and a second one would print the
-     * child's name twice on the front of the book. The name still has its own
-     * slots on page one and page twenty-four, which is what keeps
-     * `NAME_CHARS` the tightest limit in the book and `checkName` answering
-     * about the face this title is set in.
+     * **There is no name slot on the cover, and since 12 November none
+     * anywhere in the book.** The name is *in* the title, and a second slot
+     * would print the child's name twice on the front — which is the same
+     * reason page one's lone name went, one spread further in. So this slot is
+     * the front of the book's whole claim on the name, `nameMaxChars` is where
+     * its length is declared, and this slot's `maxCharsPerLine` below is the
+     * box that has to hold it.
      */
     story: "When\n{name}\nTurned One",
     art: artFor({
@@ -978,7 +978,9 @@ export const FIRST_BOOK: BookTemplate = {
          * Sixteen across, where the name's own limit is fourteen and *"Turned
          * One"* is ten.
          *
-         * The two numbers are deliberately close. Raise `NAME_CHARS` past
+         * The two numbers are deliberately close, and this is now the
+         * **tightest box the name lands in anywhere** — the two `babyName`
+         * slots that used to be tighter are gone. Raise `NAME_CHARS` past
          * sixteen and this slot refuses at build time with
          * `text.storyOverflows` — which is the build saying that the cover no
          * longer holds the name, rather than the cover saying it in print.

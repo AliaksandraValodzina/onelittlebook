@@ -31,14 +31,16 @@ import {
   facesTheNameIsSetIn,
   limitsForRole,
   nameLimit,
+  nameSlotFont,
   slotsForRole,
 } from "../lib/book/name";
 import { acceptLines, explainLines } from "../lib/editor/lines";
 import { dedicationSlot } from "../lib/book/order";
 import { NAME_TOKEN, SLOT } from "../lib/book/slots";
-import { validateBookFill } from "../lib/book/validate";
+import { maxCharsPerLineOf } from "../lib/template/defaults";
+import { validateBook, validateBookFill } from "../lib/book/validate";
 import { blockingProblems } from "../lib/template/validate";
-import { pageFillFor, pageTemplateFor, pageWithSlot } from "../lib/book/derive";
+import { pageFillFor, pageSequence, pageTemplateFor, pageWithSlot } from "../lib/book/derive";
 import { TextOverflows, renderPageSvg } from "../lib/render/svg";
 import { assetUrl } from "../lib/assets/resolve";
 import { FACE_COVERAGE } from "../lib/render/coverage";
@@ -46,6 +48,9 @@ import type { BookTemplate } from "../lib/book/types";
 
 const slot = dedicationSlot(FIRST_BOOK)!;
 const chosen = { lookId: FIRST_BOOK.looks[0].id, coverId: FIRST_BOOK.covers[0].id };
+
+/** The problem codes this book reports, which is how every refusal is asserted. */
+const codesOf = (book: BookTemplate) => validateBook(book).map((p) => p.code);
 
 /** Render every page of the book with this fill, as the print path would. */
 function renderEveryPage(fill: Parameters<typeof pageFillFor>[2], book: BookTemplate = FIRST_BOOK) {
@@ -115,75 +120,245 @@ describe("the baby's name is refused, never quietly changed", () => {
     expect(verdict.message).toContain(String(limit));
   });
 
-  it("asks every face the name is set in, including the ones the captain's copy sets it in", () => {
+  it("asks every face the name is set in, which since 12 November is only the copy's", () => {
     // The failure this closes: a name the handwritten face can write and the
     // typewriter cannot would print cleanly on the cover and as a gap on page
     // ten. Indie Flower carries Vietnamese that Special Elite has never heard
     // of, so "Thư" is the name that tells the two apart.
     //
-    // **In the real book the name reaches both faces**, and it does so through
-    // the *copy* rather than through a slot: every `babyName` slot is set in
-    // Indie Flower, and the captain's verses are set in Special Elite with
-    // `{name}` inside them. A check that looked only at the name slots would
-    // accept this name and print it with a hole in it on eleven pages.
+    // **The name reaches both faces entirely through the copy**, because this
+    // book has no `babyName` slot at all — the captain's two lone names went
+    // on 12 November. The cover's title is set in the hand with `{name}` in
+    // it, the twelve verses are set in the typewriter with `{name}` in them,
+    // and a check that looked at name slots would now find nothing to look at
+    // and accept every name in the language.
+    expect(slotsForRole(FIRST_BOOK, SLOT.name)).toEqual([]);
     expect(facesTheNameIsSetIn(FIRST_BOOK).sort()).toEqual(["hand", "typewriter"]);
     expect(checkName(FIRST_BOOK, "Thư").ok).toBe(false);
 
     /**
      * The control, and what makes this a test of *where the name goes* rather
-     * than of "both faces, always": take `{name}` out of the copy and the
+     * than of "both faces, always": take `{name}` out of the verses and the
      * typewriter stops being a face the name is set in — same book, same
-     * slots, same faces on the page.
+     * slots, same faces on the page. The cover keeps its `{name}`, so the hand
+     * stays and the name still reaches the book.
      */
-    const noNameInTheCopy = (story: string | undefined) =>
+    const noNameInTheVerses = (story: string | undefined) =>
       story === undefined ? undefined : story.split(NAME_TOKEN).join("Somebody");
     const wordless: BookTemplate = {
       ...FIRST_BOOK,
-      cover: { ...FIRST_BOOK.cover, story: noNameInTheCopy(FIRST_BOOK.cover.story) },
-      pages: FIRST_BOOK.pages.map((p) => ({ ...p, story: noNameInTheCopy(p.story) })),
+      pages: FIRST_BOOK.pages.map((p) => ({ ...p, story: noNameInTheVerses(p.story) })),
     };
     expect(facesTheNameIsSetIn(wordless)).toEqual(["hand"]);
     expect(checkName(wordless, "Thư").ok).toBe(true);
 
-    // And the original half of the rule, asked of that same book: move one
-    // name slot to the other face and the answer changes back.
-    const mixed: BookTemplate = {
+    // And the other half of the rule, which this book no longer exercises on
+    // its own: a `babyName` slot contributes its face too. Given back to the
+    // book above — whose copy reaches only the hand — a name slot set in the
+    // typewriter brings the refusal back.
+    const slotted: BookTemplate = {
       ...wordless,
-      pages: wordless.pages.map((p) =>
-        p.id === "page-001"
+      pages: wordless.pages.map((p, i) =>
+        i === 0
           ? {
               ...p,
-              layers: (p.layers ?? []).map((l) =>
-                l.kind === "textSlot" && l.slot === SLOT.name ? { ...l, font: "typewriter" } : l,
-              ),
+              layers: [
+                ...(p.layers ?? []),
+                {
+                  id: "a-name-slot",
+                  kind: "textSlot",
+                  slot: SLOT.name,
+                  frame: { x: 110, y: 142, width: 392, height: 99 },
+                  font: "typewriter",
+                  size: 60,
+                  baseline: 72,
+                  colour: "#3B2A20",
+                  align: "middle",
+                  maxChars: FIRST_BOOK.nameMaxChars,
+                },
+              ],
             }
           : p,
       ),
     };
-    expect(checkName(mixed, "Thư").ok).toBe(false);
-    expect(limitsForRole(mixed, SLOT.name).faces.sort()).toEqual(["hand", "typewriter"]);
+    expect(limitsForRole(slotted, SLOT.name).faces).toEqual(["typewriter"]);
+    expect(facesTheNameIsSetIn(slotted).sort()).toEqual(["hand", "typewriter"]);
+    expect(checkName(slotted, "Thư").ok).toBe(false);
   });
 
-  it("takes the tightest limit of every box, not the widest", () => {
-    const tight: BookTemplate = {
+  it("takes the declared limit, tightened by any box the book still has", () => {
+    // **The declared number is the source.** `nameMaxChars` is on the book
+    // because the two boxes that used to carry the limit are gone and a
+    // verse's `maxChars` is a budget for a verse — `lib/book/types.ts` says
+    // why at length. Lower it and the whole product lowers with it.
+    const declared: BookTemplate = { ...FIRST_BOOK, nameMaxChars: 5 };
+    expect(nameLimit(declared)).toBe(5);
+    expect(checkName(declared, "Rosalind").ok).toBe(false);
+
+    // **And a box still wins when it is tighter**, which is the rule that
+    // predates the field: a name that fits five boxes of six overflows the
+    // sixth, and the sixth is a printed page. Asserted by giving the book a
+    // name slot tighter than its declared limit.
+    const boxed: BookTemplate = {
       ...FIRST_BOOK,
-      pages: FIRST_BOOK.pages.map((p) =>
-        p.id === "page-024"
+      pages: FIRST_BOOK.pages.map((p, i) =>
+        i === 0
           ? {
               ...p,
-              layers: (p.layers ?? []).map((l) =>
-                l.kind === "textSlot" && l.slot === SLOT.name ? { ...l, maxChars: 5 } : l,
-              ),
+              layers: [
+                ...(p.layers ?? []),
+                {
+                  id: "a-tight-name-slot",
+                  kind: "textSlot",
+                  slot: SLOT.name,
+                  frame: { x: 110, y: 142, width: 392, height: 99 },
+                  font: "hand",
+                  size: 60,
+                  baseline: 72,
+                  colour: "#3B2A20",
+                  align: "middle",
+                  maxChars: 4,
+                },
+              ],
             }
           : p,
       ),
     };
-    expect(nameLimit(tight)).toBe(5);
-    expect(checkName(tight, "Rosalind").ok).toBe(false);
+    expect(boxed.nameMaxChars).toBeGreaterThan(4);
+    expect(nameLimit(boxed)).toBe(4);
+    expect(checkName(boxed, "Rosalind").ok).toBe(false);
   });
 
-  it("is set on more than one page, which is why any of this matters", () => {
-    expect(slotsForRole(FIRST_BOOK, SLOT.name).length).toBeGreaterThan(1);
+  it("is as long as the copy can actually hold it, measured and not asserted", () => {
+    /**
+     * **The guard the declared limit needs.** `nameMaxChars` is a number
+     * somebody typed, and the only thing that makes it true is that every
+     * `{name}` in the book still fits with that many characters in it — the
+     * cover's title is sixteen across where the name is fourteen, which is the
+     * tightest of them and not a wide margin.
+     *
+     * So this asks the real validator, which substitutes `nameLimit` M's into
+     * every piece of authored copy and reports `text.storyOverflows`. The
+     * paired control is the same book with the limit raised: it must overflow,
+     * because a check that passes for every limit is checking nothing.
+     *
+     * **If this goes red, the measurement is the finding** — the limit is the
+     * captain's product decision, so the number to change is a box, not this.
+     */
+    const overflows = (book: BookTemplate) =>
+      validateBook(book)
+        .filter((p) => p.code === "text.storyOverflows")
+        .map((p) => `${p.where}: ${p.detail}`);
+
+    expect(overflows(FIRST_BOOK)).toEqual([]);
+    expect(nameLimit(FIRST_BOOK)).toBe(FIRST_BOOK.nameMaxChars);
+
+    // The control, and the measurement. Raise the limit until something
+    // refuses, and the first number that does says which box is holding it —
+    // the cover's title, whose `{name}` is alone on its line, so the line it
+    // can take is exactly `maxCharsPerLine`. Read off the slot rather than
+    // typed, so re-sizing the cover moves this with it.
+    const title = (FIRST_BOOK.cover.layers ?? []).find(
+      (l) => l.kind === "textSlot" && l.slot === SLOT.story,
+    );
+    const across = title?.kind === "textSlot" ? maxCharsPerLineOf(title) : 0;
+    const tooLong = (() => {
+      for (let n = FIRST_BOOK.nameMaxChars + 1; n <= FIRST_BOOK.nameMaxChars + 64; n++) {
+        if (overflows({ ...FIRST_BOOK, nameMaxChars: n }).length) return n;
+      }
+      return undefined;
+    })();
+    expect(tooLong, "no raise of nameMaxChars overflows anything, so nothing holds it").toBe(
+      across + 1,
+    );
+    // Which is the headroom, stated: fourteen characters in a box that takes
+    // `across`. Two spare is the margin the captain's cover was drawn with —
+    // if this number goes to zero the cover is the thing to re-size, because
+    // the limit is a product decision and not this file's to lower.
+    expect(across - FIRST_BOOK.nameMaxChars).toBe(2);
+  });
+
+  it("goes somewhere, and the book is refused when it does not", () => {
+    // The rule that replaced "a `babyName` slot exists", which this book would
+    // now fail while printing the name perfectly well. What matters is that
+    // the name lands *somewhere* — a slot or authored copy carrying `{name}`.
+    expect(codesOf(FIRST_BOOK)).not.toContain("book.nameGoesNowhere");
+
+    const nameless: BookTemplate = {
+      ...FIRST_BOOK,
+      cover: { ...FIRST_BOOK.cover, story: "When Someone Turned One" },
+      pages: FIRST_BOOK.pages.map((p) => ({
+        ...p,
+        story: p.story?.split(NAME_TOKEN).join("Somebody"),
+        layers: (p.layers ?? []).filter(
+          (l) => !(l.kind === "textSlot" && l.slot === SLOT.name),
+        ),
+      })),
+    };
+    expect(facesTheNameIsSetIn(nameless)).toEqual([]);
+    expect(codesOf(nameless)).toContain("book.nameGoesNowhere");
+
+    // And a nonsense limit is refused, because nothing else would notice it.
+    expect(codesOf({ ...FIRST_BOOK, nameMaxChars: 0 })).toContain("book.nameMaxChars");
+    expect(codesOf(FIRST_BOOK)).not.toContain("book.nameMaxChars");
+  });
+
+  it("is shown to the buyer in the face it prints in, read off the book", () => {
+    /**
+     * The confirm-the-spelling screen sets the name in the face the press
+     * will — otherwise it shows them the browser's UI font and asks them to
+     * approve letterforms that are not the ones that print.
+     *
+     * Since 12 November that face comes from the **cover's title**, because
+     * there is no `babyName` slot left to read it off. It happens to be the
+     * same `hand` the lone names were set in, which is exactly why this needs
+     * a control: re-set the title in the typewriter and the screen has to
+     * follow, or the answer is a coincidence rather than a reading.
+     */
+    const title = (FIRST_BOOK.cover.layers ?? []).find(
+      (l) => l.kind === "textSlot" && l.slot === SLOT.story,
+    );
+    expect(title?.kind === "textSlot" && title.font).toBe(nameSlotFont(FIRST_BOOK));
+
+    const retyped: BookTemplate = {
+      ...FIRST_BOOK,
+      cover: {
+        ...FIRST_BOOK.cover,
+        layers: (FIRST_BOOK.cover.layers ?? []).map((l) =>
+          l.kind === "textSlot" && l.slot === SLOT.story ? { ...l, font: "typewriter" } : l,
+        ),
+      },
+    };
+    expect(nameSlotFont(retyped)).toBe("typewriter");
+  });
+
+  it("is nowhere on the opening spread's left-hand page, which carries no text at all", () => {
+    /**
+     * **The captain's decision of 12 November**: page one used to set the name
+     * alone and large in the clouds, and the page facing it opens
+     * *"Dear {name},"*. Said twice across one open spread it reads as a
+     * mistake, so the left-hand page carries artwork and no words.
+     *
+     * Asserted as *the name cannot reach that page*, not as "the slot is
+     * gone": the page is rendered with two different names and the two SVGs
+     * are byte-identical. The paired control is the cover, where the same two
+     * fills differ — which is what stops this passing because the renderer
+     * drew nothing.
+     */
+    const opening = pageSequence(FIRST_BOOK).findIndex((p) => p.id === "page-001");
+    // The control is the cover, whose title sets the name inside authored
+    // copy — the one place in the book the name is certain to be drawn.
+    const control = 0;
+    const draw = (index: number, name: string) =>
+      renderPageSvg(
+        pageTemplateFor(FIRST_BOOK, index, chosen),
+        pageFillFor(FIRST_BOOK, index, { ...FIXTURE_BOOK_FILL, name }),
+        { href: assetUrl },
+      );
+
+    expect(pageSequence(FIRST_BOOK)[opening].layers ?? []).toEqual([]);
+    expect(draw(opening, "Rosalind")).toBe(draw(opening, "Bo"));
+    expect(draw(control, "Rosalind")).not.toBe(draw(control, "Bo"));
   });
 
   it("never produces a fill the renderer would refuse", () => {

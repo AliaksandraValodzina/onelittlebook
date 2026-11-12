@@ -442,9 +442,13 @@ describe("the buyer's own fields become a fill per page", () => {
     expect(cover.texts[SLOT.story]).toContain(FIXTURE_BOOK_FILL.name);
     expect(cover.texts[SLOT.story]).not.toContain(NAME_TOKEN);
     expect(cover.photos).toEqual({});
-    // And the name still has slots of its own inside the book, which is what
-    // keeps `checkName`'s length limit the tightest of the boxes it goes in.
-    expect(slotsForRole(FIRST_BOOK, SLOT.name).length).toBeGreaterThan(0);
+    // And since 12 November the cover's title is the **only** place the name
+    // is set: the captain's two lone names went, so the book carries no
+    // `babyName` slot at all and `checkName`'s length limit comes from
+    // `BookTemplate.nameMaxChars`. `test/book-text.test.ts` is where that is
+    // held to the boxes the copy actually has.
+    expect(slotsForRole(FIRST_BOOK, SLOT.name)).toEqual([]);
+    expect(FIRST_BOOK.nameMaxChars).toBeGreaterThan(0);
 
     const plain = pageFillFor(FIRST_BOOK, 4, FIXTURE_BOOK_FILL);
     expect(plain.texts).toEqual({});
