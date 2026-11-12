@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "id": "the-book-of-you",
-  "rev": "24cb8aeb",
+  "rev": "1e49cd48",
   "name": "When They Were Small",
   "blurb": "Twelve spreads of their first year, with their name through it, one of your own photographs, and a dedication in the front.",
   "dedicationDefault": "Dear {name},\n\nHere is your year, all tucked in a book,\nEach first and each giggle, each wide-eyed look.\nWe'll read it together again and again,\nAnd remember how small you were back then.\n\nWith all our love",
@@ -374,7 +374,8 @@
           "ground": "#E6F0F2",
           "floor": "#BFD9E0",
           "prop": "#A9C9D4",
-          "seed": 2002
+          "seed": 2002,
+          "babyless": true
         }
       },
       "story": "Dear {name},\n\nThe day that you came, the whole world felt new,\nThe stars seemed to shine just a little for you.\nSo tiny, so perfect, wrapped snug in our arms,\nWe fell head over heels for your sweet little charms.",
@@ -385,7 +386,7 @@
           "slot": "storyText",
           "frame": {
             "x": 56,
-            "y": 64,
+            "y": 226,
             "width": 500,
             "height": 160
           },
@@ -421,7 +422,8 @@
           "ground": "#EAF1E2",
           "floor": "#CBDCB8",
           "prop": "#B3CE9E",
-          "seed": 2004
+          "seed": 2004,
+          "babyless": true
         }
       },
       "story": "{name}, you smiled!\n\nOne morning you grinned and our hearts melted through,\nThen came a big giggle, a bubbly \"ah-goo!\"\nWe tickled your toes and we kissed your round tum,\nAnd you laughed till the hiccups decided to come.",
@@ -432,7 +434,7 @@
           "slot": "storyText",
           "frame": {
             "x": 56,
-            "y": 64,
+            "y": 226,
             "width": 500,
             "height": 160
           },
@@ -468,7 +470,8 @@
           "ground": "#F6EDDC",
           "floor": "#E0CBA8",
           "prop": "#CBAE87",
-          "seed": 2006
+          "seed": 2006,
+          "babyless": true
         }
       },
       "story": "Go, {name}, go!\n\nOn tummy-time mornings you pushed and you tried,\nYou wiggled and wobbled and rocked side to side.\nThen over you rolled with a squeak and a cheer,\nAnd we clapped for our champion - well done, my dear!",
@@ -479,7 +482,7 @@
           "slot": "storyText",
           "frame": {
             "x": 56,
-            "y": 64,
+            "y": 226,
             "width": 500,
             "height": 160
           },
@@ -515,7 +518,8 @@
           "ground": "#E6E4F0",
           "floor": "#C6C2DF",
           "prop": "#B0AACF",
-          "seed": 2008
+          "seed": 2008,
+          "babyless": true
         }
       },
       "story": "Night-night, {name}\n\nWhen the moon climbed up high and the stars came to peep,\nWe rocked you and hummed till you drifted to sleep.\nWith your bear tucked in close and your blanket pulled tight,\nWe whispered \"we love you\" and kissed you goodnight.",
@@ -526,7 +530,7 @@
           "slot": "storyText",
           "frame": {
             "x": 56,
-            "y": 64,
+            "y": 226,
             "width": 500,
             "height": 160
           },
@@ -562,7 +566,8 @@
           "ground": "#EFF3E6",
           "floor": "#CFE0C0",
           "prop": "#F0C8A0",
-          "seed": 2010
+          "seed": 2010,
+          "babyless": true
         }
       },
       "story": "{name} tries something new\n\nYour very first spoonful was quite a surprise,\nYou wrinkled your nose and you scrunched up your eyes.\nBut soon it was pumpkin, banana and pear,\nOn your cheeks, on your bib, and all over your hair!",
@@ -573,7 +578,7 @@
           "slot": "storyText",
           "frame": {
             "x": 56,
-            "y": 64,
+            "y": 320,
             "width": 500,
             "height": 160
           },
@@ -609,7 +614,8 @@
           "ground": "#FBEFE6",
           "floor": "#EED2BE",
           "prop": "#DDB79C",
-          "seed": 2012
+          "seed": 2012,
+          "babyless": true
         }
       },
       "story": "Splish-splash, {name}!\n\nSplish-splash in the bath with your ducks in a row,\nYou kicked and you paddled and put on a show.\nThen wrapped in a towel, all rosy and sweet,\nFrom the top of your head to your ten little feet.",
@@ -620,7 +626,7 @@
           "slot": "storyText",
           "frame": {
             "x": 56,
-            "y": 64,
+            "y": 226,
             "width": 500,
             "height": 160
           },
@@ -656,7 +662,8 @@
           "ground": "#FDF3E3",
           "floor": "#F0D9B5",
           "prop": "#E8B9A0",
-          "seed": 2014
+          "seed": 2014,
+          "babyless": true
         }
       },
       "story": "Out we go, {name}!\n\nWe took you out walking to visit the park,\nTo hear all the birds and the dogs as they bark.\nYou reached for the clouds and the sky up so high,\nAnd waved to each duck as it paddled on by.",
@@ -667,7 +674,7 @@
           "slot": "storyText",
           "frame": {
             "x": 56,
-            "y": 64,
+            "y": 226,
             "width": 500,
             "height": 160
           },
@@ -703,7 +710,8 @@
           "ground": "#F3E7DA",
           "floor": "#E3CDB8",
           "prop": "#D9BFA6",
-          "seed": 2016
+          "seed": 2016,
+          "babyless": true
         }
       },
       "story": "Here comes {name}!\n\nThen off you went crawling, so speedy and keen,\nTo explore every corner you'd never yet seen.\nYou opened the cupboards and pulled out the pots,\nAnd found all the crumbs in the very best spots.",
@@ -714,7 +722,7 @@
           "slot": "storyText",
           "frame": {
             "x": 56,
-            "y": 64,
+            "y": 226,
             "width": 500,
             "height": 160
           },
@@ -750,7 +758,8 @@
           "ground": "#E6F0F2",
           "floor": "#BFD9E0",
           "prop": "#A9C9D4",
-          "seed": 2018
+          "seed": 2018,
+          "babyless": true
         }
       },
       "story": "{name}, you are so loved\n\nYou're loved by so many, both near and afar,\nWho think you're the brightest and loveliest star.\nWith cuddles and kisses and bedtime songs too,\nThere's no one more loved in the whole world than you.",
@@ -761,7 +770,7 @@
           "slot": "storyText",
           "frame": {
             "x": 56,
-            "y": 64,
+            "y": 226,
             "width": 500,
             "height": 160
           },
@@ -797,7 +806,8 @@
           "ground": "#EAF1E2",
           "floor": "#CBDCB8",
           "prop": "#B3CE9E",
-          "seed": 2020
+          "seed": 2020,
+          "babyless": true
         }
       },
       "story": "Look at {name} go!\n\nThen one day you stood, holding tight to a chair,\nYour legs gave a wobble - but look, you were there!\nOne step and then two, with your arms open wide,\nEach brave little step with our hearts by your side.",
@@ -808,7 +818,7 @@
           "slot": "storyText",
           "frame": {
             "x": 56,
-            "y": 64,
+            "y": 226,
             "width": 500,
             "height": 160
           },
@@ -844,7 +854,8 @@
           "ground": "#F6EDDC",
           "floor": "#E0CBA8",
           "prop": "#CBAE87",
-          "seed": 2022
+          "seed": 2022,
+          "babyless": true
         }
       },
       "story": "Happy 1st Birthday, {name}!\n\nNow here is a cake with one candle so bright,\nA year full of wonder, of love and delight.\nSo make a wish, little one, as we sing just for you,\nWe love you, we love you, we always will too.",
@@ -855,7 +866,7 @@
           "slot": "storyText",
           "frame": {
             "x": 56,
-            "y": 64,
+            "y": 226,
             "width": 500,
             "height": 160
           },

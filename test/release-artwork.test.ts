@@ -533,27 +533,38 @@ describe("the golden ghost spreads", () => {
     expect(drawnSvg).toContain('id="ghost-pearl"');
   });
 
-  it("leaves the left-hand page alone for a look that has artwork, and not for one that has not", async () => {
+  it("leaves the left-hand page alone, delivered or not", async () => {
     const art = await store();
     // The captain's spreads put the child on the right-hand half only, so the
     // left half of a delivered spread has nobody on it — and a white silhouette
-    // standing on an empty floor is worse than no placeholder at all. For a
-    // look still being drawn the same page does carry a baby, because the
-    // placeholder scenes put one on both halves.
+    // standing on an empty floor is worse than no placeholder at all.
+    //
+    // **A look still being drawn gets the same answer**, and that is the part
+    // that moved: the placeholder used to put a baby on both halves, so this
+    // page used to carry one for an undelivered look and a pearlescent ghost
+    // was drawn on it. It stood for a child the finished page was never going
+    // to have. `templates/first-book.ts` § `interior` now declares every page
+    // of words babyless, which is what the artwork it stands in for is, and
+    // the two branches of `pageCarriesTheChild` agree here instead of
+    // disagreeing.
     const page = "page-003";
     const index = pageSequence(FIRST_BOOK).findIndex((p) => p.id === page);
     await art.put(lookSet(DELIVERED), [{ pageId: page, bytes: square([30, 60, 90]) }], NOW);
     const book = await bookAsDelivered(FIRST_BOOK, art);
 
     expect(pageCarriesTheChild(book, index, DELIVERED)).toBe(false);
-    expect(pageCarriesTheChild(book, index, UNDELIVERED)).toBe(true);
+    expect(pageCarriesTheChild(book, index, UNDELIVERED)).toBe(false);
     expect(ghostFor(book, index, DELIVERED)).toBeNull();
-    expect(ghostFor(book, index, UNDELIVERED)).not.toBeNull();
+    expect(ghostFor(book, index, UNDELIVERED)).toBeNull();
 
-    // And the right-hand half of the same spread carries one either way.
+    // And the right-hand half of the same spread carries one either way, which
+    // is what keeps the four assertions above from being satisfied by a
+    // `pageCarriesTheChild` that had simply stopped saying yes to anything.
     const right = pageSequence(FIRST_BOOK).findIndex((p) => p.id === "page-004");
     expect(pageCarriesTheChild(book, right, DELIVERED)).toBe(true);
     expect(pageCarriesTheChild(book, right, UNDELIVERED)).toBe(true);
+    expect(ghostFor(book, right, DELIVERED)).not.toBeNull();
+    expect(ghostFor(book, right, UNDELIVERED)).not.toBeNull();
   });
 
   it("never reaches a print file, even for the page it is on", async () => {

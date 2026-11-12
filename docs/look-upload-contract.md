@@ -211,8 +211,18 @@ carries are a slot's.
 Four kinds of area carry **background only** — no frame, no panel, no drop
 shadow, no "text here" placeholder, and nothing busy:
 
-- **The story area**, on the first page of each spread. A line or two of small
-  typewriter text sits across the upper third; it needs a quiet ground.
+- **The story area**, on the first page of each spread — its **left-hand**
+  page. Six lines of small typewriter text sit in a band across the **middle**
+  of it, and it needs a quiet ground: soft, out of focus, light in value, low
+  in detail, which is the captain's own `verse_zone` wording to whoever
+  generates a spread.
+
+  **This paragraph used to say "the upper third" and the artwork was drawn
+  against the middle**, which is the disagreement this document exists to
+  prevent — the verses printed over fairy lights, hearts, a moonbeam and a
+  picture frame until the renderer was moved to the band the pictures had
+  always reserved. The band below is now read off the template rather than
+  described twice.
 - **The name areas.** A name is set large in a handwritten face; a busy
   background behind it is unreadable at any size.
 - **The dedication area**, big enough for ten lines, with a signature line under
@@ -230,7 +240,7 @@ leave the areas clear.
 | `cover.png` | the baby's name, large, on a cream panel; the buyer's cover colour tints the whole ground | the middle third |
 | `page-001.png` | the baby's name, on the title page | the upper middle |
 | `page-002.png` | **the buyer's photograph, the dedication and the from-line** | see below — most of the page |
-| `page-003.png`, 005, 007 … 023 | one or two lines of story, across the top | the upper third |
+| `page-003.png`, 005, 007 … 023 | six lines of story, across the middle | **y 226–386 of 612**, which is the middle quarter — and the captain's `verse_zone`, the middle 60%, covers it with room either side. `page-011` is the one exception: its verse sits at **y 320–480**, because that spread's windowsill is drawn *in* the shared band. `templates/first-book.ts` § `VERSE_TOP` carries the measurement |
 | `page-024.png` | the baby's name, closing page | the upper middle |
 
 ### `page-001` and `page-002` are the babyless spread
