@@ -127,6 +127,16 @@ typewriter and the name slots in the hand, and the two faces' coverage
 genuinely differs, so a Vietnamese name passes a name-slots-only check and
 prints with a hole in it on eleven interior pages.
 
+**The name's *length* comes from the `babyName` slots alone, and since
+12 November the book has exactly one** — `closing-name` on `page-024`; page
+one's lone name went because the page facing it already says *"Dear {name},"*.
+That one slot is load-bearing beyond its own page: with no `babyName` slot
+`limitsForRole` returns `Infinity`, so nothing length-checks a name, and
+`validateBook` § `storyProblems` throws rather than reporting
+`book.noNameSlot` — the book stops validating, previewing and printing.
+Removing it is therefore not a data edit but a decision about where the limit
+and the confirm screen's face come from instead.
+
 ## Facts the repository does not have
 
 `lib/product.ts` is a union whose only `value` field is on the
