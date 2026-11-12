@@ -26,7 +26,7 @@
  * regenerated pages are.
  *
  * Each import **adds a version and keeps the last** — `lib/artwork/store.ts`
- * § Versions carries that argument. Two of the twelve portraits are being
+ * § Versions carries that argument. Two of the first twelve portraits are being
  * regenerated, so re-importing the set is the normal case and not a repair.
  */
 
@@ -109,8 +109,9 @@ function resolveLook(book: BookTemplate, token: string): string {
   if (book.looks.some((l) => l.id === token)) return token;
   const parsed = portraitName(`${token}.png`);
   if (parsed) {
-    // Positional within the gender: the captain's `02-girl` is the second girl
-    // look of the book. `portraitMapping` is the same rule applied to a whole
+    // By number within the gender: the captain's `02-girl` is the second girl
+    // look of the book, because the book lists its girl looks in the captain's
+    // own order. `portraitMapping` is the same indexing applied to a whole
     // folder and `docs/artwork.md` is the table it produces.
     const nth = book.looks.filter((l) => l.gender === parsed.gender)[parsed.number - 1];
     if (nth) return nth.id;
@@ -159,7 +160,7 @@ async function importLook(dir: string, token: string): Promise<void> {
   }
 }
 
-/** The twelve portraits, flattened onto white, as the chooser's tiles. */
+/** The portraits, flattened onto white, as the chooser's tiles. */
 async function importPortraits(dir: string): Promise<void> {
   const files = await pngsIn(dir);
   console.log(`${files.length} portrait(s) from ${dir}`);
@@ -178,10 +179,11 @@ async function importPortraits(dir: string): Promise<void> {
     `stored ${version.pages.length} portrait(s) as ${TILES_SET} v${version.version} in ${store.describe}`,
   );
   console.log(
-    "\nTWO OF THESE ARE TO BE REPLACED. `02-girl` and `08-boy` have a red/yellow halo from the\n" +
-      "background they were cut out of — measured on their own edge pixels at 98.5 % and 86.5 %.\n" +
-      "The captain is regenerating both; re-run this command and it becomes the next version.\n" +
-      "docs/artwork.md § The two portraits to be replaced.",
+    "\nTWO OF THE 10 NOVEMBER SET WERE TO BE REPLACED: `02-girl` and the second boy — `08-boy`\n" +
+      "under that set's numbering, which ran 07–12 for the boys — had a red/yellow halo from the\n" +
+      "background they were cut out of, measured on their own edge pixels at 98.5 % and 86.5 %.\n" +
+      "The set is now fourteen, numbered 01–07 within each gender; either way a re-import is the\n" +
+      "next version and the previous one stays readable. docs/artwork.md § 2.",
   );
 }
 
@@ -236,11 +238,15 @@ async function status(): Promise<void> {
   if (withoutCover.length) {
     console.log(`\nno cover artwork for: ${withoutCover.join(", ")} — the cover is still the placeholder.`);
   }
+  // Counted out of the book and what the store holds, never typed: the number
+  // of looks is data (`templates/first-book.ts` § `LOOKS`) and a sentence that
+  // said "eleven" would be wrong the day the captain settles on a different
+  // count — which is exactly what happened to the sentence this replaced.
   console.log(
-    "\nstill owed: eleven more looks, a cover for every look, and replacements for 02-girl\n" +
-      "and 08-boy. The storage question is answered — two Vercel Blob stores, olb-looks\n" +
-      "public and olb-orders private; lib/artwork/blob.ts is the adapter and\n" +
-      "`npm run artwork:upload` is how the looks get there.",
+    `\nstill owed: ${FIRST_BOOK.looks.length - delivered.length} more look(s), a cover for every ` +
+      "look, and the portrait replacements in docs/artwork.md § 2. The storage question is\n" +
+      "answered — two Vercel Blob stores, olb-looks public and olb-orders private;\n" +
+      "lib/artwork/blob.ts is the adapter and `npm run artwork:upload` is how the looks get there.",
   );
 }
 

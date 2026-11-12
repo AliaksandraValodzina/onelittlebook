@@ -115,6 +115,18 @@ family: `lib/theme.ts` holds the palette and the **one token** that decides the
 display face, because the captain has not finally chosen between Fraunces and
 Instrument Serif. `test/theme.test.ts` fails if a second file names either.
 
+**The looks are data and nothing counts them.** `templates/first-book.ts`
+§ `LOOKS` is the list, its order, and why — a skin-lightness ladder, the same
+one per gender. How many there are has already moved once (it was six per
+gender until 12 November), so **no component, validator, copy string or test may
+state the number**: `lib/shop/copy.ts` § `BABIES` counts the grid off the book
+and `test/look-count.test.tsx` renders the chooser for books with a deliberately
+different number of looks. **The ids are the captain's portrait numbering** —
+`03-girl.png` is `girl-03` — so `lib/artwork/import.ts` § `portraitMapping` maps
+by the number in the filename and there is no table anybody maintains. Every
+entry keeps a `baby` colour triple, which is what a fresh clone and the whole
+suite draw.
+
 **The shelf is data** (`lib/shop/shelf.ts`) and **the flow is data**
 (`lib/shop/steps.ts`): a second title is an entry plus a template, and back,
 next, the counter and the route table all read the step list. The copy is data
@@ -154,7 +166,7 @@ The consequence to remember: the chooser's **fallback** tile must come from a
 page with a baby on it, which is why `BookTemplate.tilePage` is declared and
 `validateBook` refuses a babyless one. A look with a delivered portrait
 (`Look.tile`) shows that instead — `app/_book/tile.ts` decides, and the
-page-drawn tile is still what eleven of the twelve looks get.
+page-drawn tile is still what every look without a delivered portrait gets.
 
 **Crop is the one thing the buyer may move**, and it moves nothing on the page:
 a gesture becomes a `PhotoView`, `cropFor` turns it into the `Crop` the format
@@ -248,7 +260,7 @@ flows.**
 ## The photo path
 
 **The captain sells two ways and the second one is hand-made.** *Choose a look*
-picks one of twelve finished folders. *Upload a photograph* means the captain
+picks one of the finished folders. *Upload a photograph* means the captain
 takes this book's artwork into an image tool, replaces the child with one
 resembling the buyer's, and uploads the result back against one order. Four
 pieces serve it and each has its own file-level reasoning.
@@ -292,7 +304,7 @@ so re-uploading one corrected page uploads one file and no cache can serve the
 old one. `npm run artwork:upload` is the command. `.gitignore` excludes
 `.artwork/` and `test/order-artwork.test.ts` asserts the rule — it is one
 family's child and git history is permanent.
-`lib/book/order-upload.ts` holds an upload to the same contract the twelve looks
+`lib/book/order-upload.ts` holds an upload to the same contract the looks
 are held to, by calling `lib/book/upload.ts` § `pageAgainstContract`, and
 accepts the captain's `spread-NN-left|right` spelling by **deriving** it from
 `spreadSideOf`.
@@ -319,7 +331,8 @@ as `/my-forever?guides=1` is.
 ## The artwork is not in the repository
 
 **Three sets were delivered on 10 November and none of them is committed:**
-the first look's 24 pages, twelve portrait tiles, twelve golden ghost spreads.
+the first look's 24 pages, the portrait tiles, twelve golden ghost spreads (one
+per spread).
 `docs/artwork.md` is the inventory, the id mapping and what is still owed;
 `npm run artwork` imports onto a machine, `npm run artwork:upload` pushes all
 three sets to the public Blob store, and `npm run artwork -- status` says what
@@ -342,8 +355,8 @@ changing the revision the order names.
 
 **A partial import is a legitimate state.** `PageArt` has a `scene` beside
 `byLook`: a page carries the captain's artwork for the looks that have it and
-the placeholder baby for the rest, which is what lets one of twelve looks be
-real. With every look delivered the fallback is dropped and `art.lookMissing`
+the placeholder baby for the rest, which is what lets one look be real while
+the others are still being drawn. With every look delivered the fallback is dropped and `art.lookMissing`
 comes back on its own.
 
 **Preview artwork is a different type, so it cannot print.** `PreviewAsset`

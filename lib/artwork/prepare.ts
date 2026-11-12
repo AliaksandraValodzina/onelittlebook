@@ -100,7 +100,7 @@ export interface PreparedPortraits extends Prepared {
 }
 
 /**
- * **The twelve portraits, flattened onto white, as the chooser's tiles.**
+ * **The portraits, flattened onto white, as the chooser's tiles.**
  *
  * They arrive RGBA with nothing in them fully opaque, so a tile left as it came
  * would show the page through the baby and could never pass a page validator.

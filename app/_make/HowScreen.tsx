@@ -12,7 +12,7 @@
  * **One route is live and the other says so.** Building a character from a
  * photograph means generating artwork, which this brief puts out of scope, and
  * the artefact's own closing note is that the open question is exactly this
- * one: a generated child the twelve interior babies cannot match, with the
+ * one: a generated child the interior's own babies cannot match, with the
  * complaint arriving after the money. So the photograph route is a card that
  * states what it will be and that it is not here. The alternative — a button
  * that goes somewhere apologetic — is the thing this repository calls a

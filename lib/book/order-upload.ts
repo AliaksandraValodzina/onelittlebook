@@ -3,7 +3,7 @@
  *
  * `./artwork.ts` sends the clean pages out; this reads what comes back. It is
  * the other half of the photo path and it is held to exactly the same contract
- * the twelve pre-made looks are: **3600 × 3600 exactly, PNG, sRGB, 8 bits per
+ * the pre-made looks are: **3600 × 3600 exactly, PNG, sRGB, 8 bits per
  * channel, no alpha channel, not interlaced.** Those rules are not restated
  * here — `./upload.ts` § `pageAgainstContract` is the one implementation and
  * `docs/look-upload-contract.md` § 2 is the agreement. A second set of rules
@@ -177,7 +177,7 @@ export function checkOrderArtwork(book: BookTemplate, files: UploadedFile[]): Or
     }
     claimed.set(resolved.index, file.name);
 
-    // The same rules the twelve looks are held to, and the same function.
+    // The same rules the pre-made looks are held to, and the same function.
     problems.push(...pageAgainstContract(file, where, size));
     pages.push({ index: resolved.index, pageId, file });
   }

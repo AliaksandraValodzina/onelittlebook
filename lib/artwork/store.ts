@@ -147,7 +147,7 @@ export interface ArtworkStore {
 /**
  * **A store for the captain's released artwork, and nothing else.**
  *
- * The twelve looks' pages, the portrait tiles and the golden ghost halves: the
+ * The looks' pages, the portrait tiles and the golden ghost halves: the
  * same twenty-four pictures for every buyer, shown to anybody who opens the
  * preview. Backed by `olb-looks`, which is **public**, so everything in it has
  * a CDN URL and that is the point of it.

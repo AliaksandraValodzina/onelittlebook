@@ -270,7 +270,7 @@ function artLayer(book: BookTemplate, page: BookPage, chosen: Chosen): Layer {
    * Below here the page is drawn — either because it has no uploaded artwork at
    * all, or because this is a **partial** import and the captain has not
    * delivered this look yet. `PageArt.scene` says why the second is a
-   * legitimate state: the first of twelve looks landed on 10 November and the
+   * legitimate state: the first look landed on 10 November and the
    * other eleven are still being drawn, so one look's real pages beside eleven
    * placeholder babies is what the shop honestly is.
    */

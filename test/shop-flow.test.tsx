@@ -15,7 +15,7 @@
  * right when it was written and is wrong the day a screen moves.
  *
  * **Nothing is asked twice and nothing is asked that cannot be honoured.** The
- * look screen offers the twelve babies the interior can draw and no axis that
+ * look screen offers the babies the interior can draw and no axis that
  * could compose a thirteenth; the first screen states plainly that the
  * photograph route is not built.
  *

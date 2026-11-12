@@ -255,7 +255,7 @@ export default async function AdminOrder(props: {
       ) : null}
       <p className="mt-2 text-sm opacity-75">
         Upload the pages that came back from the image tool. They are checked against the same
-        contract the twelve looks are — {FIRST_BOOK.page.print.pixels.width} ×{" "}
+        contract the looks are — {FIRST_BOOK.page.print.pixels.width} ×{" "}
         {FIRST_BOOK.page.print.pixels.height} exactly, PNG, sRGB, 8 bits per channel, no alpha
         channel — and every problem is reported at once. Name each file for the page it replaces:{" "}
         <code>page-006.png</code> or <code>spread-03-right.png</code>, or leave the names the

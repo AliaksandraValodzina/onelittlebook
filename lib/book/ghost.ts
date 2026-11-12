@@ -5,7 +5,7 @@
  * looks like and why it is a render option rather than a layer. This decides
  * *when* there is one, and it makes exactly one decision:
  *
- * **The chosen-look path never has a ghost.** The buyer picked one of twelve
+ * **The chosen-look path never has a ghost.** The buyer picked one of the
  * babies, the artwork for that baby exists, it is lovely, and showing it is
  * the strongest selling point this shop has. A placeholder over a finished
  * picture would be a worse preview of a better product.
@@ -33,7 +33,7 @@
  * plus the cover. `rightHandPages` counts those out of `spreads()`.
  *
  * **The two states now exist in one book**, which is why `pageCarriesTheChild`
- * takes a look: one of twelve looks has artwork and eleven are still drawn, so
+ * takes a look: one look has artwork and the rest are still drawn, so
  * the same page answers differently for different babies. It is not a
  * refinement — the left half of every delivered spread has no child on it, and
  * a white silhouette there would be a placeholder standing on an empty floor.

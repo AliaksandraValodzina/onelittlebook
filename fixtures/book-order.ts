@@ -26,7 +26,7 @@ export const FIXTURE_BOOK_FILL: BookFill = {
   schema: 1,
   bookId: FIRST_BOOK.id,
   bookRev: FIRST_BOOK.rev,
-  lookId: "wren",
+  lookId: "boy-01",
   coverId: "sage",
   name: "Rosalind",
   // No crop: the buyer did not move it, so `placePhoto` cover-fits and centres

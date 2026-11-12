@@ -298,7 +298,7 @@ describe("the filename an order is matched by", () => {
     // with a different dedication have to be two files.
     const edited = { ...FIXTURE_BOOK_FILL, dedication: "Something else entirely." };
     expect(printFileName(FIRST_BOOK, edited, "pdf")).not.toBe(name);
-    expect(printFileName(FIRST_BOOK, { ...FIXTURE_BOOK_FILL, lookId: "otis" }, "pdf")).not.toBe(name);
+    expect(printFileName(FIRST_BOOK, { ...FIXTURE_BOOK_FILL, lookId: "boy-02" }, "pdf")).not.toBe(name);
   });
 
   it("names the page the way the upload contract names it", () => {

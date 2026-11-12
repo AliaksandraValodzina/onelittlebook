@@ -70,9 +70,9 @@ import type { BookTemplate } from "../lib/book/types";
 const SIZE = FIRST_BOOK.page.print.pixels.width;
 
 /** The look the captain delivered first, named the way the book names it. */
-const DELIVERED = "ada";
+const DELIVERED = "girl-02";
 /** A look that is still being drawn, for the paired half of every assertion. */
-const UNDELIVERED = "mabel";
+const UNDELIVERED = "girl-01";
 
 const temporary: string[] = [];
 async function directory(): Promise<string> {
@@ -192,18 +192,18 @@ describe("with no artwork on the machine", () => {
     // Two hundred times less, rather than zero: a rendered edge is antialiased
     // and a handful of pixels on the way from one colour to another will land
     // on any colour you name.
-    expect(await share("clover", UNDELIVERED)).toBeLessThan(0.0001);
+    expect(await share("girl-05", UNDELIVERED)).toBeLessThan(0.0001);
   });
 
   it("gives the chooser a tile anyway, drawn from the book", () => {
     // The fallback is not a legacy path: it is the tile for every look nobody
-    // has delivered a portrait for, which today is eleven of twelve.
+    // has delivered a portrait for, which today is most of them.
     expect(showcaseLook(FIRST_BOOK).id).toBe(FIRST_BOOK.looks[0].id);
   });
 });
 
 // ---------------------------------------------------------------------------
-// Artwork present: one look, twelve portraits, the golden halves
+// Artwork present: one look, every portrait, the golden halves
 // ---------------------------------------------------------------------------
 
 describe("with the first look imported", () => {
@@ -282,11 +282,44 @@ describe("with the first look imported", () => {
 // The portraits
 // ---------------------------------------------------------------------------
 
-describe("the twelve portraits", () => {
-  it("maps the captain's numbering onto the look ids, positionally within a gender", () => {
-    const names = ["01-girl", "02-girl", "03-girl", "07-boy", "08-boy"].map((n) => ({
+describe("the portraits", () => {
+  const white = () => square([255, 255, 255], { size: 8 });
+
+  /** `01-girl.png` … `NN-boy.png` for exactly the looks this book declares. */
+  function everyPortraitName(book: BookTemplate = FIRST_BOOK) {
+    return (book.genders ?? []).flatMap((gender) =>
+      book.looks
+        .filter((l) => l.gender === gender.id)
+        .map((_, at) => ({
+          name: `${String(at + 1).padStart(2, "0")}-${gender.id}.png`,
+          bytes: white(),
+        })),
+    );
+  }
+
+  it("accepts the captain's whole folder, counted off the book and not typed", () => {
+    // This is `npm run artwork -- portraits <dir>` with the names the captain's
+    // folder actually holds — derived from the book, so the day a look is added
+    // this test asks for one more file instead of going stale.
+    const files = everyPortraitName();
+    const mapped = portraitMapping(FIRST_BOOK, files);
+    expect(mapped.problems).toEqual([]);
+    expect(mapped.portraits).toHaveLength(FIRST_BOOK.looks.length);
+
+    // The paired negative, which is what makes the line above mean something:
+    // one more file than the book has looks is refused rather than dropped.
+    expect(
+      portraitMapping(FIRST_BOOK, [
+        ...files,
+        { name: `${String(FIRST_BOOK.looks.length).padStart(2, "0")}-girl.png`, bytes: white() },
+      ]).problems.map((p) => p.code),
+    ).toEqual(["portrait.noLookForNumber"]);
+  });
+
+  it("maps the captain's numbering onto the look ids, by number within a gender", () => {
+    const names = ["01-girl", "02-girl", "03-girl", "01-boy", "02-boy"].map((n) => ({
       name: `${n}.png`,
-      bytes: square([255, 255, 255], { size: 8 }),
+      bytes: white(),
     }));
     const mapped = portraitMapping(FIRST_BOOK, names);
     expect(mapped.problems).toEqual([]);
@@ -308,6 +341,18 @@ describe("the twelve portraits", () => {
     expect(mapped.portraits[1].lookId).toBe(DELIVERED);
   });
 
+  it("reads the number and not the position, so a folder of one lands in the right place", () => {
+    // The hazard this replaced: indexing by position made a folder holding only
+    // `05-girl.png` the *first* girl look, silently, and the buyer who chose
+    // the first girl got the fifth baby. Nothing about one file says which look
+    // it is except its number.
+    const fifth = portraitMapping(FIRST_BOOK, [{ name: "05-girl.png", bytes: white() }]);
+    expect(fifth.problems).toEqual([]);
+    const girls = FIRST_BOOK.looks.filter((l) => l.gender === "girl");
+    expect(fifth.portraits[0].lookId).toBe(girls[4].id);
+    expect(fifth.portraits[0].lookId).not.toBe(girls[0].id);
+  });
+
   it("refuses a name, a gender and a number it cannot place", () => {
     const bytes = square([255, 255, 255], { size: 8 });
     expect(
@@ -324,6 +369,13 @@ describe("the twelve portraits", () => {
     expect(portraitMapping(FIRST_BOOK, tooMany).problems.map((p) => p.code)).toEqual([
       "portrait.noLookForNumber",
     ]);
+    // And the same number twice, which is a folder somebody copied a file into.
+    expect(
+      portraitMapping(FIRST_BOOK, [
+        { name: "01-girl.png", bytes },
+        { name: "01-girl copy.png", bytes },
+      ]).problems.map((p) => p.code),
+    ).toEqual(["portrait.duplicateNumber"]);
   });
 
   it("flattens onto white, because nothing in the delivered files is opaque", () => {
@@ -348,7 +400,7 @@ describe("the twelve portraits", () => {
     expect(png.data[0]).not.toBe(20);
 
     // Fully transparent becomes white, which is what the background of every
-    // one of the twelve is.
+    // one of them is.
     const clear = flattenOntoWhite(square([0, 0, 0], { size: 8, alpha: 0 }));
     expect([...PNG.sync.read(Buffer.from(clear)).data.slice(0, 3)]).toEqual([255, 255, 255]);
   });

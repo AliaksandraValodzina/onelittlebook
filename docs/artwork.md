@@ -2,8 +2,8 @@
 
 **What arrived, what it became, where it is, and what is still owed.**
 
-`look-upload-contract.md` is the *agreement* — what a finished folder of twelve
-looks must be. This is the *inventory*: three sets delivered on 10 November
+`look-upload-contract.md` is the *agreement* — what a finished folder for a look
+must be. This is the *inventory*: three sets delivered on 10 November
 2026, none of them complete, all of them in use.
 
 **Nothing on this page is in the repository.** Every picture lives in the
@@ -32,8 +32,8 @@ in.
 |---|---|
 | **Delivered** | `spread-NN-left-3600x3600.png` / `spread-NN-right-3600x3600.png`, NN = 01…12 |
 | **Measured** | 24 files, all **3600 × 3600, 8-bit, colour type 2 (no alpha), no embedded profile** — the contract in `look-upload-contract.md` § 2 exactly |
-| **Which look** | the **auburn curly girl** = portrait `02-girl` = look id **`ada`** |
-| **Stored as** | `look-ada`, page ids `page-001` … `page-024` |
+| **Which look** | the **auburn curly girl** = portrait `02-girl` = look id **`girl-02`** |
+| **Stored as** | `look-girl-02`, page ids `page-001` … `page-024` |
 | **Size** | 155 MB |
 
 The spread-and-side filenames are mapped onto page ids by
@@ -48,21 +48,22 @@ and neither exists yet, so the book's cover page is still the drawn
 placeholder — visibly, which is the honest state. `npm run artwork -- status`
 says so every time it runs.
 
-**Eleven looks are still being drawn.** That is why `PageArt` has a `scene`
-beside `byLook`: a page carries the captain's artwork for the looks that have it
-and the placeholder baby for the rest. The chooser offers twelve babies and all
-twelve render.
+**The rest are still being drawn.** That is why `PageArt` has a `scene` beside
+`byLook`: a page carries the captain's artwork for the looks that have it and
+the placeholder baby for the rest. Every look the chooser offers renders.
+`npm run artwork -- status` counts what is outstanding off the book rather than
+stating a number — the count has already moved once.
 
 ---
 
-## 2. Twelve portrait tiles
+## 2. The portrait tiles
 
 | | |
 |---|---|
-| **Delivered** | `01-girl.png` … `06-girl.png`, `07-boy.png` … `12-boy.png` |
+| **Delivered** | `01-girl.png` … `07-girl.png`, `01-boy.png` … `07-boy.png` — **numbered 01–07 within each gender.** The set delivered on 10 November was twelve, numbered `01-girl`…`06-girl` and `07-boy`…`12-boy`; the captain settled on seven per gender on 12 November and renumbered the folder. |
 | **Measured** | 1254 × 1254, 8-bit **RGBA**, transparent background, **nothing fully opaque** — the subject sits at alpha 249–253 |
 | **Stored as** | `tiles`, page ids `tile-<lookId>`, flattened onto white |
-| **Size** | 22 MB |
+| **Size** | 22 MB for the twelve measured on 10 November |
 
 These are the chooser's tiles, which the captain approved on 10 November. A head
 on white is purely *which baby*, which is what a tile has to say; a whole page
@@ -71,24 +72,36 @@ Wonderbly does. `lib/book/types.ts` § `Look.tile` carries the full argument,
 including what it reverses in `look-upload-contract.md` § 4, and the
 page-drawn tile stays as the fallback for every look with no portrait.
 
-### The mapping, so nobody matches babies by eye
+### The mapping, which is the identity on purpose
 
-**Positional within a gender**: the captain's *n*th girl is the book's *n*th
-girl look. Derived in `lib/artwork/import.ts` § `portraitMapping` from the
-book's own look order, printed by the importer every time it runs, and asserted
-in `test/release-artwork.test.ts` against the same list — so a look renamed or
-reordered moves the mapping with it. Today that is:
+**By number within a gender**: the captain's `03-girl` is the book's third girl
+look. The look ids are spelled to *be* that numbering — `03-girl.png` is
+`girl-03` — so there is no table for anybody to maintain and nothing to match
+by eye. It is still **derived** rather than spelled: `lib/artwork/import.ts`
+§ `portraitMapping` reads the book's own look order, the importer prints the
+whole table every time it runs, and `test/release-artwork.test.ts` asserts it
+against the same list, so a look renamed or reordered moves the mapping with it.
 
-| File | Look id | Label | | File | Look id | Label |
-|---|---|---|---|---|---|---|
-| `01-girl` | `mabel` | Mabel | | `07-boy` | `wren` | Wren |
-| `02-girl` | `ada` | **Ada** | | `08-boy` | `otis` | Otis |
-| `03-girl` | `iris` | Iris | | `09-boy` | `albie` | Albie |
-| `04-girl` | `nell` | Nell | | `10-boy` | `rufus` | Rufus |
-| `05-girl` | `clover` | Clover | | `11-boy` | `milo` | Milo |
-| `06-girl` | `juno` | Juno | | `12-boy` | `bear` | Bear |
+| File | Look id | Label | | File | Look id |
+|---|---|---|---|---|---|
+| `01-girl` | `girl-01` | Very fair skin, blonde hair | | `01-boy` | `boy-01` |
+| `02-girl` | `girl-02` | **Very fair skin, ginger hair** | | `02-boy` | `boy-02` |
+| `03-girl` | `girl-03` | Fair skin, mid-brown hair | | `03-boy` | `boy-03` |
+| `04-girl` | `girl-04` | Tan skin, dark brown hair | | `04-boy` | `boy-04` |
+| `05-girl` | `girl-05` | Olive skin, straight black hair | | `05-boy` | `boy-05` |
+| `06-girl` | `girl-06` | Brown skin, black curls | | `06-boy` | `boy-06` |
+| `07-girl` | `girl-07` | Deep brown skin, black coils | | `07-boy` | `boy-07` |
 
-`ada` is in bold because it is the one look whose 24 pages exist.
+`girl-02` is in bold because it is the one look whose 24 pages exist — the
+auburn curly girl, who is the ginger rung of the ladder and the captain's own
+`02-girl` both.
+
+**The order is the ladder**, which is skin lightness descending with the three
+fair rungs separated by hair; both genders read down the same one.
+`templates/first-book.ts` § `LOOKS` is the table and the reasoning. **Nothing
+counts them** — `test/look-count.test.tsx` renders the chooser for a book with a
+deliberately different number of looks, so delivering five or eight stays an
+upload and never a release.
 
 ### They are flattened onto white at import
 
@@ -101,15 +114,20 @@ and what their edges were antialiased against.
 
 ### The two portraits to be replaced
 
-**`02-girl` (ada) and `08-boy` (otis)** carry a red/yellow halo from the
+Two files of the **10 November twelve** carry a red/yellow halo from the
 background they were cut out of — measured on their own true edge pixels
 (alpha 10–220, saturated) at **98.5 %** and **86.5 %**, against under 7 % for
-every other file. The captain is regenerating both.
+every other file. They were `02-girl` and `08-boy`, which under that set's
+numbering — 01–06 girls, 07–12 boys — were the second girl and the second boy.
+The captain is regenerating both, and the fourteen-portrait set renumbered to
+01–07 per gender supersedes the folder either way, so **the halo is a property
+of files, not of look ids**: whether a given replacement has landed is a
+question for `npm run artwork -- status` and the captain, not for this page.
 
-All twelve are imported anyway, so the flow works end to end; a re-import is a
+Everything is imported anyway, so the flow works end to end; a re-import is a
 new version and the previous one stays readable (`lib/artwork/store.ts`
-§ Versions). Note the overlap worth knowing: `ada` is both the look whose pages
-were delivered and one of the two portraits being replaced.
+§ Versions). Note the overlap worth knowing: `girl-02` is both the look whose
+pages were delivered and one of the two portraits being replaced.
 
 ---
 
@@ -135,7 +153,7 @@ a quarter of the resolution.
 
 **`spread-01` is skipped**, and it is skipped by *derivation* rather than by a
 list: its right half is `page-002`, the book declares that page babyless — it is
-the one spread identical across all twelve looks, which is why it carries the
+the one spread identical across every look, which is why it carries the
 buyer's photograph and dedication — and nothing would ever draw a ghost there.
 The captain's own `spread-01` correctly has no gold figure in it. Eleven halves
 are stored.
@@ -181,9 +199,10 @@ number beside the look id in the order's record, now that the bytes have a home.
 
 ## 5. What the captain still owes
 
-- **Eleven more looks.** One of twelve has pages.
+- **Every look but one.** One has pages; `npm run artwork -- status` counts the
+  rest off the book rather than quoting a number here that goes stale.
 - **A cover for every look.** There is no cover artwork at all.
-- **Replacements for `02-girl` and `08-boy`.** § 2 above.
+- **The two portrait replacements.** § 2 above.
 - **Uploading it.** The storage decision is answered — see § 6 — and the command
   is `npm run artwork:upload`. Until somebody runs it against the real token,
   the deployed shop renders the placeholder book and the artwork is on one
@@ -207,7 +226,7 @@ the filesystem already answered.
 
 | Store | Access | Reached through | Holds |
 |---|---|---|---|
-| `olb-looks` | **public** | `BLOB_READ_WRITE_TOKEN` | the looks' pages, the twelve portrait tiles, the golden ghost halves |
+| `olb-looks` | **public** | `BLOB_READ_WRITE_TOKEN` | the looks' pages, the portrait tiles, the golden ghost halves |
 | `olb-orders` | **private** | `OLB_ORDERS_STORE_ID` + the deployment's OIDC token | one order's regenerated artwork |
 
 **Public is deliberate.** The looks' pages are shown to everyone during the
@@ -229,7 +248,7 @@ file of calls that must not compile, so `npm run lint` is the gate.
 ```
 npm run artwork:upload                       # all three sets, the delivered folders
 npm run artwork:upload -- --dry-run          # prepare and compare, write nothing
-npm run artwork:upload -- --only portraits   # just the twelve tiles
+npm run artwork:upload -- --only portraits   # just the tiles
 npm run artwork:upload -- --portraits ~/art/tiles-v3
 ```
 

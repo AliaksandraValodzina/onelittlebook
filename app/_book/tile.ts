@@ -10,7 +10,7 @@
  *
  * ## Two kinds of tile, and the order is the point
  *
- * **A delivered portrait wins.** The captain delivered twelve — head and
+ * **A delivered portrait wins.** The captain delivered a set of them — head and
  * shoulders on white, flattened at import — and approved them as the tiles on
  * 10 November. A head on white says **which baby** and nothing else, which is
  * exactly what the research asks the chooser to communicate; a whole page
@@ -23,14 +23,14 @@
  * look's baby in it. That is not a legacy path — it is the tile for every look
  * nobody has delivered a portrait for, and it is the whole chooser on a machine
  * with no artwork at all. `validateBook` refuses a babyless `tilePage`, so this
- * cannot quietly become twelve identical tiles.
+ * cannot quietly become a row of identical tiles.
  *
  * Neither kind is a separately supplied thumbnail of the kind that can drift
  * from the book it is advertising: the portrait is the look's own id in the
  * artwork manifest, and the page is the page.
  *
  * It renders with **no name**, so a half-typed name does not flicker across
- * twelve tiles while somebody is still deciding.
+ * a full grid while somebody is still deciding.
  */
 
 import { lookOf, pageFillFor, pageTemplateFor, tileIndexOf } from "../../lib/book/derive";

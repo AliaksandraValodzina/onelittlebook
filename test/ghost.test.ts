@@ -116,7 +116,7 @@ describe("which pages hold a place", () => {
       .map((page, index) => ({ page, index }))
       .filter(({ page }) => page.art.kind === "drawn" && page.art.scene.babyless === true);
     // The control: this book really does have babyless pages — the opening
-    // spread, which is the one spread identical across all twelve looks.
+    // spread, which is the one spread identical across every look.
     expect(babyless.length).toBeGreaterThanOrEqual(2);
     for (const { index, page } of babyless) {
       expect(ghostFor(FIRST_BOOK, index), page.id).toBeNull();

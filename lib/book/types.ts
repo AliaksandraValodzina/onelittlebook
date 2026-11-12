@@ -19,8 +19,8 @@
  * `test/one-renderer.test.ts` already fails on an `if (forPrint)`; a book that
  * drew itself would have been a far bigger version of the same mistake.
  *
- * **2. A look is a named axis on the book, never a separate book.** Twelve looks
- * must be twelve references, not twelve books, or a typo in the story is twelve
+ * **2. A look is a named axis on the book, never a separate book.** A book's
+ * looks must be references, not separate books, or a typo in the story is one
  * edits and switching look mid-order is opening a different document. So the
  * *text, the slots, the page order and the page size live on the book*, and a
  * look contributes nothing but what is drawn underneath. The buyer's fill names
@@ -201,7 +201,7 @@ export interface SceneSpec {
    * The ground and nothing in it. Absent is `false`.
    *
    * The opening spread of this book is babyless on purpose: it is the one
-   * spread identical across all twelve looks, which is what makes it the right
+   * spread identical across every look, which is what makes it the right
    * place for the buyer's own photograph and dedication. `lib/render/decoration.ts`
    * § `scene` carries the rest of the argument.
    */
@@ -240,10 +240,10 @@ export type PageArt =
        * The drawn placeholder for the looks `byLook` does not cover.
        *
        * **Present means the import is partial and that is a legitimate state.**
-       * The captain delivered the first of twelve looks on 10 November and the
-       * other eleven are still being drawn, so a page with one look's artwork
-       * and eleven placeholder babies is what the shop honestly is — where
-       * refusing it would mean no real artwork could be seen until the twelfth
+       * The captain delivered the first look on 10 November and the rest are
+       * still being drawn, so a page with one look's artwork and a placeholder
+       * baby for every other look is what the shop honestly is — where
+       * refusing it would mean no real artwork could be seen until the last
        * look was finished.
        *
        * **Absent means every look must have an asset**, which is the state a
@@ -402,10 +402,10 @@ export interface BookTemplate {
    * which baby rather than which picture — and this codebase satisfies that by
    * construction, with every tile being the *same page* of the book drawn with
    * a different look. The catch is that this book's opening spread is
-   * deliberately **babyless**: it is the one spread identical across all twelve
-   * looks, which is what makes it the right place for the buyer's photograph
-   * and dedication. Pointing the tiles at it would render twelve identical
-   * tiles under the question "which baby?".
+   * deliberately **babyless**: it is the one spread identical across every
+   * look, which is what makes it the right place for the buyer's photograph
+   * and dedication. Pointing the tiles at it would render one identical tile
+   * per look under the question "which baby?".
    *
    * So the page is declared rather than inferred. `./validate.ts` refuses a
    * page id the book does not have **and** a page whose drawn scene is

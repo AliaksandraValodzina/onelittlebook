@@ -76,7 +76,7 @@
  * when the artwork and the copy land.
  */
 
-import type { Layer } from "../lib/template/types";
+import type { Colour, Layer } from "../lib/template/types";
 import type { BookPage, BookTemplate, Look, SceneSpec } from "../lib/book/types";
 import { SLOT } from "../lib/book/slots";
 
@@ -247,7 +247,7 @@ const FEATURED: Record<string, { scene?: Partial<SceneSpec>; layers: Layer[] }> 
    * (cream ground, clouds, bunting) is **look-independent**, which is exactly
    * what makes it the right place for the buyer's own photograph and words —
    * everything the buyer supplies sits on the two pages that are identical
-   * across all twelve looks, so flicking between babies cannot move or reflow
+   * across every look, so flicking between babies cannot move or reflow
    * a single thing they typed.
    *
    * `babyless` is therefore not a drawing preference. It is the structural
@@ -440,21 +440,46 @@ function artFor(scene: SceneSpec): BookPage["art"] {
 }
 
 /**
- * The twelve looks, and the placeholder baby each one is drawn as until its
+ * The fourteen looks, and the placeholder baby each one is drawn as until its
  * artwork lands.
  *
- * **Twelve: six per gender**, which is the captain's settled count and exactly
- * Wonderbly's — two genders by six. The count is nonetheless **data and nothing
- * counts it**: no component, validator or test asserts twelve, so the day the
- * captain delivers five or eight the grid renders five or eight.
+ * **Fourteen: seven per gender**, which is the captain's settled count. The
+ * count is nonetheless **data and nothing counts it**: no component, validator,
+ * copy string or test asserts seven, so the day the captain delivers five or
+ * eight the grid renders five or eight. `test/look-count.test.tsx` is that
+ * sentence as an assertion — it renders the chooser for a book with a
+ * deliberately different number of looks and counts the tiles.
  *
- * **These ids are the published addresses of the twelve babies.** An order
- * names one, so they are permanent, and `docs/artwork.md` is the map from the
- * captain's own numbering — `01-girl` … `12-boy` — onto them, written down so
- * that nobody ever has to match a baby to an id by eye. The first look landed
- * on 10 November and is bound over this list at request time by
- * `lib/book/release-art.ts`; `baby` stays, because eleven of the twelve are
- * still being drawn and a look with no artwork has to be drawable.
+ * **The order is the ladder, and the ladder is skin lightness descending.**
+ * Settled with the captain and measured off the portraits: the three fair slots
+ * are separated by **hair** rather than by skin, because three shades nobody can
+ * tell apart would read as a broken grid.
+ *
+ * | # | Skin | Undertone | Hair |
+ * |---|---|---|---|
+ * | 1 | very fair | cool pink | blonde |
+ * | 2 | very fair | cool pink | ginger |
+ * | 3 | fair | neutral | mid-brown |
+ * | 4 | olive / tan | warm | dark brown |
+ * | 5 | medium-olive | olive | jet black, straight |
+ * | 6 | medium-deep brown | warm golden | black curls |
+ * | 7 | deep brown | warm red | black coily |
+ *
+ * **The ids are the published addresses of the fourteen babies, and they are
+ * the captain's own portrait numbering.** An order names one, so they are
+ * permanent — and `girl-03` is `03-girl.png` with no table in between, which is
+ * the whole reason they are spelled this way. `lib/artwork/import.ts`
+ * § `portraitMapping` does the mapping *by the number in the filename* against
+ * this list in this order, so there is nothing for anybody to maintain by hand
+ * and nothing to match by eye. `docs/artwork.md` is the same mapping written
+ * down for a reader.
+ *
+ * The first look landed on 10 November and is bound over this list at request
+ * time by `lib/book/release-art.ts`; `baby` stays on every entry, because every
+ * look but that one is still being drawn and a look with no artwork has to be
+ * drawable — that is what lets a fresh clone and the whole suite run with no
+ * artwork at all. `docs/artwork.md` is what has actually arrived; this file
+ * does not track it.
  *
  * **Only the baby differs, and here the baby is four numbers.** The gender tag
  * is a tag on an otherwise opaque look: the captain's decision is that gender
@@ -462,89 +487,91 @@ function artFor(scene: SceneSpec): BookPage["art"] {
  * unmistakable — and the sleepsuit stays the same garment throughout. None of
  * that is expressible in a placeholder drawn from three colours and a seed, and
  * none of it needs to be: a look is a folder of finished pages, so whatever the
- * artwork does changes pixels and changes nothing in this format.
+ * artwork does changes pixels and changes nothing in this format. The two
+ * genders therefore read down the **same** ladder, with the same skin and hair
+ * at every rung, which is also what makes a renumbered portrait set obvious.
+ *
+ * **The labels describe the baby and name nobody.** The buyer's child has a
+ * name and it is not one of these: a look called *Mabel* — which is what these
+ * were — reads as a book about Mabel in a flow whose next question is "what is
+ * their name?".
  */
-const LOOKS: Look[] = [
-  {
-    id: "mabel",
-    label: "Mabel",
-    gender: "girl",
-    baby: { skin: "#F2CBA8", hair: "#6B4A33", cloth: "#E8A0A8", seed: 31 },
-  },
-  {
-    id: "ada",
-    label: "Ada",
-    gender: "girl",
-    baby: { skin: "#8C5A3C", hair: "#2B1C14", cloth: "#E7C7E0", seed: 34 },
-  },
-  {
-    id: "iris",
-    label: "Iris",
-    gender: "girl",
-    baby: { skin: "#E8B48C", hair: "#8C6239", cloth: "#F0C8D2", seed: 35 },
-  },
-  {
-    id: "nell",
-    label: "Nell",
-    gender: "girl",
-    baby: { skin: "#6E4228", hair: "#1C110A", cloth: "#D8C2E8", seed: 36 },
-  },
-  {
-    id: "clover",
-    label: "Clover",
-    gender: "girl",
-    baby: { skin: "#FBE3C8", hair: "#C98A3C", cloth: "#E8C0A8", seed: 37 },
-  },
-  {
-    id: "juno",
-    label: "Juno",
-    gender: "girl",
-    baby: { skin: "#B5764C", hair: "#4A2C18", cloth: "#EFB4C0", seed: 38 },
-  },
-  {
-    id: "wren",
-    label: "Wren",
-    gender: "boy",
-    baby: { skin: "#C98A5E", hair: "#3A2418", cloth: "#9AC6C0", seed: 32 },
-  },
-  {
-    id: "otis",
-    label: "Otis",
-    gender: "boy",
-    baby: { skin: "#F6DCC0", hair: "#D9A24B", cloth: "#A8C4E8", seed: 33 },
-  },
-  {
-    id: "albie",
-    label: "Albie",
-    gender: "boy",
-    baby: { skin: "#E0A77C", hair: "#5C3A22", cloth: "#A8C8A0", seed: 39 },
-  },
-  {
-    id: "rufus",
-    label: "Rufus",
-    gender: "boy",
-    baby: { skin: "#7A4A2C", hair: "#20140C", cloth: "#9CB8D8", seed: 40 },
-  },
-  {
-    id: "milo",
-    label: "Milo",
-    gender: "boy",
-    baby: { skin: "#FBE8D4", hair: "#2E1E14", cloth: "#C8C0E0", seed: 41 },
-  },
-  {
-    id: "bear",
-    label: "Bear",
-    gender: "boy",
-    baby: { skin: "#D39A6E", hair: "#6B4420", cloth: "#B8CCB0", seed: 42 },
-  },
+
+/**
+ * **The question asked before the grid**, declared once because two things
+ * read it.
+ *
+ * The captain's decision of 6 November, reversing the brief, after reviewing
+ * two sellers that both ask it first. It is a declared list and the flow
+ * renders whatever is in it: adding, removing or renaming an answer is a data
+ * edit and a restamp.
+ *
+ * `LOOKS` below is built from these same ids rather than from a second copy of
+ * them, so renaming an answer cannot leave the grid tagged with a gender the
+ * book no longer offers — which is `look.genderUnknown` from `validateBook`,
+ * and a refusal is a poor substitute for being unable to say it.
+ */
+const GENDERS = [
+  { id: "girl", label: "A girl" },
+  { id: "boy", label: "A boy" },
 ];
+
+/** One rung of the ladder: what both genders' looks at that number are drawn as. */
+interface Rung {
+  /** The chooser's own words for it. Describes the baby and names nobody. */
+  label: string;
+  skin: Colour;
+  hair: Colour;
+}
+
+const LADDER: readonly Rung[] = [
+  { label: "Very fair skin, blonde hair", skin: "#FBE2DC", hair: "#E3C078" },
+  { label: "Very fair skin, ginger hair", skin: "#FBE2DC", hair: "#C0592A" },
+  { label: "Fair skin, mid-brown hair", skin: "#F1D2B6", hair: "#8C6239" },
+  { label: "Tan skin, dark brown hair", skin: "#D7A678", hair: "#4A2C18" },
+  { label: "Olive skin, straight black hair", skin: "#B98C5C", hair: "#16120D" },
+  { label: "Brown skin, black curls", skin: "#8E5A32", hair: "#1C120A" },
+  { label: "Deep brown skin, black coils", skin: "#6B3A24", hair: "#140D08" },
+];
+
+/**
+ * The sleepsuit, which is the same garment throughout and only a colour here.
+ *
+ * One per gender rather than one per look: the placeholder's job is to make the
+ * grid read as *which baby*, so the thing that varies down a column is the baby
+ * and not the laundry. `lib/render/decoration.ts` draws it.
+ */
+const CLOTH: Record<string, Colour> = { girl: "#E9A7B1", boy: "#9CBCD2" };
+
+/**
+ * The ladder, once per gender, as `girl-01` … `girl-07` and `boy-01` … `boy-07`.
+ *
+ * Written out by a loop rather than by hand because the two genders are the
+ * same ladder: fourteen literals would be seven chances to mistype a colour and
+ * no way to see that the rungs line up. The seed is derived from the rung and
+ * the gender so that every look wobbles differently and does so identically on
+ * every machine — `lib/render/random.ts` on why nothing here may be random.
+ */
+const LOOKS: Look[] = GENDERS.flatMap(({ id: gender }, column) =>
+  LADDER.map((rung, at) => ({
+    id: `${gender}-${String(at + 1).padStart(2, "0")}`,
+    label: rung.label,
+    gender,
+    baby: {
+      skin: rung.skin,
+      hair: rung.hair,
+      cloth: CLOTH[gender],
+      seed: 31 + column * LADDER.length + at,
+    },
+  })),
+);
 
 // ---------------------------------------------------------------------------
 
 export const FIRST_BOOK: BookTemplate = {
   schema: 1,
   id: "the-book-of-you",
-  rev: "fb52f7f6",
+  rev: "c663bd78",
   /**
    * **"When They Were Small".**
    *
@@ -602,18 +629,8 @@ export const FIRST_BOOK: BookTemplate = {
     minPhotoDpi: 200,
   },
 
-  /**
-   * The question asked **before** the grid.
-   *
-   * The captain's decision of 6 November, reversing the brief, after reviewing
-   * two sellers that both ask it first. It is a declared list and the flow
-   * renders whatever is in it: adding, removing or renaming an answer is a data
-   * edit and a restamp.
-   */
-  genders: [
-    { id: "girl", label: "A girl" },
-    { id: "boy", label: "A boy" },
-  ],
+  /** The question asked **before** the grid — § `GENDERS` above. */
+  genders: GENDERS,
 
   /**
    * The looks. Same book, same words, same backgrounds — a different baby.
@@ -633,7 +650,7 @@ export const FIRST_BOOK: BookTemplate = {
    * than by reasoning about it.
    *
    * **Page one is babyless** — see its entry in `FEATURED` — so a grid drawn
-   * from it would be twelve identical tiles under the question "which baby?".
+   * from it would be one identical tile per look under the question "which baby?".
    * `validateBook` refuses a babyless page here, so that cannot regress by
    * somebody making another page babyless and forgetting this line.
    *

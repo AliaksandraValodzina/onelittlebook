@@ -21,17 +21,18 @@
  * value on every keystroke would be the silent substitution the whole guard
  * exists to prevent.
  *
- * ## The axes the artefact drew, and why they are twelve tiles
+ * ## The axes the artefact drew, and why this is a grid of tiles instead
  *
  * The artefact's screen has rows for skin tone, hair, hair colour and eyes,
  * with glasses and freckles behind *More details*. Its own closing note is the
- * argument against building them here: *"the look editor offers thousands of
+ * argument against building them here, quoted as it was written — the count has
+ * moved since and the argument has not: *"the look editor offers thousands of
  * combinations. Your interior has twelve babies… offering more than the
  * interior can honour is [the problem]."* Its recommended resolution is that
- * the axes resolve to the nearest of the twelve.
+ * the axes resolve to the nearest look the interior actually has.
  *
  * Until that resolution is built — it needs generated artwork, which is out of
- * scope — the honest surface is the twelve themselves: the captain's portrait
+ * scope — the honest surface is the looks themselves: the captain's portrait
  * of each where there is one, and otherwise the tile drawn from the book it
  * will print. `app/_book/tile.ts` carries that choice and its reasoning. The
  * skin tone of each is the look's own

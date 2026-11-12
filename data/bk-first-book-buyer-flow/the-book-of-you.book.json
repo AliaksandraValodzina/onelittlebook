@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "id": "the-book-of-you",
-  "rev": "fb52f7f6",
+  "rev": "c663bd78",
   "name": "When They Were Small",
   "blurb": "Twelve spreads of a day in their life, with their name through it, one of your own photographs, and a dedication in the front.",
   "page": {
@@ -35,135 +35,157 @@
   ],
   "looks": [
     {
-      "id": "mabel",
-      "label": "Mabel",
+      "id": "girl-01",
+      "label": "Very fair skin, blonde hair",
       "gender": "girl",
       "baby": {
-        "skin": "#F2CBA8",
-        "hair": "#6B4A33",
-        "cloth": "#E8A0A8",
+        "skin": "#FBE2DC",
+        "hair": "#E3C078",
+        "cloth": "#E9A7B1",
         "seed": 31
       }
     },
     {
-      "id": "ada",
-      "label": "Ada",
+      "id": "girl-02",
+      "label": "Very fair skin, ginger hair",
       "gender": "girl",
       "baby": {
-        "skin": "#8C5A3C",
-        "hair": "#2B1C14",
-        "cloth": "#E7C7E0",
-        "seed": 34
-      }
-    },
-    {
-      "id": "iris",
-      "label": "Iris",
-      "gender": "girl",
-      "baby": {
-        "skin": "#E8B48C",
-        "hair": "#8C6239",
-        "cloth": "#F0C8D2",
-        "seed": 35
-      }
-    },
-    {
-      "id": "nell",
-      "label": "Nell",
-      "gender": "girl",
-      "baby": {
-        "skin": "#6E4228",
-        "hair": "#1C110A",
-        "cloth": "#D8C2E8",
-        "seed": 36
-      }
-    },
-    {
-      "id": "clover",
-      "label": "Clover",
-      "gender": "girl",
-      "baby": {
-        "skin": "#FBE3C8",
-        "hair": "#C98A3C",
-        "cloth": "#E8C0A8",
-        "seed": 37
-      }
-    },
-    {
-      "id": "juno",
-      "label": "Juno",
-      "gender": "girl",
-      "baby": {
-        "skin": "#B5764C",
-        "hair": "#4A2C18",
-        "cloth": "#EFB4C0",
-        "seed": 38
-      }
-    },
-    {
-      "id": "wren",
-      "label": "Wren",
-      "gender": "boy",
-      "baby": {
-        "skin": "#C98A5E",
-        "hair": "#3A2418",
-        "cloth": "#9AC6C0",
+        "skin": "#FBE2DC",
+        "hair": "#C0592A",
+        "cloth": "#E9A7B1",
         "seed": 32
       }
     },
     {
-      "id": "otis",
-      "label": "Otis",
-      "gender": "boy",
+      "id": "girl-03",
+      "label": "Fair skin, mid-brown hair",
+      "gender": "girl",
       "baby": {
-        "skin": "#F6DCC0",
-        "hair": "#D9A24B",
-        "cloth": "#A8C4E8",
+        "skin": "#F1D2B6",
+        "hair": "#8C6239",
+        "cloth": "#E9A7B1",
         "seed": 33
       }
     },
     {
-      "id": "albie",
-      "label": "Albie",
+      "id": "girl-04",
+      "label": "Tan skin, dark brown hair",
+      "gender": "girl",
+      "baby": {
+        "skin": "#D7A678",
+        "hair": "#4A2C18",
+        "cloth": "#E9A7B1",
+        "seed": 34
+      }
+    },
+    {
+      "id": "girl-05",
+      "label": "Olive skin, straight black hair",
+      "gender": "girl",
+      "baby": {
+        "skin": "#B98C5C",
+        "hair": "#16120D",
+        "cloth": "#E9A7B1",
+        "seed": 35
+      }
+    },
+    {
+      "id": "girl-06",
+      "label": "Brown skin, black curls",
+      "gender": "girl",
+      "baby": {
+        "skin": "#8E5A32",
+        "hair": "#1C120A",
+        "cloth": "#E9A7B1",
+        "seed": 36
+      }
+    },
+    {
+      "id": "girl-07",
+      "label": "Deep brown skin, black coils",
+      "gender": "girl",
+      "baby": {
+        "skin": "#6B3A24",
+        "hair": "#140D08",
+        "cloth": "#E9A7B1",
+        "seed": 37
+      }
+    },
+    {
+      "id": "boy-01",
+      "label": "Very fair skin, blonde hair",
       "gender": "boy",
       "baby": {
-        "skin": "#E0A77C",
-        "hair": "#5C3A22",
-        "cloth": "#A8C8A0",
+        "skin": "#FBE2DC",
+        "hair": "#E3C078",
+        "cloth": "#9CBCD2",
+        "seed": 38
+      }
+    },
+    {
+      "id": "boy-02",
+      "label": "Very fair skin, ginger hair",
+      "gender": "boy",
+      "baby": {
+        "skin": "#FBE2DC",
+        "hair": "#C0592A",
+        "cloth": "#9CBCD2",
         "seed": 39
       }
     },
     {
-      "id": "rufus",
-      "label": "Rufus",
+      "id": "boy-03",
+      "label": "Fair skin, mid-brown hair",
       "gender": "boy",
       "baby": {
-        "skin": "#7A4A2C",
-        "hair": "#20140C",
-        "cloth": "#9CB8D8",
+        "skin": "#F1D2B6",
+        "hair": "#8C6239",
+        "cloth": "#9CBCD2",
         "seed": 40
       }
     },
     {
-      "id": "milo",
-      "label": "Milo",
+      "id": "boy-04",
+      "label": "Tan skin, dark brown hair",
       "gender": "boy",
       "baby": {
-        "skin": "#FBE8D4",
-        "hair": "#2E1E14",
-        "cloth": "#C8C0E0",
+        "skin": "#D7A678",
+        "hair": "#4A2C18",
+        "cloth": "#9CBCD2",
         "seed": 41
       }
     },
     {
-      "id": "bear",
-      "label": "Bear",
+      "id": "boy-05",
+      "label": "Olive skin, straight black hair",
       "gender": "boy",
       "baby": {
-        "skin": "#D39A6E",
-        "hair": "#6B4420",
-        "cloth": "#B8CCB0",
+        "skin": "#B98C5C",
+        "hair": "#16120D",
+        "cloth": "#9CBCD2",
         "seed": 42
+      }
+    },
+    {
+      "id": "boy-06",
+      "label": "Brown skin, black curls",
+      "gender": "boy",
+      "baby": {
+        "skin": "#8E5A32",
+        "hair": "#1C120A",
+        "cloth": "#9CBCD2",
+        "seed": 43
+      }
+    },
+    {
+      "id": "boy-07",
+      "label": "Deep brown skin, black coils",
+      "gender": "boy",
+      "baby": {
+        "skin": "#6B3A24",
+        "hair": "#140D08",
+        "cloth": "#9CBCD2",
+        "seed": 44
       }
     }
   ],
