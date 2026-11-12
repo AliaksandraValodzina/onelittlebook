@@ -33,7 +33,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { acceptLines, explainLines } from "../../lib/editor/lines";
-import { dedicationSlot, fromSlot } from "../../lib/book/order";
+import { dedicationOf, dedicationSlot, fromSlot } from "../../lib/book/order";
 import { photoFloor } from "../../lib/book/photo";
 import { EDITIONS, differenceOf, editionOf, priceLabel, upgradeFrom } from "../../lib/book/editions";
 import { FACES } from "../../lib/render/fonts";
@@ -208,10 +208,10 @@ export function DedicationControl({ pageIndex }: { pageIndex: number }) {
   const slot = dedicationSlot(book);
   const signature = fromSlot(book);
   const [touched, setTouched] = useState(false);
-  const accepted = useMemo(
-    () => (slot ? acceptLines(slot, order.dedication) : null),
-    [slot, order.dedication],
-  );
+  // The book's own verse until the buyer writes — one answer, shared with
+  // `/make/message` and with `toBookFill`. See `dedicationOf`.
+  const written = dedicationOf(order, book);
+  const accepted = useMemo(() => (slot ? acceptLines(slot, written) : null), [slot, written]);
   const acceptedFrom = useMemo(
     () => (signature ? acceptLines(signature, order.from) : null),
     [signature, order.from],
@@ -237,13 +237,13 @@ export function DedicationControl({ pageIndex }: { pageIndex: number }) {
       <label className="mt-3 block">
         <span className="text-sm font-medium">Your message</span>
         <textarea
-          value={order.dedication}
+          value={written}
           onChange={(e) => setDedication(e.target.value)}
           onBlur={() => {
             setTouched(true);
             // What will print, put back in the box. The page above has been
             // showing it all along; this makes the box agree.
-            if (accepted.text !== order.dedication) setDedication(accepted.text);
+            if (accepted.text !== written) setDedication(accepted.text);
           }}
           rows={6}
           data-testid="dedication"
@@ -305,7 +305,7 @@ export function DedicationControl({ pageIndex }: { pageIndex: number }) {
       <PhotoField pageIndex={pageIndex} />
 
       <p className="mt-3 text-[0.78rem] opacity-60">
-        {touched || order.dedication.length > 0
+        {touched || written.length > 0
           ? "Read it back on the page above before you order. What is on that page is what is printed, and a printed page cannot be changed."
           : "Whatever you write is set on the page above as you type. Read it back there before you order."}
       </p>

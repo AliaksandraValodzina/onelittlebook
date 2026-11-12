@@ -33,9 +33,10 @@ import {
   photoSlotOf,
   tileIndexOf,
 } from "../lib/book/derive";
-import { SLOT } from "../lib/book/slots";
+import { NAME_TOKEN, SLOT } from "../lib/book/slots";
 import { photoFloor, checkPhoto } from "../lib/book/photo";
-import { trimBox } from "../lib/template/defaults";
+import { nameLimit, slotsForRole } from "../lib/book/name";
+import { maxCharsPerLineOf, trimBox } from "../lib/template/defaults";
 import type { BookPage, BookTemplate } from "../lib/book/types";
 import type { TextSlotLayer } from "../lib/template/types";
 
@@ -356,14 +357,23 @@ describe("the three kinds of text", () => {
 
   it("refuses story copy that fits a short name and not the longest one", () => {
     // **The check the story slot exists to make possible**, and the test has
-    // to prove it is that check and not merely a length check. This line is
-    // forty-three characters with a fourteen-character name in it and
-    // twenty-nine with none — so it passes every limit the empty string can
-    // see, and fails the one that matters.
-    const copy = "{name} woke up and looked out of it";
+    // to prove it is that check and not merely a length check. So the copy is
+    // built from the slot's own limit: one line that fits across with no name
+    // in it and does not with the longest name the form accepts. Both numbers
+    // are read off the book, because the day either of them moves this test
+    // must still be testing the same thing.
     const page = FIRST_BOOK.pages.find((p) => p.id === "page-003")!;
-    expect(storyTextFor({ ...page, story: copy }, "").length).toBeLessThan(42);
-    expect(storyTextFor({ ...page, story: copy }, "M".repeat(14)).length).toBeGreaterThan(42);
+    const slot = (page.layers ?? []).find(
+      (l): l is TextSlotLayer => l.kind === "textSlot" && l.slot === SLOT.story,
+    )!;
+    const across = maxCharsPerLineOf(slot);
+    // Exactly `across` characters while the token is still standing in for the
+    // name, which is what an un-filled preview draws.
+    const copy = `${NAME_TOKEN} ${"x".repeat(across - NAME_TOKEN.length - 1)}`;
+    expect(storyTextFor({ ...page, story: copy }, "").length).toBeLessThanOrEqual(across);
+    expect(
+      storyTextFor({ ...page, story: copy }, "M".repeat(nameLimit(FIRST_BOOK))).length,
+    ).toBeGreaterThan(across);
 
     const greedy = withPage(FIRST_BOOK, "page-003", (p) => ({ ...p, story: copy }));
     const problem = validateBook(greedy).find((p) => p.code === "text.storyOverflows");
@@ -424,9 +434,17 @@ describe("the three kinds of text", () => {
 
 describe("the buyer's own fields become a fill per page", () => {
   it("fills only the slots a page carries", () => {
+    // The cover's one text slot is its **title**, which is authored words with
+    // the buyer's name inside them rather than a `babyName` slot — so the name
+    // is on the front of the book without the cover carrying a slot for it.
     const cover = pageFillFor(FIRST_BOOK, 0, FIXTURE_BOOK_FILL);
-    expect(Object.keys(cover.texts)).toEqual([SLOT.name]);
+    expect(Object.keys(cover.texts)).toEqual([SLOT.story]);
+    expect(cover.texts[SLOT.story]).toContain(FIXTURE_BOOK_FILL.name);
+    expect(cover.texts[SLOT.story]).not.toContain(NAME_TOKEN);
     expect(cover.photos).toEqual({});
+    // And the name still has slots of its own inside the book, which is what
+    // keeps `checkName`'s length limit the tightest of the boxes it goes in.
+    expect(slotsForRole(FIRST_BOOK, SLOT.name).length).toBeGreaterThan(0);
 
     const plain = pageFillFor(FIRST_BOOK, 4, FIXTURE_BOOK_FILL);
     expect(plain.texts).toEqual({});

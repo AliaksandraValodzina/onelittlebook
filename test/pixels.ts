@@ -113,6 +113,62 @@ export function meanLuma(r: Raster, box: Box): number {
   return total === 0 ? 0 : sum / total;
 }
 
+/**
+ * The box, **in page units**, containing every pixel where two renders of the
+ * same page differ — or `null` if they are the same picture.
+ *
+ * This is how a test asks *where did that layer actually put ink* rather than
+ * *is there ink of roughly that colour in roughly that box*. `shareOf` needs a
+ * colour and a tolerance, and on a page with a dark-haired baby on it a
+ * tolerance wide enough to catch antialiased type is also wide enough to catch
+ * the baby — so a "nothing escaped the slot" assertion written that way is
+ * either vacuous or flaky. A difference is exact: the only thing that changed
+ * between the two renders is the layer that was taken out, so every differing
+ * pixel is that layer's.
+ *
+ * It carries its own control. A render that drew nothing returns `null`, which
+ * no containment assertion can be satisfied by.
+ *
+ * Every pixel, not every third: the question is where the *furthest* one is,
+ * and sampling would answer it a sample-step short of the truth in the one
+ * direction that matters.
+ */
+export function changedBox(a: Raster, b: Raster): Box | null {
+  const w = Math.min(a.png.width, b.png.width);
+  const h = Math.min(a.png.height, b.png.height);
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = (a.png.width * y + x) << 2;
+      const j = (b.png.width * y + x) << 2;
+      if (
+        a.png.data[i] === b.png.data[j] &&
+        a.png.data[i + 1] === b.png.data[j + 1] &&
+        a.png.data[i + 2] === b.png.data[j + 2]
+      ) {
+        continue;
+      }
+      if (x < x0) x0 = x;
+      if (x > x1) x1 = x;
+      if (y < y0) y0 = y;
+      if (y > y1) y1 = y;
+    }
+  }
+  if (x1 < x0) return null;
+  // Back into the template's own units, so a caller compares it with a slot's
+  // declared frame rather than with a pixel count that depends on the render
+  // size this test happened to afford.
+  return {
+    x: x0 / a.scale,
+    y: y0 / a.scale,
+    width: (x1 + 1 - x0) / a.scale,
+    height: (y1 + 1 - y0) / a.scale,
+  };
+}
+
 /** The template with one layer taken out — how a content test proves it can fail. */
 export function without(template: PageTemplate, layerId: string): PageTemplate {
   return { ...template, layers: template.layers.filter((l) => l.id !== layerId) };

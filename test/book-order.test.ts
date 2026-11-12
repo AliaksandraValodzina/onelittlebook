@@ -34,7 +34,9 @@ import { PORTRAIT } from "../fixtures/order";
 import {
   answerGender,
   done,
+  dedicationOf,
   dedicationSlot,
+  defaultDedication,
   emptyOrder,
   fromSlot,
   isComplete,
@@ -59,7 +61,11 @@ function finished(): Order {
     lookId: "boy-01",
     coverId: "sage",
     name: "Rosalind",
+    // A buyer who wrote their own, which is what `dedicationWritten` means —
+    // the book pre-fills the box, so "a dedication" and "the buyer's
+    // dedication" are two different states and this is the second one.
     dedication: "For Rosalind.",
+    dedicationWritten: true,
   };
 }
 
@@ -122,7 +128,9 @@ describe("the from-line: optional, one line, its own role", () => {
         name: { name: "" },
         look: { genderId: null },
         cover: { coverId: "chartreuse" },
-        dedication: { dedication: "" },
+        // Cleared **by the buyer**, which is the only way the box is empty:
+        // an untouched one holds the book's own verse.
+        dedication: { dedication: "", dedicationWritten: true },
       };
       expect(isComplete({ ...finished(), ...broken[ask.id] }, FIRST_BOOK), ask.id).toBe(false);
       expect(outstanding({ ...finished(), ...broken[ask.id] }, FIRST_BOOK)).toContain(
@@ -250,5 +258,94 @@ describe("answering the question before the grid", () => {
     // lose their work.
     expect(moved.name).toBe(order.name);
     expect(moved.dedication).toBe(order.dedication);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+/**
+ * **The pre-filled dedication, and the two states a box can be in.**
+ *
+ * The book offers the captain's verse as the dedication's starting text. The
+ * captain's decision is that it must be *text* and not a watermark: editable,
+ * clearable, and gone for good once the buyer has had a go at it. That is three
+ * behaviours and exactly one of them is easy to get wrong — a default applied
+ * whenever the box is empty refills itself the instant somebody clears it,
+ * which is the version a buyer cannot delete and would have to work around.
+ */
+describe("the dedication the buyer is given to start with", () => {
+  const started = (): Order => ({ ...emptyOrder(FIRST_BOOK), name: "Rosalind" });
+
+  it("is the book's own verse, with their name in it, before they type anything", () => {
+    const order = started();
+    expect(order.dedicationWritten).toBe(false);
+    expect(order.dedication).toBe("");
+    // What the box shows and what the page prints are the same string.
+    expect(dedicationOf(order, FIRST_BOOK)).toBe(defaultDedication(FIRST_BOOK, "Rosalind"));
+    expect(toBookFill(order, FIRST_BOOK).dedication).toContain("Rosalind");
+    // And it counts as done, which is the whole point: a buyer who writes
+    // nothing still gets a finished page.
+    expect(done(order, FIRST_BOOK).dedication).toBe(true);
+  });
+
+  it("follows the name while it is still the book's words, and stops when it is theirs", () => {
+    const order = started();
+    expect(dedicationOf({ ...order, name: "Ida" }, FIRST_BOOK)).toContain("Ida");
+    // Once written it is theirs verbatim, name changes and all — rewriting a
+    // buyer's own sentence because they corrected a spelling would be the
+    // worst kind of helpful.
+    const theirs = { ...order, dedication: "For Rosalind.", dedicationWritten: true };
+    expect(dedicationOf({ ...theirs, name: "Ida" }, FIRST_BOOK)).toBe("For Rosalind.");
+  });
+
+  it("stays cleared once cleared, which is what tells it from a placeholder", () => {
+    const cleared: Order = { ...started(), dedication: "", dedicationWritten: true };
+    expect(dedicationOf(cleared, FIRST_BOOK)).toBe("");
+    expect(toBookFill(cleared, FIRST_BOOK).dedication).toBe("");
+    // An empty required field blocks Continue exactly as it always has — the
+    // buyer is told, rather than having the book quietly write for them.
+    expect(done(cleared, FIRST_BOOK).dedication).toBe(false);
+    expect(isComplete({ ...finished(), ...cleared }, FIRST_BOOK)).toBe(false);
+
+    // And it survives the round trip through storage, which is where a flag
+    // like this is actually load-bearing.
+    const back = readOrder(JSON.parse(JSON.stringify(cleared)), FIRST_BOOK);
+    expect(back.dedicationWritten).toBe(true);
+    expect(dedicationOf(back, FIRST_BOOK)).toBe("");
+  });
+
+  it("does not offer itself before there is a name to put in it", () => {
+    // "Dear {name}," is a brace token in the buyer's own words. The flow asks
+    // for the name two screens earlier, so this is the state of a box nobody
+    // has reached yet rather than one anybody sees.
+    const nameless = emptyOrder(FIRST_BOOK);
+    expect(dedicationOf(nameless, FIRST_BOOK)).toBe("");
+    expect(dedicationOf(nameless, FIRST_BOOK)).not.toContain("{name}");
+  });
+
+  it("keeps a dedication written before the default existed", () => {
+    // A stored order from before this field has no `dedicationWritten`, and
+    // treating it as unwritten would replace somebody's own words with the
+    // book's.
+    const old = { ...started(), dedication: "For Rosalind, from us both." };
+    delete (old as Partial<Order>).dedicationWritten;
+    const back = readOrder(JSON.parse(JSON.stringify(old)), FIRST_BOOK);
+    expect(back.dedicationWritten).toBe(true);
+    expect(dedicationOf(back, FIRST_BOOK)).toBe("For Rosalind, from us both.");
+  });
+
+  it("is a book-level fact, so a book without one starts empty", () => {
+    const plain = { ...FIRST_BOOK, dedicationDefault: undefined };
+    expect(defaultDedication(plain, "Rosalind")).toBe("");
+    expect(dedicationOf(started(), plain)).toBe("");
+    // Paired: the real book does have one, so the assertion above is about the
+    // field being absent rather than about the function never returning words.
+    expect(defaultDedication(FIRST_BOOK, "Rosalind")).not.toBe("");
+  });
+
+  it("what it pre-fills is printable, which is the contract every acceptor is held to", () => {
+    const order = started();
+    const fill = toBookFill({ ...finished(), ...order }, FIRST_BOOK);
+    expect(blockingProblems(validateBookFill(FIRST_BOOK, fill))).toEqual([]);
   });
 });

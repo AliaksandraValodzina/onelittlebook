@@ -386,6 +386,19 @@ export function pageWithSlot(book: BookTemplate, slot: string): number {
 }
 
 /**
+ * **Every** page carrying a given slot, in reading order.
+ *
+ * `pageWithSlot` is right for the roles the book has exactly one of — the
+ * photograph, the dedication, the signature — and wrong for `storyText`, which
+ * the cover carries as its title and eleven spreads carry as a verse. Anything
+ * that wants "a page of each kind of words" has to ask for the list, because
+ * the first answer is the cover and the cover is not a spread.
+ */
+export function pagesWithSlot(book: BookTemplate, slot: string): number[] {
+  return pageSequence(book).flatMap((page, index) => (hasSlot(page, slot) ? [index] : []));
+}
+
+/**
  * The book's one photo window, as the layer the renderer will draw into.
  *
  * Asked for by name in two places that must not disagree: `lib/book/photo.ts`

@@ -72,12 +72,23 @@ function at(pixels: number): BookTemplate {
 
 const SMALL = at(240);
 
-/** The name slot on the cover, and its box — asked of the template, never typed. */
-function nameSlotOn(book: BookTemplate, index: number): TextSlotLayer {
+/**
+ * The slot a page actually sets the child's name in, and its box — asked of the
+ * template **and of the fill**, never typed.
+ *
+ * On the cover that is the *title*'s slot: the name reaches the front of the
+ * book inside the captain's "When {name} Turned One" rather than in a
+ * `babyName` slot of its own. Asking which slot the fill puts the name into is
+ * what makes this follow the name wherever the template puts it, which is the
+ * whole point of a test about words not being painted into artwork.
+ */
+function nameBearingSlotOn(book: BookTemplate, index: number): TextSlotLayer {
+  const fill = pageFillFor(book, index, FIXTURE_BOOK_FILL);
   const layer = pageTemplateFor(book, index, CHOSEN).layers.find(
-    (l): l is TextSlotLayer => l.kind === "textSlot" && l.slot === SLOT.name,
+    (l): l is TextSlotLayer =>
+      l.kind === "textSlot" && (fill.texts?.[l.slot] ?? "").includes(FIXTURE_BOOK_FILL.name),
   );
-  if (!layer) throw new Error(`page ${index} carries no ${SLOT.name} slot to assert about`);
+  if (!layer) throw new Error(`page ${index} sets the child's name in no slot`);
   return layer;
 }
 
@@ -164,7 +175,7 @@ describe("the clean artwork has no words on it", () => {
 
 describe("the pixels of the clean cover", () => {
   const COVER = 0;
-  const slot = nameSlotOn(FIRST_BOOK, COVER);
+  const slot = nameBearingSlotOn(FIRST_BOOK, COVER);
   const box = slot.frame as Box;
   const book = at(600);
 

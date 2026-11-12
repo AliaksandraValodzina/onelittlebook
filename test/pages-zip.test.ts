@@ -24,7 +24,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { FIRST_BOOK } from "../templates/first-book";
 import { FIXTURE_BOOK_FILL } from "../fixtures/book-order";
-import { SLOT } from "../lib/book/slots";
+import { NAME_TOKEN, SLOT } from "../lib/book/slots";
 import { BookNotPrintable, renderBookPagesZip } from "../lib/book/print";
 import { pageCount, pageFillFor, pageSequence, pageTemplateFor } from "../lib/book/derive";
 import { readPngSize } from "../lib/render/png";
@@ -113,7 +113,7 @@ describe("the pages in it are finished pages", () => {
   const COVER = 0;
 
   it("carries the child's name, which is the thing the clean artwork must not", async () => {
-    // Big enough to read a 62 pt handwritten name out of, and the whole book
+    // Big enough to read the handwritten title out of, and the whole book
     // rather than a slice of it: `printProblems` refuses a book that has lost
     // its photo, dedication and story slots, which is the right refusal and
     // means a test cannot take a shortcut by shortening the page list.
@@ -125,8 +125,17 @@ describe("the pages in it are finished pages", () => {
     const cover = readZipEntry(result.zip, `${REF}-00-cover.png`)!;
 
     const template = pageTemplateFor(book, COVER, CHOSEN);
+    const texts = pageFillFor(book, COVER, FIXTURE_BOOK_FILL).texts;
+    /**
+     * The slot the name is actually set in on the cover, which is the
+     * **title**'s: the name reaches the front of the book inside the captain's
+     * "When {name} Turned One" rather than in a `babyName` slot of its own. It
+     * is found by asking which slot the fill puts the name into, so it follows
+     * the name rather than naming a role.
+     */
     const slot = template.layers.find(
-      (l): l is TextSlotLayer => l.kind === "textSlot" && l.slot === SLOT.name,
+      (l): l is TextSlotLayer =>
+        l.kind === "textSlot" && (texts[l.slot] ?? "").includes(FIXTURE_BOOK_FILL.name),
     )!;
     const ink = shareOf(raster(cover, template), slot.frame as Box, slot.colour, 60);
     expect(ink).toBeGreaterThan(0.01);
@@ -140,10 +149,10 @@ describe("the pages in it are finished pages", () => {
       60,
     );
     expect(blank).toBeLessThan(ink);
-    // And the fill really did have a name in it.
-    expect(pageFillFor(book, COVER, FIXTURE_BOOK_FILL).texts[SLOT.name]).toBe(
-      FIXTURE_BOOK_FILL.name,
-    );
+    // And the words the cover was drawn with really did have the name in them,
+    // rather than the brace token an unfilled preview draws.
+    expect(texts[SLOT.story]).toContain(FIXTURE_BOOK_FILL.name);
+    expect(texts[SLOT.story]).not.toContain(NAME_TOKEN);
   });
 });
 

@@ -1,9 +1,10 @@
 {
   "schema": 1,
   "id": "the-book-of-you",
-  "rev": "c663bd78",
+  "rev": "2469883d",
   "name": "When They Were Small",
-  "blurb": "Twelve spreads of a day in their life, with their name through it, one of your own photographs, and a dedication in the front.",
+  "blurb": "Twelve spreads of their first year, with their name through it, one of your own photographs, and a dedication in the front.",
+  "dedicationDefault": "Dear {name},\n\nHere is your year, all tucked in a book,\nEach first and each giggle, each wide-eyed look.\nWe'll read it together again and again,\nAnd remember how small you were back then.\n\nWith all our love",
   "page": {
     "canvas": {
       "unit": "pt",
@@ -209,6 +210,7 @@
   ],
   "cover": {
     "id": "cover",
+    "story": "When\n{name}\nTurned One",
     "art": {
       "kind": "drawn",
       "scene": {
@@ -251,21 +253,24 @@
         }
       },
       {
-        "id": "cover-name",
+        "id": "cover-title",
         "kind": "textSlot",
-        "slot": "babyName",
+        "slot": "storyText",
         "frame": {
-          "x": 106,
-          "y": 255,
-          "width": 400,
-          "height": 106
+          "x": 105,
+          "y": 226,
+          "width": 402,
+          "height": 160
         },
         "font": "hand",
-        "size": 62,
-        "baseline": 74.39999999999999,
+        "size": 44,
+        "baseline": 48,
+        "lineHeight": 52,
         "colour": "#3B2A20",
         "align": "middle",
-        "maxChars": 14
+        "maxChars": 32,
+        "maxLines": 3,
+        "maxCharsPerLine": 16
       }
     ]
   },
@@ -343,9 +348,9 @@
           "kind": "textSlot",
           "slot": "dedication",
           "frame": {
-            "x": 119,
+            "x": 86,
             "y": 288,
-            "width": 374,
+            "width": 440,
             "height": 230
           },
           "font": "typewriter",
@@ -356,7 +361,7 @@
           "align": "middle",
           "maxChars": 300,
           "maxLines": 10,
-          "maxCharsPerLine": 34
+          "maxCharsPerLine": 48
         },
         {
           "id": "from",
@@ -390,27 +395,27 @@
           "seed": 2002
         }
       },
-      "story": "{name}\nwoke up when the light came in.",
+      "story": "Dear {name},\n\nThe day that you came, the whole world felt new,\nThe stars seemed to shine just a little for you.\nSo tiny, so perfect, wrapped snug in our arms,\nWe fell head over heels for your sweet little charms.",
       "layers": [
         {
           "id": "story",
           "kind": "textSlot",
           "slot": "storyText",
           "frame": {
-            "x": 68,
-            "y": 71,
-            "width": 476,
-            "height": 135
+            "x": 56,
+            "y": 64,
+            "width": 500,
+            "height": 160
           },
           "font": "typewriter",
-          "size": 17,
-          "baseline": 23,
-          "lineHeight": 33,
+          "size": 15,
+          "baseline": 20,
+          "lineHeight": 26,
           "colour": "#3B2A20",
           "align": "middle",
-          "maxChars": 130,
-          "maxLines": 3,
-          "maxCharsPerLine": 42
+          "maxChars": 300,
+          "maxLines": 6,
+          "maxCharsPerLine": 62
         }
       ]
     },
@@ -437,27 +442,27 @@
           "seed": 2004
         }
       },
-      "story": "There was a whole day waiting,\nand none of it had happened yet.",
+      "story": "{name}, you smiled!\n\nOne morning you grinned and our hearts melted through,\nThen came a big giggle, a bubbly \"ah-goo!\"\nWe tickled your toes and we kissed your round tum,\nAnd you laughed till the hiccups decided to come.",
       "layers": [
         {
           "id": "story",
           "kind": "textSlot",
           "slot": "storyText",
           "frame": {
-            "x": 68,
-            "y": 71,
-            "width": 476,
-            "height": 135
+            "x": 56,
+            "y": 64,
+            "width": 500,
+            "height": 160
           },
           "font": "typewriter",
-          "size": 17,
-          "baseline": 23,
-          "lineHeight": 33,
+          "size": 15,
+          "baseline": 20,
+          "lineHeight": 26,
           "colour": "#3B2A20",
           "align": "middle",
-          "maxChars": 130,
-          "maxLines": 3,
-          "maxCharsPerLine": 42
+          "maxChars": 300,
+          "maxLines": 6,
+          "maxCharsPerLine": 62
         }
       ]
     },
@@ -484,27 +489,27 @@
           "seed": 2006
         }
       },
-      "story": "Breakfast went mostly in,\nand a little on the floor.",
+      "story": "Go, {name}, go!\n\nOn tummy-time mornings you pushed and you tried,\nYou wiggled and wobbled and rocked side to side.\nThen over you rolled with a squeak and a cheer,\nAnd we clapped for our champion - well done, my dear!",
       "layers": [
         {
           "id": "story",
           "kind": "textSlot",
           "slot": "storyText",
           "frame": {
-            "x": 68,
-            "y": 71,
-            "width": 476,
-            "height": 135
+            "x": 56,
+            "y": 64,
+            "width": 500,
+            "height": 160
           },
           "font": "typewriter",
-          "size": 17,
-          "baseline": 23,
-          "lineHeight": 33,
+          "size": 15,
+          "baseline": 20,
+          "lineHeight": 26,
           "colour": "#3B2A20",
           "align": "middle",
-          "maxChars": 130,
-          "maxLines": 3,
-          "maxCharsPerLine": 42
+          "maxChars": 300,
+          "maxLines": 6,
+          "maxCharsPerLine": 62
         }
       ]
     },
@@ -531,27 +536,27 @@
           "seed": 2008
         }
       },
-      "story": "{name}\nfound a cupboard that opens.",
+      "story": "Night-night, {name}\n\nWhen the moon climbed up high and the stars came to peep,\nWe rocked you and hummed till you drifted to sleep.\nWith your bear tucked in close and your blanket pulled tight,\nWe whispered \"we love you\" and kissed you goodnight.",
       "layers": [
         {
           "id": "story",
           "kind": "textSlot",
           "slot": "storyText",
           "frame": {
-            "x": 68,
-            "y": 71,
-            "width": 476,
-            "height": 135
+            "x": 56,
+            "y": 64,
+            "width": 500,
+            "height": 160
           },
           "font": "typewriter",
-          "size": 17,
-          "baseline": 23,
-          "lineHeight": 33,
+          "size": 15,
+          "baseline": 20,
+          "lineHeight": 26,
           "colour": "#3B2A20",
           "align": "middle",
-          "maxChars": 130,
-          "maxLines": 3,
-          "maxCharsPerLine": 42
+          "maxChars": 300,
+          "maxLines": 6,
+          "maxCharsPerLine": 62
         }
       ]
     },
@@ -578,27 +583,27 @@
           "seed": 2010
         }
       },
-      "story": "Outside, everything was bigger\nand much more interesting.",
+      "story": "{name} tries something new\n\nYour very first spoonful was quite a surprise,\nYou wrinkled your nose and you scrunched up your eyes.\nBut soon it was pumpkin, banana and pear,\nOn your cheeks, on your bib, and all over your hair!",
       "layers": [
         {
           "id": "story",
           "kind": "textSlot",
           "slot": "storyText",
           "frame": {
-            "x": 68,
-            "y": 71,
-            "width": 476,
-            "height": 135
+            "x": 56,
+            "y": 64,
+            "width": 500,
+            "height": 160
           },
           "font": "typewriter",
-          "size": 17,
-          "baseline": 23,
-          "lineHeight": 33,
+          "size": 15,
+          "baseline": 20,
+          "lineHeight": 26,
           "colour": "#3B2A20",
           "align": "middle",
-          "maxChars": 130,
-          "maxLines": 3,
-          "maxCharsPerLine": 42
+          "maxChars": 300,
+          "maxLines": 6,
+          "maxCharsPerLine": 62
         }
       ]
     },
@@ -625,27 +630,27 @@
           "seed": 2012
         }
       },
-      "story": "A duck looked back.\nNeither of them said anything.",
+      "story": "Splish-splash, {name}!\n\nSplish-splash in the bath with your ducks in a row,\nYou kicked and you paddled and put on a show.\nThen wrapped in a towel, all rosy and sweet,\nFrom the top of your head to your ten little feet.",
       "layers": [
         {
           "id": "story",
           "kind": "textSlot",
           "slot": "storyText",
           "frame": {
-            "x": 68,
-            "y": 71,
-            "width": 476,
-            "height": 135
+            "x": 56,
+            "y": 64,
+            "width": 500,
+            "height": 160
           },
           "font": "typewriter",
-          "size": 17,
-          "baseline": 23,
-          "lineHeight": 33,
+          "size": 15,
+          "baseline": 20,
+          "lineHeight": 26,
           "colour": "#3B2A20",
           "align": "middle",
-          "maxChars": 130,
-          "maxLines": 3,
-          "maxCharsPerLine": 42
+          "maxChars": 300,
+          "maxLines": 6,
+          "maxCharsPerLine": 62
         }
       ]
     },
@@ -672,27 +677,27 @@
           "seed": 2014
         }
       },
-      "story": "{name}\nwas carried home half asleep.",
+      "story": "Out we go, {name}!\n\nWe took you out walking to visit the park,\nTo hear all the birds and the dogs as they bark.\nYou reached for the clouds and the sky up so high,\nAnd waved to each duck as it paddled on by.",
       "layers": [
         {
           "id": "story",
           "kind": "textSlot",
           "slot": "storyText",
           "frame": {
-            "x": 68,
-            "y": 71,
-            "width": 476,
-            "height": 135
+            "x": 56,
+            "y": 64,
+            "width": 500,
+            "height": 160
           },
           "font": "typewriter",
-          "size": 17,
-          "baseline": 23,
-          "lineHeight": 33,
+          "size": 15,
+          "baseline": 20,
+          "lineHeight": 26,
           "colour": "#3B2A20",
           "align": "middle",
-          "maxChars": 130,
-          "maxLines": 3,
-          "maxCharsPerLine": 42
+          "maxChars": 300,
+          "maxLines": 6,
+          "maxCharsPerLine": 62
         }
       ]
     },
@@ -719,27 +724,27 @@
           "seed": 2016
         }
       },
-      "story": "The bath was warm\nand the flannel was a boat.",
+      "story": "Here comes {name}!\n\nThen off you went crawling, so speedy and keen,\nTo explore every corner you'd never yet seen.\nYou opened the cupboards and pulled out the pots,\nAnd found all the crumbs in the very best spots.",
       "layers": [
         {
           "id": "story",
           "kind": "textSlot",
           "slot": "storyText",
           "frame": {
-            "x": 68,
-            "y": 71,
-            "width": 476,
-            "height": 135
+            "x": 56,
+            "y": 64,
+            "width": 500,
+            "height": 160
           },
           "font": "typewriter",
-          "size": 17,
-          "baseline": 23,
-          "lineHeight": 33,
+          "size": 15,
+          "baseline": 20,
+          "lineHeight": 26,
           "colour": "#3B2A20",
           "align": "middle",
-          "maxChars": 130,
-          "maxLines": 3,
-          "maxCharsPerLine": 42
+          "maxChars": 300,
+          "maxLines": 6,
+          "maxCharsPerLine": 62
         }
       ]
     },
@@ -766,27 +771,27 @@
           "seed": 2018
         }
       },
-      "story": "Everything got slower\nand quieter and softer.",
+      "story": "{name}, you are so loved\n\nYou're loved by so many, both near and afar,\nWho think you're the brightest and loveliest star.\nWith cuddles and kisses and bedtime songs too,\nThere's no one more loved in the whole world than you.",
       "layers": [
         {
           "id": "story",
           "kind": "textSlot",
           "slot": "storyText",
           "frame": {
-            "x": 68,
-            "y": 71,
-            "width": 476,
-            "height": 135
+            "x": 56,
+            "y": 64,
+            "width": 500,
+            "height": 160
           },
           "font": "typewriter",
-          "size": 17,
-          "baseline": 23,
-          "lineHeight": 33,
+          "size": 15,
+          "baseline": 20,
+          "lineHeight": 26,
           "colour": "#3B2A20",
           "align": "middle",
-          "maxChars": 130,
-          "maxLines": 3,
-          "maxCharsPerLine": 42
+          "maxChars": 300,
+          "maxLines": 6,
+          "maxCharsPerLine": 62
         }
       ]
     },
@@ -813,27 +818,27 @@
           "seed": 2020
         }
       },
-      "story": "{name}\nwas tucked in with the rabbit.",
+      "story": "Look at {name} go!\n\nThen one day you stood, holding tight to a chair,\nYour legs gave a wobble - but look, you were there!\nOne step and then two, with your arms open wide,\nEach brave little step with our hearts by your side.",
       "layers": [
         {
           "id": "story",
           "kind": "textSlot",
           "slot": "storyText",
           "frame": {
-            "x": 68,
-            "y": 71,
-            "width": 476,
-            "height": 135
+            "x": 56,
+            "y": 64,
+            "width": 500,
+            "height": 160
           },
           "font": "typewriter",
-          "size": 17,
-          "baseline": 23,
-          "lineHeight": 33,
+          "size": 15,
+          "baseline": 20,
+          "lineHeight": 26,
           "colour": "#3B2A20",
           "align": "middle",
-          "maxChars": 130,
-          "maxLines": 3,
-          "maxCharsPerLine": 42
+          "maxChars": 300,
+          "maxLines": 6,
+          "maxCharsPerLine": 62
         }
       ]
     },
@@ -860,27 +865,27 @@
           "seed": 2022
         }
       },
-      "story": "Goodnight to the day,\nand to everyone in it.",
+      "story": "Happy 1st Birthday, {name}!\n\nNow here is a cake with one candle so bright,\nA year full of wonder, of love and delight.\nSo make a wish, little one, as we sing just for you,\nWe love you, we love you, we always will too.",
       "layers": [
         {
           "id": "story",
           "kind": "textSlot",
           "slot": "storyText",
           "frame": {
-            "x": 68,
-            "y": 71,
-            "width": 476,
-            "height": 135
+            "x": 56,
+            "y": 64,
+            "width": 500,
+            "height": 160
           },
           "font": "typewriter",
-          "size": 17,
-          "baseline": 23,
-          "lineHeight": 33,
+          "size": 15,
+          "baseline": 20,
+          "lineHeight": 26,
           "colour": "#3B2A20",
           "align": "middle",
-          "maxChars": 130,
-          "maxLines": 3,
-          "maxCharsPerLine": 42
+          "maxChars": 300,
+          "maxLines": 6,
+          "maxCharsPerLine": 62
         }
       ]
     },

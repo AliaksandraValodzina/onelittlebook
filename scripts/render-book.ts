@@ -13,7 +13,7 @@
  * it on every pull request to prove it had not drifted, would cost more than it
  * proves. So the evidence is the **pages that carry content** — the cover, the
  * opening spread's right-hand page with the photograph, the dedication and the
- * signature on it, and one story page — plus a PDF built from exactly those,
+ * signature on it, and one spread's verse — plus a PDF built from exactly those,
  * plus the fully expanded book as JSON. Everything the renderer could get wrong
  * about this book is visible in those files; the other pages are the same
  * `drawn` scene with a different seed.
@@ -31,7 +31,7 @@ import path from "node:path";
 import { FIRST_BOOK } from "../templates/first-book";
 import { FIXTURE_BOOK_FILL } from "../fixtures/book-order";
 import { bookRev } from "../lib/book/rev";
-import { pageCount, pageSequence, pageWithSlot } from "../lib/book/derive";
+import { pageCount, pageSequence, pageWithSlot, pagesWithSlot } from "../lib/book/derive";
 import { SLOT } from "../lib/book/slots";
 import { printProblems, renderBookPagePng, renderBookPdf } from "../lib/book/print";
 
@@ -88,13 +88,25 @@ async function main() {
    * evidence looked like a book with a repeated page in it.
    */
   const sequence = pageSequence(FIRST_BOOK);
+  /**
+   * **A spread's verse, which is not the same page as the cover's title.**
+   *
+   * Both are `storyText`, so `pageWithSlot` answers with the cover — and the
+   * cover is already in the list below. Taking the first story page that is not
+   * the cover is what keeps a verse in the committed evidence; without it the
+   * story page silently dropped out and its PNG sat in `data/` showing whatever
+   * the copy used to say, which no gate would have caught.
+   */
+  const verse = pagesWithSlot(FIRST_BOOK, SLOT.story).find(
+    (i) => sequence[i].id !== FIRST_BOOK.cover.id,
+  );
   const interesting = [
     ...new Set(
       [
         0,
         pageWithSlot(FIRST_BOOK, SLOT.dedication),
         pageWithSlot(FIRST_BOOK, SLOT.from),
-        pageWithSlot(FIRST_BOOK, SLOT.story),
+        verse ?? -1,
         pageWithSlot(FIRST_BOOK, SLOT.photo),
       ].filter((i) => i >= 0),
     ),
