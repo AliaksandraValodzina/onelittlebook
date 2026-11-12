@@ -87,9 +87,12 @@ import { isReleaseSet } from "./keys";
 import { LOOKS_TOKEN_VAR, looksBlobStore, looksTokenIn } from "./blob";
 import {
   DEFAULT_ARTWORK_DIR,
+  NO_SCREEN_ADDRESSES,
   localArtworkStore,
   type ArtworkStore,
   type PublicArtworkStore,
+  type ScreenAddress,
+  type ScreenAddresses,
 } from "./store";
 
 /** The variable that moves the whole of it somewhere else. */
@@ -140,7 +143,32 @@ export function lookOfTilePageId(pageId: string): string | null {
  * the tag is for.
  */
 export function localReleaseStore(root: string): PublicArtworkStore {
-  return { holds: "released", ...localArtworkStore(root, isReleaseSet) };
+  return {
+    holds: "released",
+    ...localArtworkStore(root, isReleaseSet),
+    /**
+     * **A directory holds no screen derivatives, and that is the answer rather
+     * than a gap.**
+     *
+     * A derivative exists for exactly one reason — to send 0.13 MB over a CDN
+     * instead of 2.6 MB — and a local store has no CDN and no URL at all
+     * (`./store.ts` § `ScreenAddress`). On this machine every picture is served
+     * by `/api/assets/<digest>.png` from the local disk, where the 26×
+     * saving buys a few milliseconds of loopback. So the honest local answer is
+     * "none": the preview falls back to the master exactly as it does for a
+     * fresh clone, which is the path `hrefIn` has always taken.
+     *
+     * Writing the files anyway would be bytes in a directory nothing can
+     * address. `npm run artwork:upload` is the command that makes derivatives
+     * and it only ever talks to the public Blob store.
+     */
+    async screens() {
+      return NO_SCREEN_ADDRESSES;
+    },
+    async putScreens() {
+      return NO_SCREEN_ADDRESSES;
+    },
+  };
 }
 
 /**
@@ -190,6 +218,21 @@ export interface ReleaseArtwork {
    * anywhere near an `AssetRef`.
    */
   urls: AssetAddresses;
+  /**
+   * Master digest -> **the screen-sized copy of that picture**, for the pages
+   * a visitor looks at rather than the file that is printed.
+   *
+   * A second map beside `urls` and deliberately not folded into it: `urls` is
+   * where *those bytes* are, and this is where a different, smaller picture
+   * made from them is. `./store.ts` § `ScreenAddress` and
+   * `lib/assets/screen.ts` carry the argument for why the two may never be the
+   * same map — the one that must never happen is a 1600 px page in a printed
+   * book.
+   *
+   * **Empty is the ordinary state** and means every picture is drawn at full
+   * resolution, which is what a fresh clone, CI and a local import all do.
+   */
+  screen: ScreenAddresses;
   /** Where it was read from, in a sentence. Never a credential. */
   describe: string;
   /** One line per set, for the admin page and for `npm run artwork -- status`. */
@@ -197,7 +240,7 @@ export interface ReleaseArtwork {
 }
 
 export function emptyReleaseArtwork(describe = "nothing"): ReleaseArtwork {
-  return { pages: {}, tiles: {}, ghosts: {}, urls: {}, describe, sets: [] };
+  return { pages: {}, tiles: {}, ghosts: {}, urls: {}, screen: NO_SCREEN_ADDRESSES, describe, sets: [] };
 }
 
 export function anyReleaseArtwork(art: ReleaseArtwork): boolean {
@@ -231,7 +274,7 @@ export function asPreviewAsset(ref: AssetRef): PreviewAsset {
  */
 export async function releaseArtworkFor(
   book: BookTemplate,
-  store: ArtworkStore = releaseStoreFromEnv(),
+  store: PublicArtworkStore = releaseStoreFromEnv(),
 ): Promise<ReleaseArtwork> {
   const out = emptyReleaseArtwork(store.describe);
   // The address book is filled by the same read that produced the refs, which
@@ -292,6 +335,22 @@ export async function releaseArtworkFor(
   }
 
   out.urls = urls;
+  /**
+   * The derivatives, **narrowed to the pictures this book actually names**.
+   *
+   * One listing of one prefix, then a filter — rather than a question per
+   * picture — because the whole map travels to the browser as a prop and a
+   * store that has been re-uploaded a dozen times holds derivatives for pages
+   * no version binds any more. Those are still readable and nothing draws
+   * them, which is the same rule the versions themselves follow.
+   */
+  const held = await store.screens();
+  const screen: Record<string, ScreenAddress> = {};
+  for (const digest of Object.keys(urls)) {
+    const found = held[digest];
+    if (found) screen[digest] = found;
+  }
+  out.screen = screen;
   return out;
 }
 
@@ -304,6 +363,17 @@ export interface Delivered {
    * and is `{}` whenever the store has no public URLs.
    */
   assets: AssetAddresses;
+  /**
+   * **Where the screen-sized copy of each of those pictures is.**
+   *
+   * The preview resolves this first and the master second; the print path
+   * resolves neither, because it resolves *bytes* by digest and a derivative
+   * has no `AssetRef` anywhere. `lib/assets/screen.ts` is the one module that
+   * turns this map into an address, and no module the print path imports may
+   * import it — `test/screen-derivatives.test.ts` walks the import graph off
+   * disk, and `test/no-derivative-in-a-print-file.ts` is the compiler's half.
+   */
+  screen: ScreenAddresses;
 }
 
 /**
@@ -323,15 +393,15 @@ export interface Delivered {
  */
 export async function deliveredBook(
   book: BookTemplate,
-  store: ArtworkStore = releaseStoreFromEnv(),
+  store: PublicArtworkStore = releaseStoreFromEnv(),
 ): Promise<Delivered> {
   const art = await releaseArtworkFor(book, store);
-  return { book: bookWithReleaseArtwork(book, art), assets: art.urls };
+  return { book: bookWithReleaseArtwork(book, art), assets: art.urls, screen: art.screen };
 }
 
 export async function bookAsDelivered(
   book: BookTemplate,
-  store: ArtworkStore = releaseStoreFromEnv(),
+  store: PublicArtworkStore = releaseStoreFromEnv(),
 ): Promise<BookTemplate> {
   return (await deliveredBook(book, store)).book;
 }

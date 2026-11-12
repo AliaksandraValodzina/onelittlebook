@@ -244,7 +244,12 @@ between them and that is a **type** rather than a rule somebody remembers —
 `test/no-order-asset-in-the-public-store.ts` is a file of calls that must not
 compile. With neither configured the local filesystem implementation answers,
 which is what a fresh clone and the whole test suite run on.
-`npm run artwork:upload` pushes the captain's folders to the public store.
+`npm run artwork:upload` pushes the captain's folders to the public store, and
+writes a **1600 px WebP copy beside each master** — the preview shows a spread
+about 700 px wide, so it fetches that and not 3600 px of it, which is about 3%
+of the weight. The copy is never an `AssetRef` and the module that resolves one
+is a module the print path may not import, so a screen-resolution picture
+cannot reach a printed book (`docs/artwork.md` § 6a).
 
 ## What is not built
 

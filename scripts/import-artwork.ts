@@ -234,6 +234,23 @@ async function status(): Promise<void> {
   );
   console.log(`${Object.keys(art.ghosts).length} page(s) have a golden preview half`);
 
+  /**
+   * The screen-sized copies, which is what the preview actually fetches.
+   *
+   * Counted against the pictures this book names rather than against the whole
+   * store, and reported as a shortfall with the command that closes it —
+   * `docs/artwork.md` § 6a. A local store has none and says so, because a
+   * directory has no URL to serve one from.
+   */
+  const pictures = Object.keys(art.urls).length;
+  const copies = Object.keys(art.screen).length;
+  console.log(
+    pictures === 0
+      ? "no screen-sized copies: this store publishes no URLs, so every picture is served whole"
+      : `${copies} of ${pictures} published picture(s) have a screen-sized copy` +
+          (copies < pictures ? " — `npm run artwork:upload -- --screens` makes the rest" : ""),
+  );
+
   const withoutCover = delivered.filter((id) => !art.pages[id][FIRST_BOOK.cover.id]);
   if (withoutCover.length) {
     console.log(`\nno cover artwork for: ${withoutCover.join(", ")} — the cover is still the placeholder.`);

@@ -247,8 +247,10 @@ file of calls that must not compile, so `npm run lint` is the gate.
 
 ```
 npm run artwork:upload                       # all three sets, the delivered folders
+npm run artwork:upload -- --screens          # ONLY the screen copies — the backfill
 npm run artwork:upload -- --dry-run          # prepare and compare, write nothing
 npm run artwork:upload -- --only portraits   # just the tiles
+npm run artwork:upload -- --no-screens       # masters only
 npm run artwork:upload -- --portraits ~/art/tiles-v3
 ```
 
@@ -263,3 +265,49 @@ be served stale from a cache.
 With no token set it refuses and names the variable. `npm run artwork` writes to
 whichever store the environment points at, and every line it prints names that
 store.
+
+### 6a. The screen-sized copies
+
+A page is 3600 × 3600 and about 2.6 MB. The preview shows a spread about 700 CSS
+px wide, so it was sending roughly **26 times the pixels the screen uses** — about
+62 MB for a twenty-four page preview, and the first spread arrived half-painted.
+
+So every upload also writes a **WebP copy at 1600 px**, beside the master:
+
+```
+assets/<sha256>.png            the master — what prints
+screen/<sha256>-w1600.webp     the screen copy — what the preview fetches
+```
+
+Measured on this repository's own committed 3600 px pages (flat placeholder art,
+which compresses far better than a painting, so this is the conservative end):
+**1.20 MB → 35 KB, 2.9%.** On the captain's real artwork the same transform
+measured 7.06 MB → 0.13 MB.
+
+- **Never upscales.** The width is `min(master, 1600)`, so the 1254 px portraits
+  and the 887 px golden halves are re-encoded at their own size — which is most
+  of the saving anyway.
+- **Keyed on the master's digest**, so "is there already one of these" is a
+  `head` and a re-run writes nothing. That is what makes the backfill a command
+  rather than a migration.
+- **The preview reads them; the print path cannot.** A derivative is never an
+  `AssetRef`, so it cannot be loaded, inlined, put in `PageArt.byLook` or drawn
+  as a layer. `lib/assets/screen.ts` is the only module that turns one into a
+  URL and no module the print path imports may import it —
+  `test/no-derivative-in-a-print-file.ts` is the compiler's half and
+  `test/screen-derivatives.test.ts` walks the import graph and reads both
+  renders of one page.
+- **Public store only.** `olb-orders` has no such operation, because the whole
+  point of a derivative is that it has a URL.
+
+**To backfill what is already uploaded** — `girl-01`, `girl-02`, `girl-03`, the
+fourteen tiles and the eleven golden halves — run this once, with
+`BLOB_READ_WRITE_TOKEN` set:
+
+```
+npm run artwork:upload -- --screens
+```
+
+It reads the current version of every set **out of the store**, so no delivery
+folder has to be on the machine, and it skips anything that already has a copy.
+Nothing redeploys: the shop reads the store on the next request.

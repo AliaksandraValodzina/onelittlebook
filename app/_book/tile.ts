@@ -41,7 +41,8 @@
 import { isCover, lookOf, pageFillFor, pageTemplateFor, tileIndexOf } from "../../lib/book/derive";
 import { deliveredPagesFor } from "../../lib/book/release-art";
 import { renderPageSvg } from "../../lib/render/svg";
-import { hrefIn, type AssetAddresses } from "../../lib/assets/address";
+import { type AssetAddresses, type ScreenAddresses } from "../../lib/assets/address";
+import { screenHrefIn } from "../../lib/assets/screen";
 import type { BookTemplate } from "../../lib/book/types";
 import type { AssetRef } from "../../lib/template/types";
 
@@ -67,14 +68,21 @@ export type LookTile =
  * from the artwork store (`lib/assets/address.ts`), so a delivered portrait
  * comes off the CDN, and anything the store published no address for is
  * answered by `app/api/assets/[key]/route.ts` out of wherever the bytes are.
+ *
+ * **`screen` first, where there is one.** A tile is shown at a couple of
+ * hundred pixels and a portrait is delivered at 1254; the chooser draws one per
+ * look, so the grid used to be several megabytes of pictures nobody was going
+ * to look at closely. `lib/assets/screen.ts` is the preference and the reason
+ * it cannot reach a print file.
  */
 export function lookTile(
   book: BookTemplate,
   lookId: string,
   coverId: string,
   assets?: AssetAddresses,
+  screen?: ScreenAddresses,
 ): LookTile {
-  const href = hrefIn(assets);
+  const href = screenHrefIn(screen, assets);
   const look = lookOf(book, lookId);
   if (look?.tile) {
     const [width, height] = look.tile.px ?? [0, 0];
@@ -149,6 +157,7 @@ export function lookPanel(
   book: BookTemplate,
   lookId: string,
   assets?: AssetAddresses,
+  screen?: ScreenAddresses,
 ): LookPanel {
   const delivered = deliveredPagesFor(book, lookId);
   const tile = tileIndexOf(book);
@@ -162,7 +171,7 @@ export function lookPanel(
   const look = lookOf(book, lookId);
   if (look?.tile) {
     const [width, height] = look.tile.px ?? [0, 0];
-    return { kind: "portrait", src: hrefIn(assets)(look.tile), width, height };
+    return { kind: "portrait", src: screenHrefIn(screen, assets)(look.tile), width, height };
   }
   return { kind: "drawn", index: tile };
 }

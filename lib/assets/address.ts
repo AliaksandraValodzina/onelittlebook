@@ -59,6 +59,41 @@ export type AssetAddresses = Readonly<Record<string, string>>;
 
 export const NO_ASSET_ADDRESSES: AssetAddresses = {};
 
+/**
+ * **Where one picture's screen-sized copy is readable, and how wide it is.**
+ *
+ * The preview shows a spread about 700 px wide out of a 3600 px master, so the
+ * screen fetches a 1600 px WebP instead and the whole book is a couple of
+ * megabytes rather than sixty-two. `lib/artwork/screen.ts` makes them at
+ * upload and `lib/artwork/keys.ts` § `screenKey` is where they are kept.
+ *
+ * **An object and not a URL string, so this and `AssetAddresses` cannot be
+ * mistaken for each other by the compiler.** They answer two different
+ * questions about the same digest: `AssetAddresses` is *where those exact
+ * bytes are*, and this is *where a different, smaller picture made from them
+ * is*. Conflating them is how a 1600 px page would end up in a printed book,
+ * which is the worst failure this product has — so they are different shapes
+ * and the resolver that reads this one (`./screen.ts`) is a module the print
+ * path may not import.
+ *
+ * It lives here rather than with the store that writes it for two reasons:
+ * `AssetAddresses` is here, and the two are only legible side by side; and a
+ * client component needs this type and may not import `lib/artwork/store.ts`,
+ * which reads a filesystem.
+ */
+export interface ScreenAddress {
+  /** Says which kind of thing this is to a reader; the structure is the guard. */
+  readonly kind: "screen";
+  readonly url: string;
+  /** The width actually produced — at most `SCREEN_WIDTH`, never more. */
+  readonly width: number;
+}
+
+/** Master digest → its screen derivative. Empty is the ordinary state. */
+export type ScreenAddresses = Readonly<Record<string, ScreenAddress>>;
+
+export const NO_SCREEN_ADDRESSES: ScreenAddresses = {};
+
 /** The route that answers for a digest nobody has published a URL for. */
 export function assetRouteUrl(ref: AssetRef): string {
   return `/api/assets/${assetKey(ref)}`;

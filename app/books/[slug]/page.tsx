@@ -23,7 +23,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { assetUrl } from "../../../lib/assets/resolve";
-import { hrefIn, type AssetAddresses } from "../../../lib/assets/address";
+import { screenHrefIn } from "../../../lib/assets/screen";
 import type { AssetRef } from "../../../lib/template/types";
 import { deliveredBook } from "../../../lib/artwork/release";
 import { showcaseLook } from "../../../lib/book/release-art";
@@ -133,11 +133,14 @@ export default async function BookPageRoute(props: { params: Promise<{ slug: str
   // The shelf's book with this machine's artwork bound over it, so the page
   // cannot advertise a book the renderer does not draw — which is this route's
   // own rule, now that there is artwork for it to be wrong about.
-  const { book, assets } = await deliveredBook(title.book);
+  const { book, assets, screen } = await deliveredBook(title.book);
   // The delivered artwork's own addresses in front of `assetUrl`, so a page
   // that came out of the public Blob store is drawn from the CDN and anything
-  // else is answered exactly as it was before there was one.
-  const href = hrefIn(assets, assetUrl);
+  // else is answered exactly as it was before there was one — and the
+  // screen-sized copy in front of both, because this page shows a cover and a
+  // rail of pages at a few hundred pixels each and has no use for 3600 px of
+  // any of them. `lib/assets/screen.ts` is the whole of that preference.
+  const href = screenHrefIn(screen, assets, assetUrl);
   const start = STEPS[0];
   // Four facts, a price line, a spec table and a strip, all of which say
   // something that depends on where the reader is buying.
