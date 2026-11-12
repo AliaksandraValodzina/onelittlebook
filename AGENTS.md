@@ -52,6 +52,12 @@ that the print path does not pass — there are exactly two, `guides` and
 `ghost`, and `renderPrintSvg` takes no options object at all, which is what
 makes "it cannot print" structural rather than checked.
 
+**A screen-only treatment that is not drawn on a page is not an option at
+all**: the spread fold (`lib/book/fold.ts`) spans two pages, which no
+`PageTemplate` describes, so it is a DOM element and a stylesheet rule the
+renderer has never heard of. `test/no-fold-in-a-print-file.ts` is a file of
+calls that must not compile and `test/spread-fold.test.tsx` reads the bytes.
+
 **Nothing reads an optional field directly.** `lib/template/defaults.ts` holds
 the tolerant readers. A stored template or fill can come from a newer publisher
 or a hand-edited file, and the renderer's duty is to draw the sane thing.
