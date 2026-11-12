@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "id": "the-book-of-you",
-  "rev": "008fd34f",
+  "rev": "2469883d",
   "name": "When They Were Small",
   "blurb": "Twelve spreads of their first year, with their name through it, one of your own photographs, and a dedication in the front.",
   "dedicationDefault": "Dear {name},\n\nHere is your year, all tucked in a book,\nEach first and each giggle, each wide-eyed look.\nWe'll read it together again and again,\nAnd remember how small you were back then.\n\nWith all our love",
@@ -402,9 +402,9 @@
           "kind": "textSlot",
           "slot": "storyText",
           "frame": {
-            "x": 46,
+            "x": 56,
             "y": 64,
-            "width": 520,
+            "width": 500,
             "height": 160
           },
           "font": "typewriter",
@@ -449,9 +449,9 @@
           "kind": "textSlot",
           "slot": "storyText",
           "frame": {
-            "x": 46,
+            "x": 56,
             "y": 64,
-            "width": 520,
+            "width": 500,
             "height": 160
           },
           "font": "typewriter",
@@ -496,9 +496,9 @@
           "kind": "textSlot",
           "slot": "storyText",
           "frame": {
-            "x": 46,
+            "x": 56,
             "y": 64,
-            "width": 520,
+            "width": 500,
             "height": 160
           },
           "font": "typewriter",
@@ -543,9 +543,9 @@
           "kind": "textSlot",
           "slot": "storyText",
           "frame": {
-            "x": 46,
+            "x": 56,
             "y": 64,
-            "width": 520,
+            "width": 500,
             "height": 160
           },
           "font": "typewriter",
@@ -590,9 +590,9 @@
           "kind": "textSlot",
           "slot": "storyText",
           "frame": {
-            "x": 46,
+            "x": 56,
             "y": 64,
-            "width": 520,
+            "width": 500,
             "height": 160
           },
           "font": "typewriter",
@@ -637,9 +637,9 @@
           "kind": "textSlot",
           "slot": "storyText",
           "frame": {
-            "x": 46,
+            "x": 56,
             "y": 64,
-            "width": 520,
+            "width": 500,
             "height": 160
           },
           "font": "typewriter",
@@ -684,9 +684,9 @@
           "kind": "textSlot",
           "slot": "storyText",
           "frame": {
-            "x": 46,
+            "x": 56,
             "y": 64,
-            "width": 520,
+            "width": 500,
             "height": 160
           },
           "font": "typewriter",
@@ -731,9 +731,9 @@
           "kind": "textSlot",
           "slot": "storyText",
           "frame": {
-            "x": 46,
+            "x": 56,
             "y": 64,
-            "width": 520,
+            "width": 500,
             "height": 160
           },
           "font": "typewriter",
@@ -778,9 +778,9 @@
           "kind": "textSlot",
           "slot": "storyText",
           "frame": {
-            "x": 46,
+            "x": 56,
             "y": 64,
-            "width": 520,
+            "width": 500,
             "height": 160
           },
           "font": "typewriter",
@@ -825,9 +825,9 @@
           "kind": "textSlot",
           "slot": "storyText",
           "frame": {
-            "x": 46,
+            "x": 56,
             "y": 64,
-            "width": 520,
+            "width": 500,
             "height": 160
           },
           "font": "typewriter",
@@ -872,9 +872,9 @@
           "kind": "textSlot",
           "slot": "storyText",
           "frame": {
-            "x": 46,
+            "x": 56,
             "y": 64,
-            "width": 520,
+            "width": 500,
             "height": 160
           },
           "font": "typewriter",

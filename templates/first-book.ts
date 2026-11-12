@@ -209,16 +209,26 @@ function nameSlot(
  *
  * | | em | at 15 pt |
  * |---|---|---|
- * | widest line of the twelve verses — spread 5's *"With your bear tucked in close and your blanket pulled tight,"* | 32.07 | 481 pt |
- * | widest line carrying the name, with the longest name the form accepts — spread 12's heading | 20.49 | 307 pt |
- * | this box | | **520 pt** |
+ * | widest line of the twelve verses — spread 5's *"With your bear tucked in close and your blanket pulled tight,"* | 32.07 | 480 pt |
+ * | widest line carrying the name, with the longest name the form accepts — spread 12's heading | 20.49 | 306 pt |
+ * | this box | | **500 pt** |
  *
- * — 39 pt of headroom on the worst line, inside a safe area 540 pt across.
+ * — 20 pt of headroom on the worst line, ten a side on a centred line.
  *
  * **The copy cannot be set at the 17 pt the stub was set at**: 32.07 em is
- * 545 pt there, which is wider than the whole safe area, let alone a box
- * inside it. That is a measurement and not a preference, and it is why this
- * slot's type size came down with the real words.
+ * 545 pt there, which is wider than the whole safe area (540 pt), let alone a
+ * box inside it. That is a measurement and not a preference, and it is why
+ * this slot's type size came down with the real words.
+ *
+ * ## Why the box is not as wide as the safe area
+ *
+ * The verses sit on the **right-hand** page of each spread, whose gutter is its
+ * left edge, and `lib/book/fold.ts` § `SPREAD_FOLD` shades a band `reach` of a
+ * page wide along it in the preview — 48.96 pt here. A box that began inside
+ * that band would be claiming space the buyer sees darkened, so this one begins
+ * at 56 and `test/spread-fold.test.tsx` § *"reaches none of them"* is the
+ * check. The band is also the margin the captain's artwork is composed with, so
+ * staying clear of it is the same decision twice.
  *
  * Six lines at 26 pt is 156 pt, which is what the 160 pt box holds. It sits
  * high because the baby sits low. `test/book-verses.test.ts` is the arithmetic
@@ -229,7 +239,7 @@ function storySlot(id: string): Layer {
     id,
     kind: "textSlot",
     slot: SLOT.story,
-    frame: { x: 46, y: 64, width: 520, height: 160 },
+    frame: { x: 56, y: 64, width: 500, height: 160 },
     font: "typewriter",
     size: 15,
     baseline: 20,
@@ -733,7 +743,7 @@ const LOOKS: Look[] = GENDERS.flatMap(({ id: gender }, column) =>
 export const FIRST_BOOK: BookTemplate = {
   schema: 1,
   id: "the-book-of-you",
-  rev: "008fd34f",
+  rev: "2469883d",
   /**
    * **"When They Were Small".**
    *
