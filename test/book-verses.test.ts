@@ -284,31 +284,36 @@ describe("no line of any verse overflows its slot, with the longest name the for
  * them, which is the point: the table is the captain's marks, and a test that
  * read them off the template could not notice one being lost.
  *
- * The two unmarked spreads are named here too, so that the day a mark arrives
- * for one of them this file says which two it could have been.
+ * The unmarked spread is named here too, so that the day a mark arrives for
+ * it this file says which page it was.
  */
 describe("every verse sits where the captain marked it", () => {
-  /** The captain's marks, 13 November, keyed by the spread's left page. */
+  /**
+   * The captain's marks, keyed by the spread's left page — two rounds, 13
+   * November. Where the two rounds disagree the **later** mark is the one
+   * here: `page-021` was 122 in round one and is 60 now.
+   */
   const MARKED: Record<string, number> = {
     "page-005": 185,
     "page-007": 113,
     "page-009": 177,
     "page-011": 320,
+    "page-013": 203,
     "page-015": 138,
     "page-017": 148,
     "page-019": 168,
-    "page-021": 122,
+    "page-021": 60,
     "page-023": 182,
   };
 
-  /** The two spreads the captain did not mark, and the median they take. */
-  const UNMARKED = ["page-003", "page-013"];
-  const DEFAULT = 168;
+  /** The one spread the captain has not marked, and the median it takes. */
+  const UNMARKED = ["page-003"];
+  const DEFAULT = 172.5;
 
   /** Every page of the book that carries a verse — the cover's title is not one. */
   const VERSE_PAGES = FIRST_BOOK.pages.filter((p) => p.story).map((p) => p.id);
 
-  it("marks every spread of words and leaves exactly two on the default", () => {
+  it("marks every spread of words and leaves exactly one on the default", () => {
     // Counted off the book: this file must not become a second place that says
     // how many spreads there are.
     expect(VERSE_PAGES.sort()).toEqual([...Object.keys(MARKED), ...UNMARKED].sort());
@@ -324,7 +329,7 @@ describe("every verse sits where the captain marked it", () => {
   for (const id of UNMARKED) {
     it(`${id}: unmarked, so it takes the shared default of ${DEFAULT}`, () => {
       const page = FIRST_BOOK.pages.find((p) => p.id === id)!;
-      expect(storySlotOn(page).frame.y, `${id} is one of the two pages to check`).toBe(DEFAULT);
+      expect(storySlotOn(page).frame.y, `${id} is the page still on the default`).toBe(DEFAULT);
     });
   }
 
@@ -357,9 +362,12 @@ describe("every verse sits where the captain marked it", () => {
     // The captain's generation brief reserves the middle 60% of the page —
     // y 122 to 490 — and most marks are inside it. Two are not, and that is
     // the captain looking at the picture rather than at the brief: `page-007`
-    // is set at 113 to clear what spread four draws low, and `page-021` is
-    // four-tenths of a point over the line, which is the jitter of a rectangle
-    // drawn by hand.
+    // is set at 113 to clear what spread four draws low, and `page-021` is at
+    // 60 — 62 pt above the band, the furthest outside it any page goes —
+    // because the captain re-marked that spread there having seen the verse in
+    // place. On spread eleven the top-left is open window light, so nothing
+    // collides today; the artwork does not promise to keep that strip clear if
+    // the spread is ever regenerated.
     //
     // They are listed rather than tolerated, so that a page drifting out of
     // the reserved band by accident still fails this. A spread whose artwork

@@ -197,6 +197,16 @@ const NAME_CHARS = 14;
  * book already has, not resizing it. Nothing about the type, the width or the
  * frame changes here, and `VERSE_HEIGHT` is untouched.
  *
+ * A **second round** of marks followed, drawn against the first round live on
+ * the page: three rectangles, 161, 162 and 166 pt tall, left and right edges
+ * on the frame again — the same method and the same move-not-resize rule.
+ * Spread seven (`page-013`) was marked for the first time, at 203. Spread
+ * eleven (`page-021`) was **re-marked at 60**, superseding the 122 of round
+ * one now that the captain has seen it in place; the later mark is the
+ * instruction and the two are not averaged. Spread six (`page-011`) was marked
+ * again at 331, which is the third number inside half a line height of the 320
+ * it already carries — so it was confirmed rather than changed.
+ *
  * **No single value can satisfy them.** Spread twelve needs a top of 182 to
  * clear the bunting across the head of the page; spread eight needs 138 so the
  * last line clears the pond and the bridge. Those two rule each other out,
@@ -213,19 +223,29 @@ const NAME_CHARS = 14;
  * numbers that agree to inside a line are one number, and the measured one is
  * the one with a method behind it.
  *
- * ## The two spreads the captain did not mark
+ * ## The one spread the captain has not marked
  *
- * Spread two (`page-003`, *"Welcome to the world"*) and spread seven
- * (`page-013`, bath time) carry no mark, so they fall through to `VERSE_TOP` —
- * and they are **the only two pages that do**. That default is now the
- * **median of the marks** rather than the centre of the page: the captain's
- * nine sit well above centre, so the centred 226 is no longer the best guess
- * for a page nobody has looked at. It is computed from the table below and not
- * typed, so a tenth mark re-derives it; today it is 168.
+ * Spread two (`page-003`, *"Welcome to the world"*) carries no mark, so it
+ * falls through to `VERSE_TOP` — and it is **the only page that does**. That
+ * default is the **median of the marks** rather than the centre of the page:
+ * the captain's marks sit well above centre, so the centred 226 is no longer
+ * the best guess for a page nobody has looked at. It is computed from the
+ * table below and not typed, so each new mark re-derives it; today it is
+ * 172.5.
  *
- * Every position above is inside the brief's 122–490 band, and
+ * ## The two pages that reach above the brief's band
+ *
+ * `test/book-verses.test.ts` names them rather than widening the band.
+ * `page-007` sits at 113, nine points over the line, to clear what spread four
+ * draws low. `page-021` sits at 60, which is **62 pt above the `verse_zone`**
+ * and the furthest outside it any page goes: on that spread the top-left is
+ * open window light, so nothing collides with the words today, but the artwork
+ * does **not** promise to keep that strip clear and a regeneration of spread
+ * eleven could fill it. Both are comfortably inside the safe area (36–576), so
+ * both print.
+ *
  * `test/book-verses.test.ts` rasterises each page against **its own** box, so
- * the extremes here — 113 at the top of the page and 320 at the foot — are
+ * the extremes here — 60 at the top of the page and 320 at the foot — are
  * measured and not assumed to fit.
  */
 const VERSE_HEIGHT = 160;
@@ -240,10 +260,11 @@ const VERSE_TOP_ON: Record<string, number> = {
   "page-007": 113, // spread 4 — "Go, {name}, go!"
   "page-009": 177, // spread 5 — "Night-night, {name}"
   "page-011": 320, // spread 6 — the windowsill; measured, see above
+  "page-013": 203, // spread 7 — bath time
   "page-015": 138, // spread 8 — the park, clearing the pond and the bridge
   "page-017": 148, // spread 9 — "Here comes {name}!"
   "page-019": 168, // spread 10 — "{name}, you are so loved"
-  "page-021": 122, // spread 11 — "Look at {name} go!"
+  "page-021": 60, // spread 11 — "Look at {name} go!"; re-marked, see above
   "page-023": 182, // spread 12 — clearing the birthday bunting
 };
 
@@ -870,7 +891,7 @@ const LOOKS: Look[] = GENDERS.flatMap(({ id: gender }, column) =>
 export const FIRST_BOOK: BookTemplate = {
   schema: 1,
   id: "the-book-of-you",
-  rev: "1a9a8a80",
+  rev: "80b4996b",
   /**
    * **"When They Were Small".**
    *
