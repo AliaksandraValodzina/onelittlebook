@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "id": "the-book-of-you",
-  "rev": "1e49cd48",
+  "rev": "1a9a8a80",
   "name": "When They Were Small",
   "blurb": "Twelve spreads of their first year, with their name through it, one of your own photographs, and a dedication in the front.",
   "dedicationDefault": "Dear {name},\n\nHere is your year, all tucked in a book,\nEach first and each giggle, each wide-eyed look.\nWe'll read it together again and again,\nAnd remember how small you were back then.\n\nWith all our love",
@@ -386,7 +386,7 @@
           "slot": "storyText",
           "frame": {
             "x": 56,
-            "y": 226,
+            "y": 168,
             "width": 500,
             "height": 160
           },
@@ -434,7 +434,7 @@
           "slot": "storyText",
           "frame": {
             "x": 56,
-            "y": 226,
+            "y": 185,
             "width": 500,
             "height": 160
           },
@@ -482,7 +482,7 @@
           "slot": "storyText",
           "frame": {
             "x": 56,
-            "y": 226,
+            "y": 113,
             "width": 500,
             "height": 160
           },
@@ -530,7 +530,7 @@
           "slot": "storyText",
           "frame": {
             "x": 56,
-            "y": 226,
+            "y": 177,
             "width": 500,
             "height": 160
           },
@@ -626,7 +626,7 @@
           "slot": "storyText",
           "frame": {
             "x": 56,
-            "y": 226,
+            "y": 168,
             "width": 500,
             "height": 160
           },
@@ -674,7 +674,7 @@
           "slot": "storyText",
           "frame": {
             "x": 56,
-            "y": 226,
+            "y": 138,
             "width": 500,
             "height": 160
           },
@@ -722,7 +722,7 @@
           "slot": "storyText",
           "frame": {
             "x": 56,
-            "y": 226,
+            "y": 148,
             "width": 500,
             "height": 160
           },
@@ -770,7 +770,7 @@
           "slot": "storyText",
           "frame": {
             "x": 56,
-            "y": 226,
+            "y": 168,
             "width": 500,
             "height": 160
           },
@@ -818,7 +818,7 @@
           "slot": "storyText",
           "frame": {
             "x": 56,
-            "y": 226,
+            "y": 122,
             "width": 500,
             "height": 160
           },
@@ -866,7 +866,7 @@
           "slot": "storyText",
           "frame": {
             "x": 56,
-            "y": 226,
+            "y": 182,
             "width": 500,
             "height": 160
           },

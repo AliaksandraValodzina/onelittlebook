@@ -240,7 +240,7 @@ leave the areas clear.
 | `cover.png` | the baby's name, large, on a cream panel; the buyer's cover colour tints the whole ground | the middle third |
 | `page-001.png` | the baby's name, on the title page | the upper middle |
 | `page-002.png` | **the buyer's photograph, the dedication and the from-line** | see below — most of the page |
-| `page-003.png`, 005, 007 … 023 | six lines of story, across the middle | **y 226–386 of 612**, which is the middle quarter — and the captain's `verse_zone`, the middle 60%, covers it with room either side. `page-011` is the one exception: its verse sits at **y 320–480**, because that spread's windowsill is drawn *in* the shared band. `templates/first-book.ts` § `VERSE_TOP` carries the measurement |
+| `page-003.png`, 005, 007 … 023 | six lines of story, 160 pt tall | **a 160 pt band whose top is this spread's own**, not one shared band: the captain marked nine of the twelve on 13 November and each took its own position — 185, 113, 177, 320, 138, 148, 168, 122 and 182 for spreads 3–6 and 8–12. `page-003` and `page-013` carry no mark and take the median, **168** (y 168–328). Every band is inside the `verse_zone`, the middle 60% (y 122–490), so keeping that zone clear keeps all of them clear. `templates/first-book.ts` § `VERSE_TOP_ON` is the table and the measurement |
 | `page-024.png` | the baby's name, closing page | the upper middle |
 
 ### `page-001` and `page-002` are the babyless spread
