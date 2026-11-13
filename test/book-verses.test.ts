@@ -272,6 +272,111 @@ describe("no line of any verse overflows its slot, with the longest name the for
 
 // ---------------------------------------------------------------------------
 
+/**
+ * **Each spread's verse is where the captain put it.**
+ *
+ * `templates/first-book.ts` § `VERSE_TOP_ON` is a position per page because no
+ * single one fits twelve different pictures, and the failure this guards is a
+ * silent one: a page dropped out of that table still renders, still fits its
+ * box and still passes every measurement above — it just quietly goes back to
+ * the shared default and prints over whatever the artwork drew there. So this
+ * is the one place in the suite that states the numbers rather than deriving
+ * them, which is the point: the table is the captain's marks, and a test that
+ * read them off the template could not notice one being lost.
+ *
+ * The two unmarked spreads are named here too, so that the day a mark arrives
+ * for one of them this file says which two it could have been.
+ */
+describe("every verse sits where the captain marked it", () => {
+  /** The captain's marks, 13 November, keyed by the spread's left page. */
+  const MARKED: Record<string, number> = {
+    "page-005": 185,
+    "page-007": 113,
+    "page-009": 177,
+    "page-011": 320,
+    "page-015": 138,
+    "page-017": 148,
+    "page-019": 168,
+    "page-021": 122,
+    "page-023": 182,
+  };
+
+  /** The two spreads the captain did not mark, and the median they take. */
+  const UNMARKED = ["page-003", "page-013"];
+  const DEFAULT = 168;
+
+  /** Every page of the book that carries a verse — the cover's title is not one. */
+  const VERSE_PAGES = FIRST_BOOK.pages.filter((p) => p.story).map((p) => p.id);
+
+  it("marks every spread of words and leaves exactly two on the default", () => {
+    // Counted off the book: this file must not become a second place that says
+    // how many spreads there are.
+    expect(VERSE_PAGES.sort()).toEqual([...Object.keys(MARKED), ...UNMARKED].sort());
+  });
+
+  for (const [id, top] of Object.entries(MARKED)) {
+    it(`${id}: its verse box starts at ${top}`, () => {
+      const page = FIRST_BOOK.pages.find((p) => p.id === id)!;
+      expect(storySlotOn(page).frame.y, `${id} lost its own position`).toBe(top);
+    });
+  }
+
+  for (const id of UNMARKED) {
+    it(`${id}: unmarked, so it takes the shared default of ${DEFAULT}`, () => {
+      const page = FIRST_BOOK.pages.find((p) => p.id === id)!;
+      expect(storySlotOn(page).frame.y, `${id} is one of the two pages to check`).toBe(DEFAULT);
+    });
+  }
+
+  it("moved the box and did not resize it: one height, one width, one frame", () => {
+    // The captain's rectangles averaged 162 pt tall against this box's 160 and
+    // matched its left and right edges, so this was a move. Anything that
+    // changed the type while moving it would show up here.
+    const slots = VERSE_PAGES.map((id) => storySlotOn(FIRST_BOOK.pages.find((p) => p.id === id)!));
+    const first = slots[0];
+    for (const slot of slots) {
+      expect(slot.frame.x).toBe(first.frame.x);
+      expect(slot.frame.width).toBe(first.frame.width);
+      expect(slot.frame.height).toBe(first.frame.height);
+      expect(slot.size).toBe(first.size);
+      expect(slot.lineHeight).toBe(first.lineHeight);
+      expect(slot.font).toBe(first.font);
+    }
+  });
+
+  it("keeps every box inside the safe area, wherever the mark put it", () => {
+    const safe = safeBox(FIRST_BOOK.page.canvas);
+    for (const id of VERSE_PAGES) {
+      const slot = storySlotOn(FIRST_BOOK.pages.find((p) => p.id === id)!);
+      expect(slot.frame.y, id).toBeGreaterThanOrEqual(safe.y);
+      expect(slot.frame.y + slot.frame.height, id).toBeLessThanOrEqual(safe.y + safe.height);
+    }
+  });
+
+  it("names the two pages whose mark reaches above the verse_zone", () => {
+    // The captain's generation brief reserves the middle 60% of the page —
+    // y 122 to 490 — and most marks are inside it. Two are not, and that is
+    // the captain looking at the picture rather than at the brief: `page-007`
+    // is set at 113 to clear what spread four draws low, and `page-021` is
+    // four-tenths of a point over the line, which is the jitter of a rectangle
+    // drawn by hand.
+    //
+    // They are listed rather than tolerated, so that a page drifting out of
+    // the reserved band by accident still fails this. A spread whose artwork
+    // is re-drawn to the brief should come back into the band and off this
+    // list.
+    const side = FIRST_BOOK.page.canvas.height;
+    const zone = { top: side * 0.2, bottom: side * 0.8 };
+    const outside = VERSE_PAGES.filter((id) => {
+      const { frame } = storySlotOn(FIRST_BOOK.pages.find((p) => p.id === id)!);
+      return frame.y < zone.top || frame.y + frame.height > zone.bottom;
+    });
+    expect(outside.sort()).toEqual(["page-007", "page-021"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
 describe("the dedication arrives with the captain's verse in it", () => {
   const slot = dedicationSlot(FIRST_BOOK)!;
 

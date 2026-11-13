@@ -163,9 +163,9 @@ const NAME_CHARS = 14;
 // ---------------------------------------------------------------------------
 
 /**
- * How tall a verse's box is, and **where down the page it sits.**
+ * How tall a verse's box is, and **where down each page it sits.**
  *
- * ## The band, and why it is the middle of the page
+ * ## The band, and why the box is 160 pt
  *
  * Six lines at 26 pt is 156 pt, which is what the 160 pt box holds.
  *
@@ -176,44 +176,83 @@ const NAME_CHARS = 14;
  * focus, light in value and low in detail so dark verse text can be added
  * later"*. The middle 60% of a 612 pt page is **y 122 to 490**.
  *
- * `VERSE_TOP` is the box centred in the page — `(612 − 160) / 2` — which lands
- * at 226 and sits comfortably inside that band. It is **derived rather than
- * typed** because both halves of the arithmetic are open: the trim is answered
- * and not yet applied (`docs/print.md` § The square trim nobody has pinned
- * down), so `SIDE` moves one day, and the box's height is the copy's shape.
- *
- * It used to be 64 — the top twelfth of the page — which is the half of every
- * spread the artwork puts its *detail* on, and the overlap was real and
- * visible: fairy lights and a window on spread two, hearts and bubbles and
+ * The box used to sit at 64 — the top twelfth of the page — which is the half
+ * of every spread the artwork puts its *detail* on, and the overlap was real
+ * and visible: fairy lights and a window on spread two, hearts and bubbles and
  * music notes on spread three, a moonbeam on five, a bird and branch on eight,
  * a picture frame on ten with *"{name}, you are so loved"* running straight
  * through it, balloons and bunting on twelve. The renderer and the artwork had
  * simply never agreed about which band was the words'.
  *
- * Centring was then checked against the twelve delivered left-hand pages
- * rather than assumed: each page's verse was rasterised, its ink read out of a
- * **difference** between two renders exactly as `test/book-verses.test.ts`
- * does, and the artwork's own detail measured underneath that ink at every
- * candidate position. 226 is the best position the book has by the average of
- * the eleven pages of words, and within a point of the best by its worst page.
+ * It then sat at `(612 − 160) / 2` — 226, the box centred in the page — for
+ * every page but one. That is the value the entries below replace.
  *
- * ## The one page whose artwork disagrees
+ * ## Why there is a position per page and not one for the book
  *
- * `VERSE_TOP_ON` is the exception list, and **the absence of a page from it
- * means the shared band is right for that page.** Spread six is the only entry
- * and the only page that needed one: its windowsill — a robin, a jar and a
- * knitted pumpkin, all of them high-contrast — sits *in* the reserved band at
- * roughly y 160 to 340, so the verse is set below it instead. The measurement
- * above scores that page 34 at the shared position and 14 at its own; no other
- * page scores worse than 25 where it sits.
+ * On 13 November the captain screenshotted nine of the twelve interior spreads
+ * in the preview and drew a rectangle on each showing where that spread's
+ * verse belongs. Measured against each spread's own page box, the rectangles
+ * average **162 pt tall** against this box's 160 and matched its left and
+ * right edges to within a point — so the captain was **moving** the box the
+ * book already has, not resizing it. Nothing about the type, the width or the
+ * frame changes here, and `VERSE_HEIGHT` is untouched.
  *
- * Its box is still wholly inside the brief's 122–490, which is the test of
- * whether this is an exception or a second rule. If the captain re-draws that
- * spread's sill, deleting the entry is the whole of the change.
+ * **No single value can satisfy them.** Spread twelve needs a top of 182 to
+ * clear the bunting across the head of the page; spread eight needs 138 so the
+ * last line clears the pond and the bridge. Those two rule each other out,
+ * which is why the verse kept landing on artwork wherever the shared value was
+ * set: the artwork is twelve different pictures and the reserved band is only
+ * their average.
+ *
+ * `VERSE_TOP_ON` is therefore the position of each verse, page by page, in the
+ * captain's own marks. The entry for `page-011` is **older than the marks and
+ * kept**: it is 320, measured off that spread's artwork — its windowsill, a
+ * robin and a jar and a knitted pumpkin, all high-contrast, sits *in* the
+ * reserved band at roughly y 160 to 340 — and the captain's hand-drawn
+ * rectangle there measured 338, within one line height (26 pt) of it. Two
+ * numbers that agree to inside a line are one number, and the measured one is
+ * the one with a method behind it.
+ *
+ * ## The two spreads the captain did not mark
+ *
+ * Spread two (`page-003`, *"Welcome to the world"*) and spread seven
+ * (`page-013`, bath time) carry no mark, so they fall through to `VERSE_TOP` —
+ * and they are **the only two pages that do**. That default is now the
+ * **median of the marks** rather than the centre of the page: the captain's
+ * nine sit well above centre, so the centred 226 is no longer the best guess
+ * for a page nobody has looked at. It is computed from the table below and not
+ * typed, so a tenth mark re-derives it; today it is 168.
+ *
+ * Every position above is inside the brief's 122–490 band, and
+ * `test/book-verses.test.ts` rasterises each page against **its own** box, so
+ * the extremes here — 113 at the top of the page and 320 at the foot — are
+ * measured and not assumed to fit.
  */
 const VERSE_HEIGHT = 160;
-const VERSE_TOP = (SIDE - VERSE_HEIGHT) / 2;
-const VERSE_TOP_ON: Record<string, number> = { "page-011": 320 };
+
+/**
+ * The captain's mark for each spread's verse, keyed by the **left** page of
+ * the spread, which is `page-(2N-1)` for spread N. A page absent from this
+ * table is a spread the captain has not marked, and takes `VERSE_TOP`.
+ */
+const VERSE_TOP_ON: Record<string, number> = {
+  "page-005": 185, // spread 3 — "{name}, you smiled!"
+  "page-007": 113, // spread 4 — "Go, {name}, go!"
+  "page-009": 177, // spread 5 — "Night-night, {name}"
+  "page-011": 320, // spread 6 — the windowsill; measured, see above
+  "page-015": 138, // spread 8 — the park, clearing the pond and the bridge
+  "page-017": 148, // spread 9 — "Here comes {name}!"
+  "page-019": 168, // spread 10 — "{name}, you are so loved"
+  "page-021": 122, // spread 11 — "Look at {name} go!"
+  "page-023": 182, // spread 12 — clearing the birthday bunting
+};
+
+/** The median of the marks, for the pages that carry none. */
+const VERSE_TOP = (() => {
+  const marks = Object.values(VERSE_TOP_ON).sort((a, b) => a - b);
+  const middle = marks.length >> 1;
+  return marks.length % 2 ? marks[middle] : (marks[middle - 1] + marks[middle]) / 2;
+})();
 
 /**
  * The story slot: **one of the captain's twelve verses**, in the band the
@@ -624,8 +663,9 @@ const FEATURED: Record<string, { scene?: Partial<SceneSpec>; layers?: Layer[] }>
  * where that is decided and `rightHandPages` is the other half, the one the
  * child is drawn on.
  *
- * **Where down that page the verse sits is `VERSE_TOP`**, and one page says
- * otherwise through `VERSE_TOP_ON`. Both are above, with the measurement.
+ * **Where down that page the verse sits is `VERSE_TOP_ON`**, the captain's
+ * mark for that spread, and `VERSE_TOP` for the two spreads carrying no mark.
+ * Both are above, with the measurement.
  */
 function interior(index: number): BookPage {
   const number = index + 1;
@@ -830,7 +870,7 @@ const LOOKS: Look[] = GENDERS.flatMap(({ id: gender }, column) =>
 export const FIRST_BOOK: BookTemplate = {
   schema: 1,
   id: "the-book-of-you",
-  rev: "1e49cd48",
+  rev: "1a9a8a80",
   /**
    * **"When They Were Small".**
    *
