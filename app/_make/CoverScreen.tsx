@@ -23,8 +23,12 @@
  * **nobody has held one**. What is shown instead is each edition's own `note`,
  * which is copy that already passed that bar.
  *
- * Neither button is the loud one. The upgrade is dearer, so it is the solid
- * button; keeping the softcover is the quiet one and is equally one press.
+ * **Neither edition button is filled.** The one solid control on this screen is
+ * the way forward, because it is the only thing that moves the buyer: two
+ * full-width black buttons stacked read as three options rather than "pick one
+ * of these two, then go on". The chosen edition says so with a border, a ring
+ * and a tick (`app/shop.css` § `.btn.choice`) — never a fill and never colour
+ * alone — and `aria-pressed` still carries the state.
  */
 
 import { EDITIONS, differenceOf, editionOf, priceLabel, upgradeFrom } from "../../lib/book/editions";
@@ -76,11 +80,16 @@ export default function CoverScreen({ closeTo }: { closeTo: string }) {
           <button
             key={edition.id}
             type="button"
-            className={`btn wide ${order.editionId === edition.id ? "" : "quiet"}`}
+            className="btn wide choice"
             onClick={() => setEdition(edition.id)}
             aria-pressed={order.editionId === edition.id}
             data-testid={`edition-${edition.id}`}
           >
+            {order.editionId === edition.id ? (
+              <span className="tick" aria-hidden="true" data-testid={`edition-${edition.id}-tick`}>
+                ✓
+              </span>
+            ) : null}
             {index === 0 ? `Keep ${edition.label.toLowerCase()}` : edition.label} ·{" "}
             {priceLabel(edition, market)}
           </button>
