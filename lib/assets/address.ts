@@ -20,10 +20,10 @@
  *
  * **An address book entry** — `AssetAddresses` below — is a digest the artwork
  * store has told us is *publicly readable at this exact URL*. It comes from the
- * store that holds the bytes (`lib/artwork/blob.ts` writes one; the local
+ * store that holds the bytes (`lib/artwork/object-store.ts` writes one; the local
  * filesystem store writes none, because a directory on somebody's laptop has
  * no URL), travels server to client as data, and is why a twenty-five page
- * preview served from a public Blob store is twenty-five CDN reads and not
+ * preview served from a public bucket is twenty-five CDN reads and not
  * twenty-five function invocations.
  *
  * **`/api/assets/<digest>.<ext>`** is the answer for everything else, and it is

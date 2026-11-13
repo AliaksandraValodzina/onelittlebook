@@ -235,16 +235,22 @@ is permanent. [`lib/artwork/store.ts`](lib/artwork/store.ts) is one interface
 and six operations; `.gitignore` excludes the directory it writes to, and a test
 asserts that rule rather than trusting it.
 
-**It lives in two Vercel Blob stores**, behind that same interface
-([`lib/artwork/blob.ts`](lib/artwork/blob.ts)): `olb-looks` is **public**,
-because the twelve looks' pages are what a preview shows everybody with no
-watermark and no account, and `olb-orders` is **private**, because it holds
-artwork regenerated from a photograph of one family's child. Nothing may cross
-between them and that is a **type** rather than a rule somebody remembers —
+**It lives in two Cloudflare R2 buckets**, behind that same interface
+([`lib/artwork/r2.ts`](lib/artwork/r2.ts)): the **looks bucket** is public,
+because the looks' pages are what a preview shows everybody with no watermark
+and no account, and the **order-artwork bucket** is private, because it holds
+artwork regenerated from a photograph of one family's child. It was Vercel Blob
+until the public store filled up — 1.03 GB against a 1 GB limit, where fourteen
+looks need about 2.5 GB ([`docs/artwork.md`](docs/artwork.md) § 6); nothing has
+been deleted from either Blob store. Nothing may cross between the two buckets
+and that is a **type** rather than a rule somebody remembers — two unassignable
+store types, two unassignable bucket configurations, and a public bucket that is
+also a private one refused before it is read, because a custom domain is
+attached to a bucket and not to a prefix.
 `test/no-order-asset-in-the-public-store.ts` is a file of calls that must not
 compile. With neither configured the local filesystem implementation answers,
 which is what a fresh clone and the whole test suite run on.
-`npm run artwork:upload` pushes the captain's folders to the public store, and
+`npm run artwork:upload` pushes the captain's folders to the public bucket, and
 writes a **1600 px WebP copy beside each master** — the preview shows a spread
 about 700 px wide, so it fetches that and not 3600 px of it, which is about 3%
 of the weight. The copy is never an `AssetRef` and the module that resolves one
@@ -282,11 +288,14 @@ lib/book/         a book: types, derive (a book page -> a PageTemplate), the
                   artwork bound to the book), ghost (which pages hold a place)
 lib/artwork/      where artwork lives — one order's regenerated pages and the
                   captain's released sets — behind one interface: the local
-                  filesystem, the two Vercel Blob stores (public looks, private
-                  orders) and the wall between them, plus the import's pixel
-                  work and the preparation both upload commands share
+                  filesystem, the shared key layout, the two R2 buckets (public
+                  looks, private orders) and the five walls between them, plus
+                  the import's pixel work and the preparation both upload
+                  commands share
+lib/r2/           SigV4 by hand, shared by the order store and both artwork
+                  buckets — no AWS SDK, checked against AWS's own vectors
 lib/orders/       the durable order: the record, the store and its reasoning,
-                  SigV4 against R2, the lifecycle, and receiving a webhook
+                  the private bucket, the lifecycle, and receiving a webhook
 lib/stripe/       form encoding, the Checkout Session, signature verification
 lib/email/        the one email a buyer keeps, and sending it
 lib/admin/        the owner's door — one shared secret, failing closed

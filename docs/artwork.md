@@ -16,7 +16,7 @@ npm run artwork -- look      ~/Downloads/approved-pages-3600x3600 02-girl
 npm run artwork -- portraits ~/Downloads/baby-portraits-v2
 npm run artwork -- ghosts    ~/Downloads/golden-spreads
 
-npm run artwork:upload       # all three, to the public Blob store — § 6
+npm run artwork:upload       # all three, to the public R2 bucket — § 6
 ```
 
 With nothing imported the shop draws every page from the numbers in
@@ -176,7 +176,7 @@ twice and neither way is a rule somebody has to remember:
 
 | | |
 |---|---|
-| **Pixels** | the artwork store — the public Blob store `olb-looks` when `BLOB_READ_WRITE_TOKEN` is set (§ 6), otherwise `.artwork/release/<set>/vNNNN/<pageId>.png` on this machine, `RELEASE_ARTWORK_DIR` to move it. `.gitignore` excludes `.artwork/` and `test/release-artwork.test.ts` asserts the rule. |
+| **Pixels** | the artwork store — the public R2 bucket when `R2_LOOKS_BUCKET` and `R2_PUBLIC_BASE` are set (§ 6), otherwise `.artwork/release/<set>/vNNNN/<pageId>.png` on this machine, `RELEASE_ARTWORK_DIR` to move it. `.gitignore` excludes `.artwork/` and `test/release-artwork.test.ts` asserts the rule. |
 | **Manifests** | beside each version's pages — ids, digests, measured sizes, and in the public store the CDN URL of each picture. **Also not committed**, deliberately: see below. |
 | **The repository** | the look ids, the labels, the genders, the slot coordinates, the page order — `templates/first-book.ts` — and no pixels. |
 
@@ -218,30 +218,82 @@ number beside the look id in the order's record, now that the bytes have a home.
 
 ---
 
-## 6. Where the artwork lives: two Vercel Blob stores
+## 6. Where the artwork lives: two Cloudflare R2 buckets
 
-**The captain picked Vercel Blob and created two stores.**
-`lib/artwork/blob.ts` is the adapter, behind the same `ArtworkStore` interface
-the filesystem already answered.
+**It was two Vercel Blob stores until the public one filled up.** `olb-looks`
+held **1.03 GB across 331 files** against Vercel Blob's 1 GB limit, and the last
+upload landed `girl-07`'s masters and not its screen copies. Fourteen looks at
+twenty-four pages is 336 images plus covers — about **2.5 GB** — so it was never
+going to fit at any point rather than being one tier short. R2 is 10 GB free
+with no egress charge, which is the right shape for a shop whose whole promise is
+that anybody may read the entire book with no account. The private store
+followed because it was **empty**: no data to migrate, and one provider is one
+credential set, one adapter and one failure mode.
 
-| Store | Access | Reached through | Holds |
+**Nothing has been deleted from either Blob store.** `.env.example` § Vercel
+Blob, retired is the record of what is still sitting there.
+
+`lib/artwork/r2.ts` is the adapter and `lib/artwork/object-store.ts` is the key
+layout both buckets share, behind the same `ArtworkStore` interface the
+filesystem already answered — which is why the move changed no caller.
+
+| Bucket | Access | Reached through | Holds |
 |---|---|---|---|
-| `olb-looks` | **public** | `BLOB_READ_WRITE_TOKEN` | the looks' pages, the portrait tiles, the golden ghost halves |
-| `olb-orders` | **private** | `OLB_ORDERS_STORE_ID` + the deployment's OIDC token | one order's regenerated artwork |
+| the looks bucket | **public** | `R2_LOOKS_BUCKET` + `R2_PUBLIC_BASE` | the looks' pages, the portrait tiles, the golden ghost halves, the covers |
+| the order-artwork bucket | **private** | `R2_ORDERS_BUCKET` | one order's regenerated artwork |
+
+`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID` and `R2_SECRET_ACCESS_KEY` are shared: one
+Cloudflare account, one token with read-write over both buckets.
 
 **Public is deliberate.** The looks' pages are shown to everyone during the
 whole-book preview with no watermark and no account; serving twenty-five of them
 from a CDN rather than from twenty-five function invocations is what makes that
-promise affordable.
+promise affordable. **Reads come from `R2_PUBLIC_BASE` and never from a signed
+URL** — do not point that row at the default `r2.dev` address for anything but a
+local smoke test, because Cloudflare rate-limits it and does not intend it for
+production traffic.
 
-**Private is equally deliberate**, and nothing may cross between the two:
-`olb-orders` holds artwork regenerated from a photograph of one family's child
-and a guessable URL for that is the worst thing this product could do. The two
-stores have **distinct types** with no function that turns one into the other,
-the public store's key check refuses an order reference, and the private store
-records no URLs at all. `test/artwork-separation.test.ts` and
+**Private is equally deliberate**, and nothing may cross between the two: the
+order-artwork bucket holds artwork regenerated from a photograph of one family's
+child and a guessable URL for that is the worst thing this product could do.
+
+**Two buckets and never one, and that is the whole safety argument.** A
+Cloudflare custom domain is attached to a **bucket** and not to a prefix, so
+"they are under different prefixes" is not a defence. With both halves on one
+provider the wall matters *more* than it did, because the only thing separating
+them in a signed request is the bucket name in the path. There are five walls,
+not four:
+
+1. The two store types are mutually unassignable, with no cast anywhere.
+2. The two bucket **configurations** are too — `publicBase` exists on one and
+   does not exist at all on the other, so a private store with URLs cannot be
+   asked for.
+3. The public bucket's key check refuses an order reference; the private one
+   refuses a release set.
+4. The private store records no URLs, and `objectScreenStore` — the only thing
+   that makes them — takes a non-optional origin, so it cannot be composed onto
+   it.
+5. **A public bucket that is also a private bucket is refused at the environment
+   seam**, naming the row that collided, and the read falls back to the local
+   directory. One token covers both buckets, so a copy-paste in a dashboard is
+   exactly how the two would become one — and it would look configured.
+
+`test/artwork-separation.test.ts` and
 `test/no-order-asset-in-the-public-store.ts` are the proof — the second is a
 file of calls that must not compile, so `npm run lint` is the gate.
+
+### The keys outlive the provider
+
+```
+assets/<sha256>.png            the bytes, named by their own content
+sets/<set>/v0001.json          one version's manifest
+screen/<sha256>-w1600.webp     a screen-sized copy of those bytes
+```
+
+A hash, a set name and a padded integer. **No provider, no account, no store id
+and no URL in any of it** — which is what made the move off Vercel Blob a new
+`ObjectApi` and nothing else, and what will make the next move the same.
+`test/artwork-r2.test.ts` § The key layout asserts it both ways.
 
 ### Uploading
 
@@ -262,9 +314,51 @@ running it twice does nothing the second time, and because a key is a content
 hash, re-uploading the two corrected portraits uploads two files and can never
 be served stale from a cache.
 
-With no token set it refuses and names the variable. `npm run artwork` writes to
-whichever store the environment points at, and every line it prints names that
-store.
+With the bucket unconfigured it refuses and **names every empty row**, not just
+the first. It also refuses outright if `R2_LOOKS_BUCKET` names the same bucket as
+either private row. `npm run artwork` writes to whichever store the environment
+points at, and every line it prints names that store.
+
+### 6b. Repopulating R2 from the captain's folders
+
+**There is no copier from Vercel Blob to R2, deliberately.** The captain holds
+every original locally and `npm run artwork:upload` already reads from those
+folders, so re-uploading is simpler, verifiable, and has no half-copied state to
+reason about — which is exactly the state the old store was left in when it hit
+its limit.
+
+With the five public rows set in `.env.local` (`vercel env pull .env.local`
+after adding them in Vercel), and `$ART` wherever the delivered folders are:
+
+```sh
+# 1. One command per look. --only pages, so the tiles and ghosts are not
+#    re-read once per look; --no-screens, so the derivatives are one pass at
+#    the end rather than fourteen.
+for look in $LOOKS; do
+  npm run artwork:upload -- --only pages --no-screens \
+    --look "$look" --pages "$ART/pages/$look"
+done
+
+# 2. The portrait tiles — one set, every look's tile in the folder.
+npm run artwork:upload -- --only portraits --no-screens --portraits "$ART/tiles"
+
+# 3. The golden ghost halves — one set, one per spread.
+npm run artwork:upload -- --only ghosts --no-screens --ghosts "$ART/gold"
+
+# 4. The screen copies, for everything now in the bucket. Store-driven, so no
+#    delivery folder has to be on the machine and a re-run writes nothing.
+npm run artwork:upload -- --screens
+```
+
+`$LOOKS` is the look ids whose pages exist — `npm run artwork -- status` reports
+what the store this environment points at actually has, and § 2 above is the
+`NN-gender` → look id mapping if the folders are named the captain's way
+(`--look 02-girl` and `--look girl-02` are the same instruction).
+
+Add `--dry-run` to any of them to prepare, validate and compare without writing.
+Every step is **idempotent**: a set that is digest-for-digest what the bucket
+already holds is skipped entirely, and a key that is already there is not
+re-uploaded, so a run that dies half way is fixed by running it again.
 
 ### 6a. The screen-sized copies
 
@@ -297,12 +391,11 @@ measured 7.06 MB → 0.13 MB.
   `test/no-derivative-in-a-print-file.ts` is the compiler's half and
   `test/screen-derivatives.test.ts` walks the import graph and reads both
   renders of one page.
-- **Public store only.** `olb-orders` has no such operation, because the whole
-  point of a derivative is that it has a URL.
+- **Public bucket only.** The order-artwork bucket has no such operation,
+  because the whole point of a derivative is that it has a URL.
 
-**To backfill what is already uploaded** — `girl-01`, `girl-02`, `girl-03`, the
-fourteen tiles and the eleven golden halves — run this once, with
-`BLOB_READ_WRITE_TOKEN` set:
+**To backfill the screen copies for everything already uploaded**, run this once
+with the public bucket configured:
 
 ```
 npm run artwork:upload -- --screens

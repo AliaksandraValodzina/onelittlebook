@@ -310,10 +310,11 @@ work, deliberately.
 **One request sends an order.** `app/_book/till.ts` is the only `fetch` to
 `/api/checkout`; the basket is the only screen that calls it.
 
-**No `stripe` dependency and no AWS SDK.** Two form-encoded calls
-(`lib/stripe/`) and SigV4 over `fetch` (`lib/orders/r2.ts`), each behind a
-`fetch` seam so the bytes on the wire are asserted rather than mocked. No test
-reaches a live bucket or a live Stripe.
+**No `stripe` dependency, no AWS SDK and no Blob SDK.** Two form-encoded calls
+(`lib/stripe/`) and SigV4 over `fetch` (`lib/r2/sigv4.ts`, shared by the orders
+store and the two artwork buckets), each behind a `fetch` seam so the bytes on
+the wire are asserted rather than mocked. No test reaches a live bucket or a
+live Stripe.
 
 **`/admin` fails closed.** With `ADMIN_SECRET` unset nobody reaches the list, an
 order, a print file or a customer's photograph — the opposite of this
@@ -364,27 +365,40 @@ is the primary download on `/admin/[ref]` and the PDF is secondary and for
 reading. `lib/zip.ts` writes the container by hand — stored, never deflated,
 and with a fixed 1980 timestamp so a download is reproducible.
 
-**No artwork of either kind is ever committed, and it lives in two Vercel Blob
-stores.** `lib/artwork/store.ts` is one interface, six operations;
-`lib/artwork/blob.ts` implements it against `olb-looks` (**public**, the looks'
-pages and tiles and golden halves, `BLOB_READ_WRITE_TOKEN`) and `olb-orders`
-(**private**, one order's regenerated pages, `OLB_ORDERS_STORE_ID` + the
-deployment's OIDC token), and the local filesystem store is what a fresh clone
-and the whole suite run on. **Nothing may cross between the two stores and that
-is a type**: `PublicArtworkStore` and `PrivateArtworkStore` are mutually
-unassignable with no cast anywhere, the public store's key check refuses an
-order reference, and the private store records no URLs —
+**No artwork of either kind is ever committed, and it lives in two Cloudflare
+R2 buckets.** It was two Vercel Blob stores until the public one filled up —
+1.03 GB against a 1 GB limit, where fourteen looks need about 2.5 GB;
+`lib/artwork/store.ts` § THE DECISION has the numbers and **nothing has been
+deleted from either Blob store**. That file is one interface, six operations;
+`lib/artwork/object-store.ts` is the key layout and `lib/artwork/r2.ts` is the
+provider, implementing it against the **public** looks bucket
+(`R2_LOOKS_BUCKET` + `R2_PUBLIC_BASE`, the looks' pages and tiles and golden
+halves and covers) and the **private** order-artwork bucket
+(`R2_ORDERS_BUCKET`, one order's regenerated pages), with the account and key
+shared. The local filesystem store is still what a fresh clone and the whole
+suite run on. **The keys carry no provider, no account and no URL**, which is
+what made the move an adapter rather than a re-import and what will make the
+next move the same.
+
+**Nothing may cross between the two buckets, and with both on one provider that
+is five walls rather than four** — `lib/artwork/r2.ts` § TWO BUCKETS AND NEVER
+ONE is the list. The two store types and the two bucket *configurations* are
+each mutually unassignable with no cast anywhere; `publicBase` does not exist at
+all on the private configuration; the public bucket's key check refuses an order
+reference; and **a public bucket that is also a private bucket is refused at the
+environment seam**, because a Cloudflare custom domain is attached to a bucket
+and not to a prefix and one token covers both.
 `test/no-order-asset-in-the-public-store.ts` is a file of calls that must not
-compile, so `npm run lint` is the gate. The hazard it is guarding is real and
-written down in `lib/artwork/blob.ts`: `@vercel/blob` falls back to
-`BLOB_READ_WRITE_TOKEN` when given no other credential, so the private store
-takes its OIDC token as a **required argument** and `artworkStoreFromEnv`
-refuses to build it without one. A re-upload **adds a version and keeps the
-last**, so a bad swap found at 3600 px is recoverable; keys are content hashes,
-so re-uploading one corrected page uploads one file and no cache can serve the
-old one. `npm run artwork:upload` is the command. `.gitignore` excludes
-`.artwork/` and `test/order-artwork.test.ts` asserts the rule — it is one
-family's child and git history is permanent.
+compile, so `npm run lint` is the gate, and `test/artwork-separation.test.ts` is
+the other half.
+
+A re-upload **adds a version and keeps the last**, so a bad swap found at
+3600 px is recoverable; keys are content hashes, so re-uploading one corrected
+page uploads one file and no cache can serve the old one.
+`npm run artwork:upload` is the command and `docs/artwork.md` § 6b is the
+repopulation. `.gitignore` excludes `.artwork/` and
+`test/order-artwork.test.ts` asserts the rule — it is one family's child and git
+history is permanent.
 `lib/book/order-upload.ts` holds an upload to the same contract the looks
 are held to, by calling `lib/book/upload.ts` § `pageAgainstContract`, and
 accepts the captain's `spread-NN-left|right` spelling by **deriving** it from

@@ -15,8 +15,8 @@
  * 2. **The released artwork store** — `lib/artwork/release.ts`, which is where
  *    the captain's finished pages, the chooser portraits and the golden ghost
  *    halves are, because none of them can be in a public repository. That is
- *    the public Vercel Blob store `olb-looks` when it is configured and a
- *    directory on this machine when it is not; `lib/artwork/blob.ts` is the
+ *    the public Cloudflare R2 bucket when it is configured and a
+ *    directory on this machine when it is not; `lib/artwork/r2.ts` is the
  *    adapter and nothing here knows which of the two answered. It is looked at
  *    *after* the fixtures and *before* R2: the fixtures are a few kilobytes and
  *    always present.

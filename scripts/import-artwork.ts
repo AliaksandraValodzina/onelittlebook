@@ -11,13 +11,13 @@
  * the repository keeps ids, digests and slot coordinates and no pixels at all.
  * `docs/artwork.md` is the inventory of what was delivered and what it became.
  *
- * **It writes wherever this environment points.** With `BLOB_READ_WRITE_TOKEN`
- * set that is the public Blob store `olb-looks`; with it unset it is a directory
- * on this machine. Every line it prints names the store it wrote to, so there
- * is no way to be wrong about where the bytes went. `npm run artwork:upload` is
- * the command for the bucket specifically: it does all three sets in one run,
- * refuses without the token, and **skips a set whose pages have not changed** —
- * see `scripts/upload-artwork.ts`.
+ * **It writes wherever this environment points.** With the public R2 bucket
+ * configured that is the bucket; with it unset it is a directory on this
+ * machine. Every line it prints names the store it wrote to, so there is no way
+ * to be wrong about where the bytes went. `npm run artwork:upload` is the
+ * command for the bucket specifically: it does all three sets in one run,
+ * refuses and names the empty rows without the credentials, and **skips a set
+ * whose pages have not changed** — see `scripts/upload-artwork.ts`.
  *
  * It **refuses before it writes**, every time, rather than trusting that
  * somebody ran a checker first: an import changes what a paid book looks like,
@@ -63,7 +63,7 @@ function usage(): never {
       "  npm run artwork -- portraits <dir>",
       "  npm run artwork -- ghosts    <dir>",
       "",
-      "to push all three to the public Blob store instead: npm run artwork:upload",
+      "to push all three to the public R2 bucket instead: npm run artwork:upload",
     ].join("\n"),
   );
   process.exitCode = 2;
@@ -262,8 +262,9 @@ async function status(): Promise<void> {
   console.log(
     `\nstill owed: ${FIRST_BOOK.looks.length - delivered.length} more look(s), a cover for every ` +
       "look, and the portrait replacements in docs/artwork.md § 2. The storage question is\n" +
-      "answered — two Vercel Blob stores, olb-looks public and olb-orders private;\n" +
-      "lib/artwork/blob.ts is the adapter and `npm run artwork:upload` is how the looks get there.",
+      "answered — two Cloudflare R2 buckets, the looks bucket public behind a custom domain\n" +
+      "and the order-artwork bucket private; lib/artwork/r2.ts is the adapter and\n" +
+      "`npm run artwork:upload` is how the looks get there.",
   );
 }
 

@@ -3,7 +3,7 @@
  *
  * There are two commands that take the delivered artwork: `npm run artwork`
  * imports it onto this machine and `npm run artwork:upload` pushes it to the
- * public Blob store. **They do the same preparation and this is it**, extracted
+ * public artwork bucket. **They do the same preparation and this is it**, extracted
  * the day the second one existed, because the one thing those two commands may
  * never disagree about is what a page *is* — the mapping from a filename onto a
  * page id, the flattening of a portrait, the half of a spread that is kept, and

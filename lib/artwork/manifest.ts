@@ -7,7 +7,7 @@
  * from whatever a tool reported.
  *
  * It is its own module for the same reason `./keys.ts` is: `./store.ts` holds
- * the filesystem implementation and `./blob.ts` holds the bucket, and the one
+ * the filesystem implementation and `./object-store.ts` holds the buckets, and the one
  * thing that must not differ between them is the shape of the manifest and how
  * the numbers in it were arrived at. Two readers would be two opinions about
  * what a page is, and the wrong one is always the one nobody is reading when a

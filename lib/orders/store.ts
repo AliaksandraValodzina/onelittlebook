@@ -37,7 +37,7 @@
  * because the interesting half of this module is the order *lifecycle*
  * (`claim`, `markPaid`, `markDispatched`) and that half must be testable
  * without a bucket. `memoryStore()` is the whole of what a test needs, and
- * swapping R2 for Vercel Blob or for Postgres later is one file and no
+ * swapping R2 for something else later is one file and no
  * changes above this line.
  *
  * ## Photographs are private

@@ -1,20 +1,28 @@
 /**
- * **The Blob adapter, and the three states a read can be in.**
+ * **The two artwork buckets, and the three states a read can be in.**
  *
- * `lib/artwork/blob.ts` is the captain's two Vercel Blob stores behind the
- * `ArtworkStore` interface the filesystem already answered. Everything about it
- * that could be wrong is wrong in one of three ways, and this file is those
- * three:
+ * `lib/artwork/object-store.ts` is the layout and `lib/artwork/r2.ts` is the
+ * provider; between them they are the captain's two Cloudflare R2 buckets
+ * behind the `ArtworkStore` interface the filesystem already answered.
+ * Everything about that could be wrong is wrong in one of three ways, and this
+ * file is those three:
  *
  * **The layout could be wrong** — a key that is not a content hash, a manifest
  * written where the next version will overwrite it, a re-upload that duplicates
  * what is already there. Those are asserted against an **in-memory bucket**,
- * because `BlobApi` is a four-operation seam and `vercelBlobApi` is the only
- * thing in the repository that imports `@vercel/blob`. Nothing here reaches a
- * live store, exactly as no test reaches a live Stripe or a live R2.
+ * because `ObjectApi` is a four-operation seam and `r2ObjectApi` is the only
+ * thing in the repository that puts an artwork byte on a wire.
+ * `test/artwork-r2.test.ts` is that half: the signed requests, against a fake
+ * `fetch`. Nothing in either file reaches a live bucket, exactly as no test
+ * reaches a live Stripe.
+ *
+ * **The layout is also the thing that did not change when the provider did.**
+ * These keys are byte-for-byte the keys the Vercel Blob store wrote, which is
+ * what made the move an adapter rather than a re-import, and the assertions
+ * below are the same assertions that held then.
  *
  * **The read could resolve to the wrong place.** Three states, all real:
- * the Blob store configured and populated; a local directory with artwork in
+ * the public bucket configured and populated; a local directory with artwork in
  * it; and neither, which is a fresh clone, CI and every machine that has not
  * imported anything. The third is the one this repository cannot afford to
  * lose — `templates/first-book.ts` draws a complete printable book from its own
@@ -51,13 +59,16 @@ import {
   tilePageId,
 } from "../lib/artwork/release";
 import {
-  LOOKS_TOKEN_VAR,
-  looksBlobStore,
-  ordersBlobStore,
-  publicBaseFor,
-  storeIdOfToken,
-  type BlobApi,
-} from "../lib/artwork/blob";
+  ACCESS_KEY_VAR,
+  ACCOUNT_VAR,
+  LOOKS_BUCKET_VAR,
+  PUBLIC_BASE_VAR,
+  SECRET_KEY_VAR,
+  looksR2Store,
+  orderArtworkR2Store,
+  publicBaseIn,
+} from "../lib/artwork/r2";
+import type { ObjectApi } from "../lib/artwork/object-store";
 import { artworkBytesFor } from "../lib/artwork/store";
 import { prepareLookPages } from "../lib/artwork/prepare";
 import { assetRouteUrl, hrefIn } from "../lib/assets/address";
@@ -73,22 +84,44 @@ const SIZE = FIRST_BOOK.page.print.pixels.width;
 const NOW = new Date("2026-11-10T09:00:00.000Z");
 
 /**
- * A read-write token of the shape the platform issues.
+ * The two bucket configurations, with credentials that are words.
  *
- * `vercel_blob_rw_<storeId>_<secret>`, so the store id is the fourth field.
- * The secret here is a word, and several assertions below are that no part of
- * it ever comes back out.
+ * Several assertions below are that no part of either secret ever comes back
+ * out of anything a store returns — the admin page prints `describe`, and this
+ * repository is public and so are its logs.
  */
-const TOKEN = "vercel_blob_rw_abc123store_sekritsekrit";
-const STORE_ID = "abc123store";
-const BASE = `https://${STORE_ID}.public.blob.vercel-storage.com`;
+const LOOKS = {
+  for: "looks",
+  accountId: "accountsekrit",
+  bucket: "onelittlebook-looks",
+  accessKeyId: "keysekrit",
+  secretAccessKey: "secretsekrit",
+  publicBase: "https://art.onelittlebook.test",
+} as const;
+const ORDERS = {
+  for: "order-artwork",
+  accountId: "accountsekrit",
+  bucket: "onelittlebook-orders",
+  accessKeyId: "keysekrit",
+  secretAccessKey: "secretsekrit",
+} as const;
+const BASE = LOOKS.publicBase;
+
+/** Everything the public bucket needs, as an environment. */
+const LOOKS_ENV = {
+  [ACCOUNT_VAR]: LOOKS.accountId,
+  [LOOKS_BUCKET_VAR]: LOOKS.bucket,
+  [ACCESS_KEY_VAR]: LOOKS.accessKeyId,
+  [SECRET_KEY_VAR]: LOOKS.secretAccessKey,
+  [PUBLIC_BASE_VAR]: LOOKS.publicBase,
+};
 
 // ---------------------------------------------------------------------------
 // The in-memory bucket
 // ---------------------------------------------------------------------------
 
 interface Bucket {
-  api: BlobApi;
+  api: ObjectApi;
   /** Everything written, by pathname. */
   files: Map<string, Uint8Array>;
   /** Every `put` that happened, in order — including the manifests. */
@@ -98,7 +131,7 @@ interface Bucket {
 function bucket(base = BASE): Bucket {
   const files = new Map<string, Uint8Array>();
   const puts: string[] = [];
-  const api: BlobApi = {
+  const api: ObjectApi = {
     async put(pathname, bytes) {
       puts.push(pathname);
       files.set(pathname, bytes);
@@ -171,40 +204,59 @@ async function directory(): Promise<string> {
   return dir;
 }
 
+/** Every variable the public bucket reads, cleared between cases. */
+const ROWS = Object.keys(LOOKS_ENV);
+
+function clear() {
+  for (const row of ROWS) delete process.env[row];
+  delete process.env[RELEASE_ARTWORK_DIR_VAR];
+}
+
 beforeEach(() => {
   forgetReleaseArtwork();
-  delete process.env[LOOKS_TOKEN_VAR];
-  delete process.env[RELEASE_ARTWORK_DIR_VAR];
+  clear();
 });
 
 afterAll(async () => {
   for (const dir of temporary) await rm(dir, { recursive: true, force: true });
-  delete process.env[LOOKS_TOKEN_VAR];
-  delete process.env[RELEASE_ARTWORK_DIR_VAR];
+  clear();
   forgetReleaseArtwork();
 });
 
 // ---------------------------------------------------------------------------
-// The token, and what may be read out of it
+// The sentence the admin page prints
 // ---------------------------------------------------------------------------
 
-describe("the store id in a read-write token", () => {
-  it("is the fourth field, which is how the SDK finds it too", () => {
-    expect(storeIdOfToken(TOKEN)).toBe(STORE_ID);
-    expect(publicBaseFor(STORE_ID)).toBe(BASE);
+describe("where it says it is reading from", () => {
+  it("names the bucket and the domain and no credential at all", () => {
+    const sentence = looksR2Store(LOOKS, bucket().api).describe;
+    expect(sentence).toContain(LOOKS.bucket);
+    expect(sentence).toContain(LOOKS.publicBase);
+    for (const secret of [LOOKS.accountId, LOOKS.accessKeyId, LOOKS.secretAccessKey]) {
+      expect(sentence).not.toContain(secret);
+    }
   });
 
-  it("is null for anything not shaped like a token, rather than a guess", () => {
-    expect(storeIdOfToken("")).toBeNull();
-    expect(storeIdOfToken("not-a-token")).toBeNull();
-    expect(storeIdOfToken("vercel_blob_rw_onlythree")).toBeNull();
+  it("says out loud when the domain is the rate-limited r2.dev default", () => {
+    const smoke = looksR2Store({ ...LOOKS, publicBase: "https://pub-abc.r2.dev" }, bucket().api);
+    expect(smoke.describe).toContain("r2.dev");
+    expect(smoke.describe).toContain("not for production");
+    // And the custom domain says nothing of the kind, so the sentence is a
+    // signal rather than noise on every page load.
+    expect(looksR2Store(LOOKS, bucket().api).describe).not.toContain("r2.dev");
   });
 
-  it("never lets the secret out in the sentence the admin page prints", () => {
-    const describe_ = looksBlobStore(TOKEN, bucket().api).describe;
-    expect(describe_).toContain(STORE_ID);
-    expect(describe_).not.toContain("sekritsekrit");
-    expect(describe_).not.toContain(TOKEN);
+  it("reads the domain as unset rather than guessing at half of one", () => {
+    // `lib/env.ts` § isSet's reason: a blank row, a bare hostname and a pasted
+    // variable name are what a dashboard holds after a hurried deploy, and a
+    // half-built URL in an `<img src>` draws a hole on a page somebody is
+    // deciding whether to buy from.
+    for (const raw of ["", "   ", "art.onelittlebook.test", "/art", PUBLIC_BASE_VAR]) {
+      expect(publicBaseIn({ [PUBLIC_BASE_VAR]: raw })).toBeNull();
+    }
+    expect(publicBaseIn({ [PUBLIC_BASE_VAR]: "https://art.onelittlebook.test/" })).toBe(
+      "https://art.onelittlebook.test",
+    );
   });
 });
 
@@ -215,7 +267,7 @@ describe("the store id in a read-write token", () => {
 describe("what one upload puts in the bucket", () => {
   it("names the bytes by their content and the manifest by its version", async () => {
     const b = bucket();
-    const store = looksBlobStore(TOKEN, b.api);
+    const store = looksR2Store(LOOKS, b.api);
     const bytes = square([200, 30, 30]);
 
     const version = await store.put(lookSet(DELIVERED), [{ pageId: "page-002", bytes }], NOW);
@@ -233,7 +285,7 @@ describe("what one upload puts in the bucket", () => {
 
   it("records the CDN url, which is what the preview is served from", async () => {
     const b = bucket();
-    const store = looksBlobStore(TOKEN, b.api);
+    const store = looksR2Store(LOOKS, b.api);
     const bytes = square([10, 90, 200]);
 
     const version = await store.put(TILES_SET, [{ pageId: tilePageId(DELIVERED), bytes }], NOW);
@@ -243,7 +295,7 @@ describe("what one upload puts in the bucket", () => {
 
   it("reads back exactly what went in, through the interface", async () => {
     const b = bucket();
-    const store = looksBlobStore(TOKEN, b.api);
+    const store = looksR2Store(LOOKS, b.api);
     const bytes = square([40, 160, 70]);
     await store.put(lookSet(DELIVERED), [{ pageId: "page-003", bytes }], NOW);
 
@@ -257,7 +309,7 @@ describe("what one upload puts in the bucket", () => {
 
   it("lists its sets, which is the operation the digest index needs", async () => {
     const b = bucket();
-    const store = looksBlobStore(TOKEN, b.api);
+    const store = looksR2Store(LOOKS, b.api);
     await store.put(lookSet(DELIVERED), [{ pageId: "page-002", bytes: square([1, 2, 3]) }], NOW);
     await store.put(TILES_SET, [{ pageId: tilePageId(DELIVERED), bytes: square([4, 5, 6]) }], NOW);
 
@@ -265,7 +317,7 @@ describe("what one upload puts in the bucket", () => {
   });
 
   it("has nothing to say about a set nobody has uploaded", async () => {
-    const store = looksBlobStore(TOKEN, bucket().api);
+    const store = looksR2Store(LOOKS, bucket().api);
     expect(await store.sets()).toEqual([]);
     expect(await store.versions(TILES_SET)).toEqual([]);
     expect(await store.current(TILES_SET)).toBeNull();
@@ -286,7 +338,7 @@ describe("re-uploading", () => {
 
   it("uploads nothing twice, because a key is a content hash", async () => {
     const b = bucket();
-    const store = looksBlobStore(TOKEN, b.api);
+    const store = looksR2Store(LOOKS, b.api);
     await store.put(TILES_SET, twelve(1), NOW);
     const afterFirst = b.puts.length;
 
@@ -299,7 +351,7 @@ describe("re-uploading", () => {
 
   it("uploads exactly the corrected pictures and nothing else", async () => {
     const b = bucket();
-    const store = looksBlobStore(TOKEN, b.api);
+    const store = looksR2Store(LOOKS, b.api);
     await store.put(TILES_SET, twelve(1), NOW);
     const before = b.puts.length;
 
@@ -316,7 +368,7 @@ describe("re-uploading", () => {
 
   it("serves the corrected picture from a different url, so no cache can be stale", async () => {
     const b = bucket();
-    const store = looksBlobStore(TOKEN, b.api);
+    const store = looksR2Store(LOOKS, b.api);
     const first = await store.put(TILES_SET, [{ pageId: tilePageId(DELIVERED), bytes: square([9, 9, 9]) }], NOW);
     const second = await store.put(TILES_SET, [{ pageId: tilePageId(DELIVERED), bytes: square([9, 9, 10]) }], NOW);
 
@@ -330,7 +382,7 @@ describe("re-uploading", () => {
 
   it("never overwrites a manifest, so a version number is never reused", async () => {
     const b = bucket();
-    const store = looksBlobStore(TOKEN, b.api);
+    const store = looksR2Store(LOOKS, b.api);
     await store.put(GHOSTS_SET, [{ pageId: "page-002", bytes: square([1, 1, 1]) }], NOW);
     await store.put(GHOSTS_SET, [{ pageId: "page-002", bytes: square([2, 2, 2]) }], NOW);
     await store.put(GHOSTS_SET, [{ pageId: "page-002", bytes: square([3, 3, 3]) }], NOW);
@@ -378,10 +430,10 @@ describe("validating before uploading", () => {
 // Three states of a read
 // ---------------------------------------------------------------------------
 
-describe("reading: the Blob store configured and populated", () => {
+describe("reading: the public bucket configured and populated", () => {
   async function populated() {
     const b = bucket();
-    const store = looksBlobStore(TOKEN, b.api);
+    const store = looksR2Store(LOOKS, b.api);
     // Two pages at the book's declared print size — the only size `validateBook`
     // accepts for a look's artwork, which is the point of the assertion below.
     const pages = babyPages(2).map((page, at) => ({
@@ -462,19 +514,43 @@ describe("reading: a local directory with artwork in it", () => {
     expect(hrefIn(art.urls)(ref)).toBe(`/api/assets/${ref.sha256}.png`);
   });
 
-  it("is what the environment chooses with no token set", async () => {
+  it("is what the environment chooses with no bucket configured", async () => {
     const root = await directory();
     process.env[RELEASE_ARTWORK_DIR_VAR] = root;
     expect(releaseStoreFromEnv(process.env).describe).toContain(root);
   });
 
-  it("is not what the environment chooses when the token is there", async () => {
+  it("is not what the environment chooses when the bucket is there", async () => {
     const root = await directory();
     process.env[RELEASE_ARTWORK_DIR_VAR] = root;
-    process.env[LOOKS_TOKEN_VAR] = TOKEN;
+    Object.assign(process.env, LOOKS_ENV);
     const chosen = releaseStoreFromEnv(process.env).describe;
-    expect(chosen).toContain(STORE_ID);
+    expect(chosen).toContain(LOOKS.bucket);
     expect(chosen).not.toContain(root);
+  });
+
+  it("is still what it chooses for a half-configured bucket, and says which rows are empty", async () => {
+    // The state that looks configured from a dashboard and is not. Every row
+    // in turn, so no single one of them can quietly become optional.
+    const root = await directory();
+    for (const row of ROWS) {
+      clear();
+      process.env[RELEASE_ARTWORK_DIR_VAR] = root;
+      Object.assign(process.env, LOOKS_ENV);
+      delete process.env[row];
+
+      const sentence = releaseStoreFromEnv(process.env).describe;
+      expect(sentence, row).toContain(root);
+      expect(sentence, row).toContain(row);
+      expect(sentence, row).not.toContain(LOOKS.bucket);
+    }
+  });
+
+  it("says the custom domain is not an optional row, because reads come from it", async () => {
+    process.env[RELEASE_ARTWORK_DIR_VAR] = await directory();
+    Object.assign(process.env, LOOKS_ENV);
+    delete process.env[PUBLIC_BASE_VAR];
+    expect(releaseStoreFromEnv(process.env).describe).toContain("never from a signed URL");
   });
 });
 
@@ -506,13 +582,13 @@ describe("reading: neither, which is a fresh clone and all of CI", () => {
 });
 
 // ---------------------------------------------------------------------------
-// The private store, read through the same interface
+// The private bucket, read through the same interface
 // ---------------------------------------------------------------------------
 
-describe("the private store", () => {
+describe("the private bucket", () => {
   it("holds an order's artwork and publishes no url for any of it", async () => {
     const b = bucket();
-    const store = ordersBlobStore("store_orders", "an-oidc-token", b.api);
+    const store = orderArtworkR2Store(ORDERS, b.api);
     const bytes = square([120, 60, 20]);
 
     const version = await store.put(REF, [{ pageId: "page-006", bytes }], NOW);
@@ -525,9 +601,11 @@ describe("the private store", () => {
   });
 
   it("says where it is reading from without naming a credential", () => {
-    const store = ordersBlobStore("store_orders", "an-oidc-token", bucket().api);
-    expect(store.describe).toContain("store_orders");
-    expect(store.describe).not.toContain("an-oidc-token");
+    const store = orderArtworkR2Store(ORDERS, bucket().api);
+    expect(store.describe).toContain(ORDERS.bucket);
     expect(store.describe).toContain("no public URLs");
+    for (const secret of [ORDERS.accountId, ORDERS.accessKeyId, ORDERS.secretAccessKey]) {
+      expect(store.describe).not.toContain(secret);
+    }
   });
 });
