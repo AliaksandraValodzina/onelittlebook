@@ -305,6 +305,17 @@ export function asPreviewAsset(ref: AssetRef): PreviewAsset {
  *
  * Only the **current** version of each set is bound. The earlier ones are still
  * on disk, which is the recovery this store exists for; nothing draws them.
+ *
+ * **Every set is asked for at once, and the answers are used in the book's own
+ * order.** One `current` per look, in a loop with an `await` in it, was
+ * fourteen serial round trips to a bucket on the other side of the world
+ * before the tiles and the ghosts had even been asked for — about eight
+ * seconds on the front of every screen of the buyer flow. The reads are
+ * independent, so they are issued together; what must *not* become
+ * concurrent is the **order of the result**, which is why `sets` and `pages`
+ * are filled by walking `book.looks` over the settled answers rather than by
+ * whichever bucket replied first. `test/release-artwork.test.ts` holds that
+ * with a store that answers the last look instantly and the first one slowly.
  */
 export async function releaseArtworkFor(
   book: BookTemplate,
@@ -316,8 +327,15 @@ export async function releaseArtworkFor(
   // said it holds those bytes at that URL.
   const urls: Record<string, string> = {};
 
-  for (const look of book.looks) {
-    const version = await store.current(lookSet(look.id));
+  const [lookVersions, tiles, ghosts, held] = await Promise.all([
+    Promise.all(book.looks.map((look) => store.current(lookSet(look.id)))),
+    store.current(TILES_SET),
+    store.current(GHOSTS_SET),
+    store.screens(),
+  ]);
+
+  for (const [i, look] of book.looks.entries()) {
+    const version = lookVersions[i];
     if (!version || version.pages.length === 0) continue;
     const pages: Record<string, AssetRef> = {};
     for (const page of version.pages) {
@@ -333,7 +351,6 @@ export async function releaseArtworkFor(
     });
   }
 
-  const tiles = await store.current(TILES_SET);
   if (tiles) {
     for (const page of tiles.pages) {
       const lookId = lookOfTilePageId(page.pageId);
@@ -354,7 +371,6 @@ export async function releaseArtworkFor(
     });
   }
 
-  const ghosts = await store.current(GHOSTS_SET);
   if (ghosts) {
     for (const page of ghosts.pages) {
       out.ghosts[page.pageId] = asPreviewAsset(page.asset);
@@ -378,7 +394,6 @@ export async function releaseArtworkFor(
    * no version binds any more. Those are still readable and nothing draws
    * them, which is the same rule the versions themselves follow.
    */
-  const held = await store.screens();
   const screen: Record<string, ScreenAddress> = {};
   for (const digest of Object.keys(urls)) {
     const found = held[digest];
@@ -427,17 +442,84 @@ export interface Delivered {
  */
 export async function deliveredBook(
   book: BookTemplate,
-  store: PublicArtworkStore = releaseStoreFromEnv(),
+  store?: PublicArtworkStore,
 ): Promise<Delivered> {
-  const art = await releaseArtworkFor(book, store);
-  return { book: bookWithReleaseArtwork(book, art), assets: art.urls, screen: art.screen };
+  if (!store) return deliveredFromEnv(book);
+  return deliveredFrom(book, store);
 }
 
 export async function bookAsDelivered(
   book: BookTemplate,
-  store: PublicArtworkStore = releaseStoreFromEnv(),
+  store?: PublicArtworkStore,
 ): Promise<BookTemplate> {
   return (await deliveredBook(book, store)).book;
+}
+
+async function deliveredFrom(book: BookTemplate, store: PublicArtworkStore): Promise<Delivered> {
+  const art = await releaseArtworkFor(book, store);
+  return { book: bookWithReleaseArtwork(book, art), assets: art.urls, screen: art.screen };
+}
+
+// ---------------------------------------------------------------------------
+// The catalogue, held for a minute
+// ---------------------------------------------------------------------------
+
+/**
+ * **How long a read of the store is reused before it is made again.**
+ *
+ * The thing being cached is *which version of each set is current* — a fact
+ * that changes only when the captain runs `npm run artwork:upload`, a handful
+ * of times a week. The cost of not caching it is the whole bucket read on the
+ * front of every page of the buyer flow, for every visitor.
+ *
+ * A minute is chosen against the promise `npm run artwork:upload` makes in its
+ * closing line and this file makes above: **an upload is picked up on its own,
+ * with no redeploy.** It still is — a minute later at worst, which is what
+ * "time-based revalidation" buys and why the window is a minute rather than an
+ * hour.
+ *
+ * **Why a plain in-process memo and not `"use cache"` or `unstable_cache`.**
+ * Both of those serialise what they hold into Next's data cache, and what is
+ * held here is a read of an *environment*: it is keyed by `store.describe`,
+ * which is the whole point — a dev server that repoints `RELEASE_ARTWORK_DIR`,
+ * or an environment whose bucket rows are half-filled, must not see the
+ * previous store's catalogue. A memo beside `index` below is keyed on exactly
+ * that, is identical on the local filesystem store and the bucket (point 3 of
+ * this file's header: the no-artwork state stays one cheap read and says
+ * nothing), and is dropped by `forgetReleaseArtwork` like every other cache in
+ * this module. On Fluid Compute an instance serves many requests, so one read
+ * a minute per instance is what this costs.
+ */
+export const CATALOGUE_TTL_MS = 60_000;
+
+type Held = { key: string; at: number; delivered: Promise<Delivered> };
+let catalogue: Held | null = null;
+
+/** The clock, as an argument, so the window itself is testable. */
+let now: () => number = () => Date.now();
+
+/** For tests: drive the TTL rather than waiting out a minute of real time. */
+export function setCatalogueClock(clock: (() => number) | null): void {
+  now = clock ?? (() => Date.now());
+}
+
+function deliveredFromEnv(book: BookTemplate): Promise<Delivered> {
+  const store = releaseStoreFromEnv();
+  // The book is part of the key because `deliveredBook` takes one: a second
+  // title would otherwise be served the first one's artwork.
+  const key = `${book.id}@${book.rev} ${store.describe}`;
+  const at = now();
+  if (catalogue && catalogue.key === key && at - catalogue.at < CATALOGUE_TTL_MS) {
+    return catalogue.delivered;
+  }
+  // The promise is cached, not the value, so fourteen visitors arriving
+  // together make one read between them rather than fourteen.
+  const delivered = deliveredFrom(book, store).catch((err: unknown) => {
+    if (catalogue?.delivered === delivered) catalogue = null;
+    throw err;
+  });
+  catalogue = { key, at, delivered };
+  return delivered;
 }
 
 // ---------------------------------------------------------------------------
@@ -470,6 +552,7 @@ let cached: { key: string; entries: Map<string, Located>; missed: Set<string> } 
 /** For tests, and for anything that has just written artwork and wants to read it. */
 export function forgetReleaseArtwork(): void {
   cached = null;
+  catalogue = null;
 }
 
 async function index(store: ArtworkStore): Promise<Map<string, Located>> {
