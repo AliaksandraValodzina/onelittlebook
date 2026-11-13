@@ -30,23 +30,37 @@
  *
  * The two candidates were **Vercel Blob** — one integration on the platform
  * this app already runs on, no credentials to rotate by hand, reads
- * authenticated by OIDC — and the **Keepnook-style content origin**, the R2
- * bucket the orders are already in, under a private prefix exactly as a buyer's
- * photograph is (`lib/orders/store.ts` § Photographs are private).
+ * authenticated by OIDC — and **Cloudflare R2**, which the captain already runs
+ * for Keepnook's artwork.
  *
- * **The captain picked Blob, and picked it twice**, which is the part worth
- * reading. Two stores exist, not one:
+ * **The captain picked Blob, and then the numbers picked R2.** The public store
+ * filled up: 1.03 GB across 331 files against Vercel Blob's 1 GB limit, with
+ * the last upload landing one look's masters and not its screen copies.
+ * Fourteen looks at twenty-four pages is 336 images plus covers — about 2.5 GB
+ * — so it was never going to fit at any point rather than being one tier short.
+ * R2 is 10 GB free with no egress charge, which is the right shape for a shop
+ * whose whole promise is that anybody may read the entire book with no account.
+ * The private half followed because it was **empty**: no data to migrate, and
+ * one provider is one credential set, one adapter and one failure mode.
+ *
+ * Two stores still exist, and they are now **two buckets**:
  *
  * | Store | Access | Reached through | Holds |
  * |---|---|---|---|
- * | `olb-looks` | **public** | `BLOB_READ_WRITE_TOKEN` | the looks' pages, the portrait tiles, the golden ghost halves |
- * | `olb-orders` | **private** | `OLB_ORDERS_STORE_ID` + OIDC | one order's regenerated artwork |
+ * | the looks bucket | **public** | `R2_LOOKS_BUCKET` + `R2_PUBLIC_BASE` | the looks' pages, the portrait tiles, the golden ghost halves, the covers |
+ * | the order-artwork bucket | **private** | `R2_ORDERS_BUCKET` | one order's regenerated artwork |
  *
- * `./blob.ts` implements this interface against both and `./keys.ts` is the key
- * check both of them share. **`localArtworkStore` below did not become legacy**
- * — it is what a fresh clone, the whole test suite and the captain's own laptop
- * run on, with no token and no network, and the bucket was only ever possible
- * to add because this interface existed first.
+ * `./object-store.ts` is the layout both share, `./r2.ts` is the provider, and
+ * `./keys.ts` is the key check all of them share. **`localArtworkStore` below
+ * did not become legacy** — it is what a fresh clone, the whole test suite and
+ * the captain's own laptop run on, with no credential and no network, and both
+ * buckets were only ever possible to add because this interface existed first.
+ *
+ * **With both halves on one provider the wall between them matters more, not
+ * less**, because the only thing separating them in a signed request is the
+ * bucket name in the path. `./r2.ts` § TWO BUCKETS AND NEVER ONE is the five
+ * walls and why the fifth one — a public bucket that is also a private bucket —
+ * is refused at the environment seam.
  *
  * ## The one thing that may never cross between the two stores
  *
@@ -54,17 +68,20 @@
  * the whole-book preview, with no watermark and no account, and serving
  * twenty-five of them from a CDN rather than from twenty-five function
  * invocations is the reason that promise is affordable. Private is the equally
- * deliberate other half: `olb-orders` holds artwork regenerated from a
- * photograph of **one family's child**, and a guessable URL for that is the
- * worst thing this product could leak.
+ * deliberate other half: the order-artwork bucket holds artwork regenerated
+ * from a photograph of **one family's child**, and a guessable URL for that is
+ * the worst thing this product could leak. **A custom domain is attached to a
+ * bucket and not to a prefix**, so the two cannot be one bucket — that is the
+ * whole of why there are two.
  *
  * So the types below make the mistake **not compile**. `PublicArtworkStore` and
  * `PrivateArtworkStore` are distinct types with no function that turns one into
  * the other, every caller that writes per-order artwork asks for the private
- * one by type, and the public store's key check (`isReleaseSet`) refuses an
- * order reference at runtime as well. `test/artwork-separation.test.ts` is the
- * proof, including a file whose `@ts-expect-error`s fail `npm run lint` the day
- * the wall stops standing.
+ * one by type, the two bucket *configurations* are mutually unassignable in the
+ * same way (`./r2.ts` § `LooksBucket`), and the public store's key check
+ * (`isReleaseSet`) refuses an order reference at runtime as well.
+ * `test/artwork-separation.test.ts` is the proof, including a file whose
+ * `@ts-expect-error`s fail `npm run lint` the day the wall stops standing.
  *
  * **The local implementation is not production.** A Vercel function's
  * filesystem is read-only outside `/tmp`, and `/tmp` is per instance and gone
@@ -102,12 +119,11 @@ import {
   type ArtworkVersion,
 } from "./manifest";
 import {
-  OIDC_TOKEN_VAR,
-  ORDERS_STORE_VAR,
-  ordersBlobStore,
-  ordersStoreIn,
-  ordersStoreNamedButUnreachable,
-} from "./blob";
+  ORDER_ARTWORK_BUCKET_VAR,
+  missingFor,
+  orderArtworkBucketIn,
+  orderArtworkR2Store,
+} from "./r2";
 
 export { NotAnOrderReference, NO_SCREEN_ADDRESSES };
 export type { ArtworkPage, ArtworkVersion };
@@ -157,16 +173,16 @@ export interface ArtworkStore {
  *
  * The looks' pages, the portrait tiles and the golden ghost halves: the
  * same twenty-four pictures for every buyer, shown to anybody who opens the
- * preview. Backed by `olb-looks`, which is **public**, so everything in it has
- * a CDN URL and that is the point of it.
+ * preview. Backed by the looks bucket, which is **public** over a custom
+ * domain, so everything in it has a CDN URL and that is the point of it.
  *
  * `holds` is a discriminant and exists for exactly one reason: to make
  * `PublicArtworkStore` and `PrivateArtworkStore` **mutually unassignable**, so
  * a function that takes one cannot be handed the other. There is no cast, no
  * widening helper and no function in this repository that turns one into the
  * other. A store is minted by exactly four constructors — `localOrderStore`
- * below, `localReleaseStore` in `./release.ts`, and `looksBlobStore` /
- * `ordersBlobStore` in `./blob.ts` — and that is the whole of the surface.
+ * below, `localReleaseStore` in `./release.ts`, and `looksR2Store` /
+ * `orderArtworkR2Store` in `./r2.ts` — and that is the whole of the surface.
  *
  * **It has two operations the interface above does not**, and they are here
  * rather than there for the same reason the tag is: a screen-sized copy exists
@@ -213,9 +229,10 @@ export interface ScreenUpload {
  * **A store for one order's regenerated artwork, and nothing else.**
  *
  * A child who resembles the buyer's own, painted by hand into this book's
- * pages. Backed by `olb-orders`, which is **private**: nothing in it has a URL,
- * reads happen on the server behind `lib/admin/guard.ts`, and the type above is
- * what stops anybody putting one of these pictures somewhere a URL would exist.
+ * pages. Backed by the order-artwork bucket, which is **private**: no custom
+ * domain, nothing in it has a URL, reads happen on the server behind
+ * `lib/admin/guard.ts`, and the type above is what stops anybody putting one of
+ * these pictures somewhere a URL would exist.
  */
 export interface PrivateArtworkStore extends ArtworkStore {
   readonly holds: "per-order";
@@ -396,22 +413,30 @@ export function artworkRoot(env: Record<string, string | undefined>): string {
  * why it is there.
  */
 export function artworkStoreFromEnv(env: Record<string, string | undefined>): PrivateArtworkStore {
-  const configured = ordersStoreIn(env);
-  if (configured) return ordersBlobStore(configured.storeId, configured.oidcToken);
+  const configured = orderArtworkBucketIn(env);
+  if (configured) return orderArtworkR2Store(configured);
+
   const local = localOrderStore(artworkRoot(env));
-  if (!ordersStoreNamedButUnreachable(env)) return local;
-  // Named but unreachable is its own state and gets its own sentence, because
-  // it is the one that looks configured from the dashboard and is not: the
-  // store id is set and this process has no OIDC token to authenticate with.
-  // `./blob.ts` § the OIDC token says why that may not quietly fall through to
-  // the SDK's own credential search.
+  const missing = missingFor(env, "order-artwork");
+  // Nothing named at all is the ordinary unconfigured state — a fresh clone,
+  // CI, the captain's own laptop — and it gets the local store's own sentence.
+  if (missing.length === ORDER_ARTWORK_ROWS) return local;
+  // **Half-configured is its own state and gets its own sentence**, because it
+  // is the one that looks configured from the dashboard and is not: a bucket
+  // named with no key to reach it, or a key with no bucket. Saying which rows
+  // are empty is the same refusal shape the money path has, and it is said out
+  // loud on /admin rather than quietly writing to a directory a Vercel function
+  // throws away on the next deploy.
   return {
     ...local,
     describe:
-      `${local.describe} — ${ORDERS_STORE_VAR} is set, but this process has no ` +
-      `${OIDC_TOKEN_VAR}, so nothing can be written to the private Blob store`,
+      `${local.describe} — ${ORDER_ARTWORK_BUCKET_VAR} is half-configured ` +
+      `(${missing.join(", ")} empty), so nothing can be written to the private R2 bucket`,
   };
 }
+
+/** How many rows the private artwork bucket needs. Derived, never typed twice. */
+const ORDER_ARTWORK_ROWS = missingFor({}, "order-artwork").length;
 
 /**
  * One version's bytes, keyed by content hash — the `supplied` map the renderer

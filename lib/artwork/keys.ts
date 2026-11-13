@@ -2,13 +2,13 @@
  * **What may become a path segment, and what a page may be called.**
  *
  * Lifted out of `./store.ts` the day there were two implementations of
- * `ArtworkStore` — the filesystem and Vercel Blob — because both of them turn a
+ * `ArtworkStore` — the filesystem and a bucket — because both of them turn a
  * key into a path and **the check has to be the same check**. A second copy of
- * this regex in `./blob.ts` is how the bucket would one day accept a key the
+ * this regex in `./object-store.ts` is how the bucket would one day accept a key the
  * disk refuses, and the key the disk refuses is `../../`.
  *
  * It is a leaf on purpose: nothing here imports anything of this project, which
- * is what lets `./store.ts` and `./blob.ts` both have it without importing each
+ * is what lets `./store.ts` and `./object-store.ts` both have it without importing each
  * other. `./store.ts` re-exports `NotAnOrderReference` so no caller had to
  * learn a new module when this one appeared.
  */
@@ -89,7 +89,7 @@ export const SCREEN_PREFIX = "screen/";
  * from**, not by its own content.
  *
  * That is the one place this layout departs from "the content is the name"
- * (`lib/artwork/blob.ts` § The layout) and it is a deliberate trade. A reader
+ * (`lib/artwork/object-store.ts` § The layout) and it is a deliberate trade. A reader
  * holds an `AssetRef` — the master's digest — and needs the answer *"is there a
  * screen-sized copy of this"* without a second manifest to consult. Keying on
  * the master's digest makes that a lookup rather than a round trip, and the

@@ -1,6 +1,6 @@
 /**
- * **The captain's released artwork — in `olb-looks`, or on this machine, or
- * nowhere at all — and what the repository keeps instead of it.**
+ * **The captain's released artwork — in the public R2 bucket, or on this
+ * machine, or nowhere at all — and what the repository keeps instead of it.**
  *
  * Three sets were delivered on 10 November and `docs/artwork.md` is the
  * inventory, including the two portraits being regenerated and the mapping from
@@ -56,14 +56,15 @@
  *
  * ## Where the bytes actually are now
  *
- * The captain picked Vercel Blob and created two stores; this half reads the
- * **public** one, `olb-looks`, through `./blob.ts`. Three states, and all three
- * are real:
+ * The artwork is in **Cloudflare R2**, in two buckets, and this half reads the
+ * **public** one through `./r2.ts` — `./store.ts` § THE DECISION has the
+ * numbers that moved it off Vercel Blob. Three states, and all three are real:
  *
- * 1. **`BLOB_READ_WRITE_TOKEN` set** — the looks' pages, the portrait tiles and
- *    the golden halves come out of `olb-looks`, each with a CDN URL, which is
- *    what `urls` below carries and why a twenty-five page preview is not
- *    twenty-five function invocations.
+ * 1. **The looks bucket configured** — `R2_LOOKS_BUCKET` and `R2_PUBLIC_BASE`
+ *    with the account and key beside them. The looks' pages, the portrait tiles
+ *    and the golden halves come out of that bucket, each with a URL on the
+ *    captain's own domain, which is what `urls` below carries and why a
+ *    twenty-five page preview is not twenty-five function invocations.
  * 2. **A local directory with artwork in it** — the captain's own machine after
  *    `npm run artwork`. No URLs: a directory has no address, so every picture is
  *    served by `/api/assets/<digest>.png`.
@@ -72,8 +73,8 @@
  *    and the book is complete and printable. This is the state the whole test
  *    suite runs in and it is not a degraded one.
  *
- * `test/artwork-blob.test.ts` asserts all three, because each is how the others
- * go wrong.
+ * `test/artwork-buckets.test.ts` asserts all three, because each is how the
+ * others go wrong.
  */
 
 import path from "node:path";
@@ -84,7 +85,7 @@ import type { BookTemplate } from "../book/types";
 import type { PreviewAsset } from "../book/preview-art";
 import { bookWithReleaseArtwork } from "../book/release-art";
 import { isReleaseSet } from "./keys";
-import { LOOKS_TOKEN_VAR, looksBlobStore, looksTokenIn } from "./blob";
+import { PUBLIC_BASE_VAR, looksBucketIn, looksR2Store, missingFor, publicBucketCollision } from "./r2";
 import {
   DEFAULT_ARTWORK_DIR,
   NO_SCREEN_ADDRESSES,
@@ -160,7 +161,7 @@ export function localReleaseStore(root: string): PublicArtworkStore {
      *
      * Writing the files anyway would be bytes in a directory nothing can
      * address. `npm run artwork:upload` is the command that makes derivatives
-     * and it only ever talks to the public Blob store.
+     * and it only ever talks to the public R2 bucket.
      */
     async screens() {
       return NO_SCREEN_ADDRESSES;
@@ -172,20 +173,53 @@ export function localReleaseStore(root: string): PublicArtworkStore {
 }
 
 /**
- * The store this environment describes: `olb-looks` when it is configured, this
- * machine's filesystem when it is not.
+ * The store this environment describes: the public R2 bucket when it is
+ * configured, this machine's filesystem when it is not.
  *
  * Both answer the same six operations, so **nothing below this line knows which
  * one it got** — which is the entire reason the interface was written before
- * either existed.
+ * either existed, and the reason the move from Vercel Blob to R2 changed no
+ * caller.
+ *
+ * **Half-configured falls back and says which rows are empty**, and so does a
+ * public bucket that is also one of the private ones — `./r2.ts`
+ * § `looksBucketIn` is why that collision is refused rather than resolved. The
+ * local store with no artwork in it is a state this repository is built to be
+ * fine in; a CDN serving a customer's child is not.
  */
 export function releaseStoreFromEnv(
   env: Record<string, string | undefined> = process.env,
 ): PublicArtworkStore {
-  const token = looksTokenIn(env);
-  if (token) return looksBlobStore(token);
-  return localReleaseStore(releaseRoot(env));
+  const bucket = looksBucketIn(env);
+  if (bucket) return looksR2Store(bucket);
+
+  const local = localReleaseStore(releaseRoot(env));
+  const collision = publicBucketCollision(env);
+  if (collision) {
+    return {
+      ...local,
+      describe:
+        `${local.describe} — the public artwork bucket is also ${collision}, which is a ` +
+        "private bucket, so it is refused: a custom domain is attached to a bucket and " +
+        "not to a prefix",
+    };
+  }
+  const missing = missingFor(env, "looks");
+  if (missing.length === LOOKS_ROWS) return local;
+  return {
+    ...local,
+    describe:
+      `${local.describe} — the public artwork bucket is half-configured ` +
+      `(${missing.join(", ")} empty), so nothing is read from R2` +
+      (missing.length === 1 && missing[0] === PUBLIC_BASE_VAR
+        ? `: reads come from the custom domain and never from a signed URL, so ${PUBLIC_BASE_VAR} ` +
+          "is not optional"
+        : ""),
+  };
 }
+
+/** How many rows the public artwork bucket needs. Derived, never typed twice. */
+const LOOKS_ROWS = missingFor({}, "looks").length;
 
 /** The directory the local store reads under this environment. */
 export function releaseRoot(env: Record<string, string | undefined> = process.env): string {
@@ -210,7 +244,7 @@ export interface ReleaseArtwork {
   /**
    * Digest -> public URL, for the pictures that have one.
    *
-   * Filled from `ArtworkPage.url`, which the public Blob store records and the
+   * Filled from `ArtworkPage.url`, which the public bucket's store records and the
    * local filesystem store does not — a directory has no address. **Empty is
    * the normal state** and means every picture is served by
    * `/api/assets/<digest>.png`, which answers from wherever the bytes are.

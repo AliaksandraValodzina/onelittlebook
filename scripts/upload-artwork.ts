@@ -1,5 +1,5 @@
 /**
- * **Push the captain's delivered artwork to the public Blob store.**
+ * **Push the captain's delivered artwork to the public R2 bucket.**
  *
  *     npm run artwork:upload
  *     npm run artwork:upload -- --screens      # derivatives only — the backfill
@@ -32,8 +32,10 @@
  *    no new version, no upload, no churn — so running this twice in a row does
  *    nothing the second time.
  * 5. **Uploads only the bytes that are not there.** Keys are content hashes
- *    (`lib/artwork/blob.ts` § The layout), so re-uploading a set with two
- *    corrected portraits in it uploads two files and writes one new manifest.
+ *    (`lib/artwork/object-store.ts` § The layout), so re-uploading a set with
+ *    two corrected portraits in it uploads two files and writes one new
+ *    manifest. The keys are the same ones the Vercel Blob store used, which is
+ *    what made the move a new adapter rather than a re-import.
  * 6. **Says what it uploaded, what it skipped and why**, and prints the public
  *    URL of the first picture of each set, which is the thing to paste into a
  *    browser when the question is "is it actually there".
@@ -48,8 +50,7 @@
  * twenty-four page preview goes from roughly 62 MB to roughly 2 MB.
  *
  * **It is driven by the store and not by the folders**, which is what makes it
- * a backfill: the masters for `girl-01`, `girl-02`, `girl-03`, the portraits
- * and the golden halves are already up there, so
+ * a backfill: once a look's masters are up there, so
  *
  *     npm run artwork:upload -- --screens
  *
@@ -68,9 +69,10 @@
  *
  * ## It never writes to the private store
  *
- * This command can only reach `olb-looks`, and not by convention: it holds a
- * `PublicArtworkStore`, whose key check refuses an order reference and whose
- * type cannot be passed anywhere a per-order store is wanted.
+ * This command can only reach the public bucket, and not by convention: it
+ * holds a `PublicArtworkStore`, built from a `LooksBucket` the private store's
+ * constructor will not take, whose key check refuses an order reference and
+ * whose type cannot be passed anywhere a per-order store is wanted.
  * `test/artwork-separation.test.ts` is the proof.
  */
 
@@ -84,7 +86,13 @@ import {
   lookSet,
   releaseRoot,
 } from "../lib/artwork/release";
-import { LOOKS_TOKEN_VAR, looksBlobStore, looksTokenIn } from "../lib/artwork/blob";
+import {
+  LOOKS_BUCKET_VAR,
+  looksBucketIn,
+  looksR2Store,
+  missingFor,
+  publicBucketCollision,
+} from "../lib/artwork/r2";
 import type { PublicArtworkStore } from "../lib/artwork/store";
 import { sha256 } from "../lib/assets/digest";
 import { backfillScreens, type ScreenBackfill } from "../lib/artwork/screen";
@@ -133,7 +141,7 @@ function usage(): never {
       "  --no-screens        upload masters and make no derivatives",
       "  --dry-run           prepare and compare, write nothing",
       "",
-      `It writes to the public Blob store and needs ${LOOKS_TOKEN_VAR}.`,
+      `It writes to the public R2 bucket and needs ${LOOKS_BUCKET_VAR} and the rows beside it.`,
       "To import onto this machine instead: npm run artwork -- look <dir> <look>",
     ].join("\n"),
   );
@@ -311,14 +319,32 @@ async function uploadSet(
 async function main() {
   const options = parse(process.argv.slice(2));
 
-  const token = looksTokenIn(process.env);
-  if (!token) {
-    // Named, never printed. The same refusal shape the money path has: say
-    // which row is empty and write nothing.
+  const collision = publicBucketCollision(process.env);
+  if (collision) {
+    // The one misconfiguration that would look like it worked. A custom domain
+    // is attached to a bucket and not to a prefix, so a public bucket that is
+    // also a private one publishes everything in it.
     console.error(
-      `${LOOKS_TOKEN_VAR} is not set, so there is no public Blob store to upload to.\n` +
+      `${LOOKS_BUCKET_VAR} names the same bucket as ${collision}, which is private.\n` +
         "Nothing has been read and nothing has been written.\n\n" +
-        "  • on the captain's machine: `vercel env pull .env.local` writes it\n" +
+        "A custom domain is attached to a bucket and not to a prefix, so uploading the\n" +
+        "looks there would publish every order record and photograph in it. Make the\n" +
+        "public artwork its own bucket.",
+    );
+    process.exitCode = 1;
+    throw new Quit();
+  }
+
+  const bucket = looksBucketIn(process.env);
+  if (!bucket) {
+    // Rows named, values never printed. The same refusal shape the money path
+    // has: say which row is empty and write nothing.
+    const missing = missingFor(process.env, "looks");
+    console.error(
+      `There is no public R2 bucket to upload to: ${missing.join(", ")} ` +
+        `${missing.length === 1 ? "is" : "are"} empty.\n` +
+        "Nothing has been read and nothing has been written.\n\n" +
+        "  • on the captain's machine: `vercel env pull .env.local` writes them\n" +
         `  • to import onto this machine instead: npm run artwork -- look <dir> <look>\n` +
         `    (that writes to ${releaseRoot(process.env)}, which .gitignore excludes)`,
     );
@@ -326,7 +352,7 @@ async function main() {
     throw new Quit();
   }
 
-  const store = looksBlobStore(token);
+  const store = looksR2Store(bucket);
   console.log(`uploading to ${store.describe}`);
   if (options.dryRun) console.log("DRY RUN — nothing will be written");
 
@@ -418,14 +444,14 @@ async function main() {
 
 main().catch((error) => {
   if (error instanceof Quit) return;
-  // The store's own refusals — a rotated token, a store that was deleted, a
-  // rate limit — are a sentence and not a stack trace. `@vercel/blob` prefixes
-  // every one of them, and matching the prefix keeps this script from being a
-  // second importer of the SDK (`lib/artwork/blob.ts` is the only one).
-  if (error instanceof Error && error.message.startsWith("Vercel Blob:")) {
+  // The bucket's own refusals — a rotated key, a bucket that was deleted, a
+  // token scoped to the other bucket — are a sentence and not a stack trace.
+  // `lib/artwork/r2.ts` § refuse prefixes every one of them, and it never
+  // carries what the request was signed with.
+  if (error instanceof Error && error.message.startsWith("R2 refused to")) {
     console.error(`\n${error.message}`);
     console.error(
-      `Nothing further was written. Check ${LOOKS_TOKEN_VAR} is the token for olb-looks:\n` +
+      `Nothing further was written. Check the key can write ${LOOKS_BUCKET_VAR}:\n` +
         "  vercel env pull .env.local",
     );
     process.exitCode = 1;

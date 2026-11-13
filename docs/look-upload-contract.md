@@ -366,7 +366,7 @@ What is different, and only this:
 | **A partial upload is normal** | The clean-artwork download defaults to the **right-hand page of each spread**, because that is the only half of a spread the child is on. The other pages keep the artwork they had. |
 | **Your own filenames are accepted** | `spread-03-right.png` as well as `page-006.png`, and the name the download handed over. The mapping is derived from the book's own spread pairing, so it follows a page that moves. |
 | **Nothing is overwritten** | A re-upload is a new version and the previous one stays readable. A character swap that looks right in a thumbnail and wrong at 3600 px is found *after* the replacement, and a model will not regenerate the earlier pages identically. |
-| **None of it is ever committed** | Neither is, now: a regenerated child is one family's private document, and a look is two gigabytes. Both go through `lib/artwork/store.ts` — one interface over the local filesystem and two Vercel Blob stores, `olb-looks` public for the looks and `olb-orders` private for an order's own pages, with nothing able to cross between them. |
+| **None of it is ever committed** | Neither is, now: a regenerated child is one family's private document, and a look is two gigabytes. Both go through `lib/artwork/store.ts` — one interface over the local filesystem and two Cloudflare R2 buckets, the looks bucket public for the looks and the order-artwork bucket private for an order's own pages, with nothing able to cross between them. |
 
 **There is one thing the artwork cannot do for the photo path today, and it is
 worth knowing before it is promised.** While the buyer is reading the book their

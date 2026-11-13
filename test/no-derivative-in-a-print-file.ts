@@ -36,7 +36,7 @@ import { verifySupplied } from "../lib/assets/supplied";
 import { renderPageSvg } from "../lib/render/svg";
 import { renderPrintSvg } from "../lib/render/raster";
 import { screenHrefIn } from "../lib/assets/screen";
-import { ordersBlobStore } from "../lib/artwork/blob";
+import { orderArtworkR2Store } from "../lib/artwork/r2";
 import type {
   AssetAddresses,
   ScreenAddress,
@@ -142,13 +142,21 @@ void asScreens;
 
 // --- And the private store cannot hold one at all --------------------------
 
-// Derivatives exist to be fetched from a CDN, and `olb-orders` is private: a
-// guessable URL for a page regenerated from a photograph of one family's child
-// is the worst thing this product could leak. So the two operations are on
-// `PublicArtworkStore` only and the private store has no such method —
-// `lib/artwork/blob.ts` § blobScreenStore says why that is a separate factory
-// rather than two more cases in the shared one.
-const orders = ordersBlobStore("store-id", "oidc-token");
+// Derivatives exist to be fetched from a CDN, and the order-artwork bucket is
+// private — no custom domain, no URL for anything in it: a guessable URL for a
+// page regenerated from a photograph of one family's child is the worst thing
+// this product could leak. So the two operations are on `PublicArtworkStore`
+// only and the private store has no such method —
+// `lib/artwork/object-store.ts` § objectScreenStore says why that is a separate
+// factory rather than two more cases in the shared one, and it takes the public
+// base as a non-optional string so there is nothing to compose it onto.
+const orders = orderArtworkR2Store({
+  for: "order-artwork",
+  accountId: "account",
+  bucket: "onelittlebook-orders",
+  accessKeyId: "key",
+  secretAccessKey: "secret",
+});
 // @ts-expect-error the private store has no screen derivatives
 void orders.putScreens([]);
 // @ts-expect-error the private store has no screen derivatives

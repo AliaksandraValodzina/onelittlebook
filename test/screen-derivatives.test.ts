@@ -55,7 +55,8 @@ import { FIRST_BOOK } from "../templates/first-book";
 import { FIXTURE_BOOK_FILL } from "../fixtures/book-order";
 import { SCREEN_PREFIX, SCREEN_WIDTH, screenKey, screenKeyOf } from "../lib/artwork/keys";
 import { backfillScreens, screenDerivativeOf } from "../lib/artwork/screen";
-import { looksBlobStore, type BlobApi } from "../lib/artwork/blob";
+import { looksR2Store } from "../lib/artwork/r2";
+import type { ObjectApi } from "../lib/artwork/object-store";
 import {
   RELEASE_ARTWORK_DIR_VAR,
   deliveredBook,
@@ -66,7 +67,7 @@ import {
   tilePageId,
   TILES_SET,
 } from "../lib/artwork/release";
-import { LOOKS_TOKEN_VAR } from "../lib/artwork/blob";
+import { ACCESS_KEY_VAR, ACCOUNT_VAR, LOOKS_BUCKET_VAR, PUBLIC_BASE_VAR, SECRET_KEY_VAR } from "../lib/artwork/r2";
 import { hrefIn } from "../lib/assets/address";
 import { screenHrefIn, screenWidthFor } from "../lib/assets/screen";
 import { sha256 } from "../lib/assets/digest";
@@ -83,16 +84,26 @@ const DELIVERED = "girl-02";
 const PAGE = "page-004";
 const NOW = new Date("2026-11-12T09:00:00.000Z");
 
-/** A read-write token of the shape the platform issues; the fourth field is the store id. */
-const TOKEN = "vercel_blob_rw_abc123store_sekritsekrit";
-const BASE = "https://abc123store.public.blob.vercel-storage.com";
+/** The public bucket, and the custom domain every derivative's URL is on. */
+const LOOKS = {
+  for: "looks",
+  accountId: "accountsekrit",
+  bucket: "onelittlebook-looks",
+  accessKeyId: "keysekrit",
+  secretAccessKey: "secretsekrit",
+  publicBase: "https://art.onelittlebook.test",
+} as const;
+const BASE = LOOKS.publicBase;
+
+/** Every row the public bucket reads, so they can be cleared between cases. */
+const ROWS = [ACCOUNT_VAR, LOOKS_BUCKET_VAR, ACCESS_KEY_VAR, SECRET_KEY_VAR, PUBLIC_BASE_VAR];
 
 // ---------------------------------------------------------------------------
-// The in-memory bucket, as `test/artwork-blob.test.ts` has it
+// The in-memory bucket, as `test/artwork-buckets.test.ts` has it
 // ---------------------------------------------------------------------------
 
 interface Bucket {
-  api: BlobApi;
+  api: ObjectApi;
   files: Map<string, Uint8Array>;
   /** Every `put`, in order — which is how "it wrote nothing" is asserted. */
   puts: string[];
@@ -101,7 +112,7 @@ interface Bucket {
 function bucket(): Bucket {
   const files = new Map<string, Uint8Array>();
   const puts: string[] = [];
-  const api: BlobApi = {
+  const api: ObjectApi = {
     async put(pathname, bytes) {
       puts.push(pathname);
       files.set(pathname, bytes);
@@ -149,13 +160,13 @@ async function directory(): Promise<string> {
 
 beforeEach(() => {
   forgetReleaseArtwork();
-  delete process.env[LOOKS_TOKEN_VAR];
+  for (const row of ROWS) delete process.env[row];
   delete process.env[RELEASE_ARTWORK_DIR_VAR];
 });
 
 afterAll(async () => {
   for (const dir of temporary) await rm(dir, { recursive: true, force: true });
-  delete process.env[LOOKS_TOKEN_VAR];
+  for (const row of ROWS) delete process.env[row];
   delete process.env[RELEASE_ARTWORK_DIR_VAR];
   forgetReleaseArtwork();
 });
@@ -261,12 +272,12 @@ describe("a derivative's key", () => {
   });
 });
 
-describe("the public store's derivatives", () => {
+describe("the public bucket's derivatives", () => {
   const bytes = () => square([12, 34, 56], 8);
 
   it("are written once and never again, which is what makes the backfill a re-run", async () => {
     const b = bucket();
-    const store = looksBlobStore(TOKEN, b.api);
+    const store = looksR2Store(LOOKS, b.api);
     const master = bytes();
     const of = sha256(master);
     const copy = new Uint8Array([1, 2, 3, 4]);
@@ -287,7 +298,7 @@ describe("the public store's derivatives", () => {
   });
 
   it("refuse a key that is not a content digest, before it becomes a pathname", async () => {
-    const store = looksBlobStore(TOKEN, bucket().api);
+    const store = looksR2Store(LOOKS, bucket().api);
     for (const bad of ["../../etc/passwd", "", "BK-7QX4RMT", "a".repeat(63)]) {
       await expect(
         store.putScreens([{ of: bad, width: SCREEN_WIDTH, bytes: new Uint8Array([1]) }]),
@@ -298,7 +309,7 @@ describe("the public store's derivatives", () => {
 
   it("serve the widest copy, so an old ceiling is never preferred to a new one", async () => {
     const b = bucket();
-    const store = looksBlobStore(TOKEN, b.api);
+    const store = looksR2Store(LOOKS, b.api);
     const of = sha256(bytes());
     await store.putScreens([{ of, width: 1200, bytes: new Uint8Array([1]) }]);
     await store.putScreens([{ of, width: 1600, bytes: new Uint8Array([2]) }]);
@@ -324,7 +335,7 @@ describe("the backfill", () => {
   /** Two real pages in the store and no screen copies: the state today. */
   async function uploaded() {
     const b = bucket();
-    const store = looksBlobStore(TOKEN, b.api);
+    const store = looksR2Store(LOOKS, b.api);
     const page = new Uint8Array(await readFile(COMMITTED_PAGE));
     await store.put(lookSet(DELIVERED), [{ pageId: PAGE, bytes: page }], NOW);
     b.puts.length = 0;
@@ -374,7 +385,7 @@ describe("the backfill", () => {
   });
 
   it("says so, rather than failing, for a set the store does not hold", async () => {
-    const store = looksBlobStore(TOKEN, bucket().api);
+    const store = looksR2Store(LOOKS, bucket().api);
     expect((await backfillScreens(store, TILES_SET)).state).toBe("absent");
   });
 });
@@ -389,7 +400,7 @@ describe("the backfill", () => {
  */
 async function delivered() {
   const b = bucket();
-  const store = looksBlobStore(TOKEN, b.api);
+  const store = looksR2Store(LOOKS, b.api);
   const page = square([16, 92, 180]);
   const portrait = square([200, 120, 60], 256);
   await store.put(lookSet(DELIVERED), [{ pageId: PAGE, bytes: page }], NOW);
@@ -435,7 +446,7 @@ describe("the artwork read", () => {
 
   it("is empty where there are no derivatives, which is the ordinary state", async () => {
     const b = bucket();
-    const store = looksBlobStore(TOKEN, b.api);
+    const store = looksR2Store(LOOKS, b.api);
     await store.put(lookSet(DELIVERED), [{ pageId: PAGE, bytes: square([16, 92, 180]) }], NOW);
     const art = await releaseArtworkFor(FIRST_BOOK, store);
     expect(art.screen).toEqual({});
