@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "id": "the-book-of-you",
-  "rev": "1a9a8a80",
+  "rev": "80b4996b",
   "name": "When They Were Small",
   "blurb": "Twelve spreads of their first year, with their name through it, one of your own photographs, and a dedication in the front.",
   "dedicationDefault": "Dear {name},\n\nHere is your year, all tucked in a book,\nEach first and each giggle, each wide-eyed look.\nWe'll read it together again and again,\nAnd remember how small you were back then.\n\nWith all our love",
@@ -386,7 +386,7 @@
           "slot": "storyText",
           "frame": {
             "x": 56,
-            "y": 168,
+            "y": 172.5,
             "width": 500,
             "height": 160
           },
@@ -626,7 +626,7 @@
           "slot": "storyText",
           "frame": {
             "x": 56,
-            "y": 168,
+            "y": 203,
             "width": 500,
             "height": 160
           },
@@ -818,7 +818,7 @@
           "slot": "storyText",
           "frame": {
             "x": 56,
-            "y": 122,
+            "y": 60,
             "width": 500,
             "height": 160
           },
