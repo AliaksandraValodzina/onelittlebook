@@ -448,6 +448,14 @@ byte-identity gate would stop meaning anything. The cost is stated rather than
 hidden in both files: a re-import changes what a reprint looks like without
 changing the revision the order names.
 
+**The catalogue is one concurrent read, held for a minute.**
+`releaseArtworkFor` asks for every look, the tiles, the ghosts and the
+derivatives at once and then assembles the result in the **book's** look order,
+and `deliveredBook` called with no store memoises its answer for
+`CATALOGUE_TTL_MS`. One look at a time, uncached, was eight seconds of time to
+first byte on every screen of the flow. A caller that brings its own store is
+never served the memo; `test/artwork-catalogue.test.ts` is both halves.
+
 **A partial import is a legitimate state.** `PageArt` has a `scene` beside
 `byLook`: a page carries the captain's artwork for the looks that have it and
 the placeholder baby for the rest, which is what lets one look be real while
