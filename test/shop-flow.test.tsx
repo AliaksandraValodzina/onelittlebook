@@ -284,6 +284,39 @@ describe("screen five — the upgrade, offered once and with no theatre", () => 
     expect(markup).not.toMatch(/<a[^>]*data-testid="edition-/);
     expect(markup).toMatch(/<a[^>]*data-testid="next"/);
   });
+
+  it("fills exactly one control, and it is the way forward", () => {
+    // `.btn` is the filled control in `app/shop.css`; `.btn.choice` opts out of
+    // the fill. Two stacked black buttons read as three options rather than
+    // "pick one of these two, then go on", so the only solid thing on the
+    // screen is the thing that moves the buyer.
+    const filled = [...markup.matchAll(/class="([^"]*\bbtn\b[^"]*)"/g)]
+      .map((m) => m[1])
+      .filter((cls) => !cls.split(/\s+/).includes("choice"));
+    expect(filled).toHaveLength(1);
+    expect(markup).toMatch(/<a[^>]*class="[^"]*\bbtn\b[^"]*"[^>]*data-testid="next"/);
+    for (const edition of EDITIONS) {
+      expect(markup, edition.id).toMatch(
+        new RegExp(`class="[^"]*\\bchoice\\b[^"]*"[^>]*data-testid="edition-${edition.id}"`),
+      );
+    }
+  });
+
+  it("marks the chosen edition with `aria-pressed` and a tick, not colour alone", () => {
+    const chosen = emptyOrder(book).editionId;
+    const others = EDITIONS.filter((e) => e.id !== chosen);
+    expect(others.length).toBeGreaterThan(0);
+    expect(markup).toMatch(
+      new RegExp(`aria-pressed="true"[^>]*data-testid="edition-${chosen}"`),
+    );
+    expect(testIds(markup)).toContain(`edition-${chosen}-tick`);
+    for (const edition of others) {
+      expect(markup, edition.id).toMatch(
+        new RegExp(`aria-pressed="false"[^>]*data-testid="edition-${edition.id}"`),
+      );
+      expect(testIds(markup), edition.id).not.toContain(`edition-${edition.id}-tick`);
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------

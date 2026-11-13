@@ -245,6 +245,36 @@ nav.shop .sp {
   color: var(--mut);
 }
 
+/*
+  **A choice, not a command.** The edition buttons pick one of two; the way on
+  below them is the only thing that moves the buyer, so it is the only filled
+  `.btn` on the screen. These stay on the card's own paper and say which one is
+  chosen with a border, a ring and a tick — the same vocabulary `.seg` and
+  `.carou .row` already use for `aria-pressed`, which is what carries the state
+  for assistive tech. The tick is there so the state is never colour alone.
+*/
+.btn.choice {
+  background: var(--paper);
+  color: var(--ink);
+  border: 1.6px solid var(--line);
+}
+
+.btn.choice:hover {
+  background: var(--paper);
+  border-color: var(--ink);
+}
+
+.btn.choice[aria-pressed="true"] {
+  border-color: var(--green);
+  box-shadow: 0 0 0 2px rgb(31 75 63 / 18%);
+}
+
+.btn.choice .tick {
+  color: var(--green);
+  margin-right: 7px;
+  font-weight: 700;
+}
+
 .btn:disabled,
 .btn.off {
   background: #d9cfbc;
