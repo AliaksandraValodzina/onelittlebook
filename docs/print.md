@@ -1,15 +1,22 @@
 # The print file
 
-**What goes to Printify, and what is still unknown about it.**
+**What goes to Printify, what was measured out of their own templates, and the
+one thing this repository still declares wrongly.**
 
 The captain's sentence was *"once saved, I want to download it in 3150x3150 px
 size"*, confirmed against Printify. That number is load-bearing all the way to a
 physical object, so this document says what rests on evidence, what rests on a
 reading of Printify's own guidance, and what is still an assumption.
 
-**There are now two products and they do not agree about this number**, which is
-the most important thing on this page. Read
-[§ The square trim nobody has pinned down](#the-square-trim-nobody-has-pinned-down).
+**The book's size was settled on 15 November by opening Printify's own
+templates and reading their headers**, which is the first time any number on
+this page came from the files rather than from reasoning about them. Two
+sections carry the consequences and both are worth reading before touching a
+canvas: [§ What Printify's templates actually
+say](#what-printifys-templates-actually-say), and [§ The page the book declares
+is not the page Printify prints](#the-page-the-book-declares-is-not-the-page-printify-prints),
+which is the discrepancy that remains and the reason it has not been corrected
+in place.
 
 ---
 
@@ -20,11 +27,17 @@ the most important thing on this page. Read
 | | |
 |---|---|
 | Size | **3600 × 3600 px** a page, 25 pages, measured out of the PNG header by `test/book-print.test.ts` |
-| Artboard | 612 × 612 pt = **8.5 in square**, bleed included |
-| **Trim** | 576 × 576 pt = **8.00 in square exactly** — the size both target products come in |
-| Resolution | **450 DPI across the trim**, 423.5 across the artboard. Derived, never declared |
+| Artboard | 612 × 612 pt, **declared** as 8.5 in square, bleed included |
+| Declared trim | 576 × 576 pt = 8.00 in square, derived from the declared bleed |
+| **What Printify's interior print area actually is** | **2400 × 2400 px = 8.00 in square** at 300 dpi, read out of the template — so the artboard is 8.00 in and the declaration above overstates it by 6.25%. § The page the book declares is not the page Printify prints |
+| Resolution | **450 DPI** across Printify's real 8.00 in area; the 423.5 the declaration implies is the same pixels described wrongly. Derived, never declared |
 | Colour | **sRGB**, as below |
 | Encoding | PNG a page, or one PDF of the whole book (`/DeviceRGB`) |
+
+**The cover is a different print area from the interior and is not square** —
+one wide piece carrying the back cover, the spine and the front.
+`lib/book/cover-wrap.ts` composes it from this square and
+[§ The cover wrap](#the-cover-wrap) is the whole of it.
 
 The committed example is `data/bk-first-book-buyer-flow/`.
 
@@ -99,12 +112,19 @@ That is the whole of the "do I make the canvas bigger" question, and the answer
 is no. **3150 × 3150 is right as the artboard**, and a renderer that enlarged it
 to "add bleed" would be supplying a file the Creator then scaled down.
 
-### What is still open
+### What is still open, and it is My Forever's half only
+
+**The book's half of this was answered on 15 November** by opening the real
+templates — § What Printify's templates actually say. What is below is now
+about `templates/my-forever.ts`, whose product is a different one and whose
+template nobody has downloaded.
 
 **Where the trim line falls inside those 3150 pixels.** Printify does not
 publish that number outside the Product Creator, and reading it needs somebody
 signed in to the account with the product open. Both 0.125 in and 0.25 in are
-standard; photo books tend to the larger.
+standard; photo books tend to the larger — and the book's measured answer,
+0.125 in, is evidence for the smaller rather than proof of it, since it is a
+different product.
 
 **This is handled rather than guessed.** `canvas.bleed` is a declared field, and
 the template declares the *larger* of the two — 18 pt (0.25 in) — because
@@ -118,117 +138,200 @@ bleed between 0 and 0.25 in.
 
 When somebody opens the Product Creator's template for this product, this
 becomes one number in `templates/my-forever.ts`, a restamped `rev`, and a
-re-run of `npm run print`. Nothing else moves.
+re-run of `npm run print`. Nothing else moves — which, as § The page the book
+declares is not the page Printify prints records, turns out to be true of the
+*bleed* and not of the artboard it is measured from.
 
-<a id="the-square-trim-nobody-has-pinned-down"></a>
+<a id="what-printifys-templates-actually-say"></a>
 
-## The square trim nobody has pinned down
+## What Printify's templates actually say
 
-**This is the open question, and this section exists so that nobody resolves it
-by accident.**
+**The question this page had been carrying since 31 October — what 3600 px is
+3600 *of* — was answered on 15 November by downloading Printify's own templates
+for this product and reading their headers.** Not by reasoning about round
+numbers, which is what every earlier attempt did and which is why the answer it
+reached was wrong twice over.
 
-### The captain answered it on 11 November, and the repository has not been changed yet
-
-**The book is 12 × 12 inches, confirmed against Printify's real template** — not
-the 8 × 8 the rest of this section was written around. Two consequences, and the
-first one is a relief:
-
-**3600 px a page is 300 DPI native over a 12 in trim**, exactly, with no
-upscaling anywhere. The number this repository already generates turns out to be
-the right number for the right reason rather than the over-specified number it
-was chosen as.
-
-**Interior pages may need about 225 px of bleed per edge, like the cover does.**
-That half is **unconfirmed** and is the thing still to read off the template.
-225 px is 0.75 in at 300 DPI, which is a plausible photo-book bleed and is not
-yet a fact.
-
-**Nothing in `templates/` has moved.** The book still declares an 8.5 in
-artboard with a quarter inch of bleed, so its declared trim is still 8.00 in and
-every number downstream is still derived from that declaration — which is the
-property that makes the change a small one when it is made. Applying the
-captain's answer is an edit to `page.canvas` and `page.print`, a restamped
-`rev`, and a re-run of `npm run print` with `data/` committed; it is one task and
-it is deliberately not this one. **Until then, do not write 8 × 8 anywhere new,
-and do not hard-code any trim: read `book.page` instead, as every test and
-component already does.**
-
-### What was settled before that, and the arithmetic it produced
-
-**The specification said 8 × 8 inches.** The captain's specification names Printify's
-[Softcover Photo
+The two products are Printify's [Softcover Photo
 Book](https://printify.com/app/products/2733/generic-brand/softcover-photo-book)
-— 8 × 8 in, its only size — and its [Hardcover Photo
-Book](https://printify.com/app/products/2737/generic-brand/hardcover-photo-book),
-8 × 8 in being one of four. One artwork set serves both, which is what makes the
-hardcover an *upgrade* rather than a second product.
+(blueprint 2733, 8 × 8 in, its only size) and its [Hardcover Photo
+Book](https://printify.com/app/products/2737/generic-brand/hardcover-photo-book)
+(blueprint 2737, 8 × 8 in being one of four) — the captain's specification of
+6 November names both, and one artwork set serves them, which is what makes the
+hardcover an *upgrade* rather than a second product. Only the softcover's
+templates have been downloaded.
 
-`templates/first-book.ts` therefore declares an 8.5 in artboard with a quarter
-inch of bleed on every edge, so its **trim is 8.00 in exactly**. That is a
-decision about the object, not about the file.
+### The cover template
 
-### What is not settled
+`Template_Custom_SoftcoverBook_8x8_Cover.psd`, from the Product Creator for the
+product its own template names **"8.00 x 8.00 CUSTOM SOFTCOVER BOOK"**, SKU
+range 11687–11853:
 
-**The bleed on an interior page**, as above — roughly 225 px per edge, from the
-captain's reading of the template, not yet confirmed.
+| | |
+|---|---|
+| Supplied area (the whole file) | **4790 × 2400 px** = 15.967 × 8.000 in, RGB 8-bit |
+| Finished, after the cut | **4715 × 2325 px** = 15.717 × 7.750 in |
+| Safety zone, per panel | **2220 × 2250 px** = 7.40 × 7.50 in |
+| Resolution | **300 dpi** |
 
-Printify's stated print-area pixel size is published only inside their signed-in
-Product Creator, so reading it needs somebody signed in to the account with the
-product open. The captain has now read the template and reports 12 × 12; the
-pixel figure and the interior bleed are what remain.
+### The interior template
 
-### What the arithmetic actually says, which is evidence either way
+From the same download: **2400 × 2400 px at 300 dpi = 8.00 in square.**
 
-| Pixels | Over an 8.00 in trim | Over the 8.5 in artboard |
-|---|---|---|
-| 2400 | **300.0 DPI** | 282.4 |
-| 3150 | 393.75 | 370.6 |
-| 3600 | **450.0 DPI** | 423.5 |
+### What follows by arithmetic, and is therefore derived rather than typed
 
-Three things are worth stating plainly, and none of them resolves it:
+**The bleed is 0.125 in per edge, not the 0.25 in this repository declares.**
+(2400 − 2325) ÷ 2 = 37.5 px vertically and (4790 − 4715) ÷ 2 = 37.5 px
+horizontally — the two axes agree, which is what makes one number honest.
 
-**2400 is the only round number here.** 8 in at 300 DPI is 2400 px exactly. If
-Printify's figure is a straightforward "trim at 300 DPI", that is what it will
-say.
+**The finished panel is 7.75 in square, not 8.00.** "8 × 8" is the product's
+name and the SKU's wording; it is not its trim. This is the single most
+expensive sentence on this page, because every earlier version of it took the
+name for a measurement.
 
-**3150 is a round number over no square trim anybody sells.** It is 10.5 in at
-300 DPI, and 10.5 in is not a size either photo book comes in. Over an 8 in trim
-it is 393.75 DPI, which is not a figure a printer quotes. The likeliest
-explanation remains the one the captain's own note offers — that 3150 is
-Printify's *recommended file size* for the 8 × 8 rather than its trim at 300 DPI
-— but that is a hypothesis and it has not been checked. **This doubt was raised
-on 31 October and is still unanswered.**
+**The spine is 65 px, 0.217 in** — 4715 − 2 × 2325 — and nobody publishes
+it, because it is a consequence of the paper and the binding. That is exactly
+why a hardcover wrap cannot be derived from a softcover one.
 
-**3600 clears every candidate**, which is why it is what is generated. It
-downscales to 2400, to 3150, and to anything between; upscaling to any of them
-later would be the expensive mistake, because the artwork is AI-generated
-watercolour linework and it goes mushy under an upscale. Downscaling is free.
+All four live in `lib/print/printify.ts` as one `MeasuredTemplate` with the
+filename beside them, and every length anything else uses is arithmetic on
+them. `test/cover-wrap.test.ts` asserts the arithmetic and the agreement
+between the axes.
 
-### How it is handled rather than guessed
+**The PSDs themselves are the captain's downloads and are deliberately not in
+this repository.** They are tens of megabytes of somebody else's template, and
+the four numbers above are the whole of what this codebase needs from them.
 
-**The page size is declared data on the book** — `page.canvas` and `page.print`
-in `templates/first-book.ts`, two numbers on one object. Changing the trim is an
-edit to those, a restamped `rev`, and `npm run book`. No component, validator or
-test anywhere reads a page size from anywhere else; `test/book-format.test.ts`
-asserts the trim is 8 in *by deriving it from the declared bleed*, and
-`test/book-print.test.ts` measures every box it checks off the template's own
-slots, so neither has to be rewritten when the answer lands.
+<a id="the-cover-wrap"></a>
+
+## The cover wrap
+
+**Printify's cover print area is not the square the website shows.** It is one
+wide image carrying the **back cover, the spine and the front**, because a
+softcover is printed flat and wrapped round the block. The shop composes it.
+
+Asked on 15 November whether to generate three files per look — a softcover
+wrap, a hardcover wrap and a square — the captain chose **one square front per
+look**, with:
+
+- **the back cover a plain wash**, drawn from that look's own palette;
+- **the spine bare** — no title, no name, no text at all;
+- **the shop composing the wrap**, so one square serves the website, the
+  softcover and the hardcover.
+
+**The constraint that makes this the only workable shape is that a hardcover
+spine is wider than a softcover one.** A hardcover wrap can therefore never be
+produced by stretching a softcover one: the panels would land off the hinge and
+the back cover would be cut into. Composing from panels makes both products
+correct, and makes a future spine-width change a number in
+`lib/print/printify.ts` rather than thirteen regenerated images.
+
+### How it is made
+
+`lib/book/cover-wrap.ts` lays the wrap out as **bleed, back panel, spine, front
+panel, bleed**, which tiles the supplied area exactly — 37.5 + 2325 + 65 + 2325
++ 37.5 = 4790. The front panel is the square cover's **own render**, hashed and
+handed to the renderer through the `supplied` seam `lib/render/raster.ts`
+already has, so the wrap is a `PageTemplate` of three layers drawn by the one
+renderer. There is no compositor in this repository and composing a cover did
+not add one.
+
+The square is cover-fitted to the panel region, which means its own trim lands
+a little *inside* the panel's trim and what shows in the margin is the square's
+full-bleed artwork. That is the safe direction: nothing the buyer approved can
+fall off the cut. `test/cover-wrap.test.ts` measures where the title's ink
+actually lands — as a difference between two renders, so the box is the ink's
+and not a frame's — and asserts it is inside Printify's safety zone for that
+panel.
+
+The wash is the cover's own ground, which for this book is the colourway the
+buyer chose, so the back of the book is the colour of the front of it by
+construction. `Look.wash` is where a per-look wash goes when the captain
+delivers cover squares with their own palettes; absent means the cover's ground,
+which is what every look has today.
+
+### The hardcover is declared and unconfigured, deliberately
+
+`COVER_PRODUCTS.hardcover` carries **no template**, in the same shape
+`lib/shop/shipping.ts` leaves `RATES` null and `lib/product.ts` keeps `value`
+off the unconfirmed arm: the template is on one arm of a union, so there is
+nowhere to put an estimate. Asking for one raises `CoverWrapUnavailable`, and
+the refusal names the file to fetch and the four numbers to read out of it.
+
+**What has to happen to turn it on:** somebody signed in to the Printify
+account opens the Product Creator for blueprint **2737** (Hardcover Photo
+Book), 8 × 8 in, downloads its **cover** template, and reads the supplied area,
+the finished size, the per-panel safety zone and the resolution out of the file
+header. Those four numbers become a `MeasuredTemplate` in
+`lib/print/printify.ts` and the entry flips to the measured arm. Nothing else
+changes — not the composition, not the renderer, not a single image.
+
+<a id="the-page-the-book-declares-is-not-the-page-printify-prints"></a>
+
+## The page the book declares is not the page Printify prints
+
+**This is the one thing on this page that is known to be wrong and has not been
+corrected, and this section exists so that nobody corrects it by accident.**
+
+`templates/first-book.ts` declares a **612 pt (8.5 in) artboard with 18 pt
+(0.25 in) of bleed**, which makes its declared trim 576 pt, 8.00 in. Printify's
+interior print area is **8.00 in**, and its finished page is **7.75 in**. So
+every inch figure the book derives is **6.25% larger than the object**, and the
+declared bleed is twice the real one.
+
+### What it costs today, which is less than it sounds
+
+**Nothing drawn is at risk.** The repository's declaration is *proportionally
+conservative*: it puts the trim guide 2.94% in from the edge of the file where
+the guillotine really falls 1.56% in, and `canvas.safe` adds another 2.94% on
+top — so every slot in the book is further from the real cut than the
+declaration claims, not nearer. The verse box begins 56 pt (0.78 in) from the
+page edge against a real bleed of 0.125 in.
+
+**Two claims are wrong and both are stated to a customer.**
+`lib/book/product.ts` derives the finished page from the declared bleed, so the
+book page says *"8 in square, trimmed"* where the object is 7.75 in, and
+*"8.5 in square, bleed included"* where the file covers 8.00 in. Neither is
+dangerous and both are untrue.
+
+### Why it was not simply corrected
+
+**Because correcting it moves drawn content, and the brief that found it said
+to stop and report rather than silently reflow twelve spreads.**
+
+The artboard and the trim are one statement, not two: declaring the real
+page — 576 pt artboard, 9 pt bleed, 558 pt trim — shrinks the artboard by
+36 pt while every layer in the template keeps its coordinates, which slides the
+whole book 18 pt off centre on a cover whose panel was placed by eye. Keeping
+the picture identical means re-authoring **every** coordinate, type size,
+baseline and line height in `templates/first-book.ts` by a factor of 16/17 —
+and that file's numbers are measurements: the captain's twelve verse marks, a
+15 pt type size chosen against a measured 480 pt line, a 500 pt box with 20 pt
+of headroom, a cover title at 44 pt with two characters of room in sixteen.
+Rescaling them is a rewrite of every paragraph of reasoning in that file, and
+every re-derived number is a chance to get one wrong.
+
+The other half is a product decision and not an engineering one: the finished
+size the shop *states* would change from "8 inches square" to "7.75 inches
+square", on a product Printify itself calls 8 × 8.
 
 ### What has to happen
 
-Somebody signed in to the Printify account opens the Product Creator for
-blueprint **2733** (softcover) and **2737** (hardcover), 8 × 8 in, and reads the
-**stated print-area pixel dimensions** off the file-requirements panel. That one
-number closes this.
+**The captain decides**, and it is one of three:
 
-### Where the trim falls inside it
+1. **Leave it.** The declaration stays conservative, the shop goes on saying
+   8 in, and this section stays as the record of why.
+2. **Correct the declaration and re-author the grid**, 16/17 across the whole
+   template, with a restamped `rev` and a re-run of `npm run book`. The
+   rendered pixels are unchanged in principle and every measured number in the
+   file has to be re-derived in practice.
+3. **Correct the declaration and accept the shift**, which is a reflow of
+   twelve spreads and needs the captain's eye on every one.
 
-A second, smaller question, and it is My Forever's too: Printify does not
-publish where the trim line sits inside a stated print area. Both 0.125 in and
-0.25 in are standard and photo books tend to the larger. Both templates declare
-the **larger** — 18 pt — because over-declaring moves the trim guide *inwards*
-and keeps content further from any real cut line, where under-declaring moves it
-towards one.
+**Nothing about the cover wrap depends on this.** Its geometry comes from the
+measured template and the square is fitted to the panel, which is
+scale-invariant: the wrap is correct today whatever the book declares about
+inches.
 
 ---
 
@@ -273,9 +376,16 @@ this file at all. No screen lays out 3150 pixels to be photographed. Keepnook's
 | Either file carries an sRGB chunk before IDAT | **Verified** — asserted on a fresh render |
 | The committed files are what the renderer produces today | **Verified** — byte-for-byte equality in a passing test |
 | Every slot sits ≥ 0.5 in inside the file edge | **Verified** — `slot.outsideSafeArea` would fire, and does when a slot is moved |
-| The book's trim is 8.00 in | **Decided** — the captain's specification of 6 November, naming both Printify products; derived here from the declared bleed |
+| The book's **declared** trim is 8.00 in | **Declared, and wrong about the object** — derived here from the declared bleed. The finished page is 7.75 in; § The page the book declares is not the page Printify prints says why the declaration has not been changed |
+| Printify's interior print area is 2400 × 2400 px = 8.00 in at 300 dpi | **Measured** — read out of the header of the interior template downloaded from the Product Creator, 15 November |
+| The softcover cover wrap is 4790 × 2400 px, finished 4715 × 2325, safety 2220 × 2250 per panel, 300 dpi | **Measured** — read out of the header of `Template_Custom_SoftcoverBook_8x8_Cover.psd`, 15 November |
+| The book's finished page is 7.75 in square | **Derived from a measurement** — the cover template's own bleed of 0.125 in, off an 8.00 in interior area. The interior template's own guide layers were not read |
+| The hardcover's wrap dimensions | **Unknown, and represented as unknown** — `COVER_PRODUCTS.hardcover` carries no template and a wrap for it refuses |
 | Printify's stated print area already includes bleed | **Documented** — Printify's own knowledge-hub wording, quoted above; not confirmed in the Product Creator |
 | Printify wants sRGB | **Documented** — Printify help centre |
-| The trim line sits 0.25 in inside the artboard | **Assumed, conservatively** — not measured; see above |
+| The trim line sits 0.25 in inside My Forever's artboard | **Assumed, conservatively** — not measured; see above |
+| The trim line sits 0.25 in inside the book's artboard | **No — measured at 0.125 in**, and the template still declares 0.25. Conservative in the safe direction; § The page the book declares is not the page Printify prints |
 | 3150 px is the right number for My Forever | **Captain-confirmed** — stated in the brief as checked against Printify |
-| 3600 px is the right number for the book | **Yes, and now for the stated reason**: the captain confirmed a 12 × 12 in trim on 11 November, over which 3600 px is 300 DPI native. The book still *declares* 8.00 in and the interior bleed (~225 px an edge) is unconfirmed — § The square trim nobody has pinned down |
+| 3600 px is the right number for the book | **Yes, and now for a measured reason**: Printify's interior print area is 2400 px, so 3600 is half again as many pixels as they ask for across the same 8.00 in. It downscales, which is free, where upscaling is the expensive mistake. The 11 November note that the book is 12 × 12 in was wrong and is withdrawn — it came from a reading rather than from a template |
+| The cover wrap this repository produces is 4790 × 2400 | **Verified** — read out of the PNG header of a fresh render by `test/cover-wrap.test.ts`, against the configured measurement rather than a typed number |
+| The front panel's content lands inside Printify's safety zone | **Verified** — measured as a difference between two renders, so the box is where the ink went |

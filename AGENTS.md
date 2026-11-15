@@ -178,16 +178,34 @@ plays the same trick with money: it has fields for a price and no field for a
 unrepresentable rather than discouraged. `docs/pricing.md` says why that is a
 legal position and not a taste one.
 
-**The trim is answered and not yet applied, so do not hard-code either
-number.** The captain confirmed **12 × 12 in** against Printify's real template
-on 11 November, which makes the delivered 3600 px pages 300 DPI native with no
-upscaling; the interior bleed (~225 px an edge, like the cover) is still
-unconfirmed. The book still *declares* an 8.00 in trim, so applying the answer
-is an edit to `page.canvas`/`page.print`, a restamp and a re-run of `npm run
-print` — one task, not yet done. Until it is: the page size is declared data on
-the book and **no test or component may read a page size from anywhere else**,
-and nothing new says 8 × 8. `docs/print.md` § The square trim nobody has pinned
-down.
+**Printify's sizes are measured, and the book's declaration is 6.25% larger
+than the object.** `lib/print/printify.ts` holds the numbers read out of
+Printify's own PSDs on 15 November with the filenames beside them — the
+interior print area is **2400 × 2400 px, 8.00 in at 300 dpi**, the softcover
+cover wrap is **4790 × 2400 px** finished 4715 × 2325 with a 2220 × 2250
+safety zone a panel, and the bleed derives at **0.125 in**. The 11 November
+reading of "12 × 12" was wrong and is withdrawn. `templates/first-book.ts`
+still declares an 8.5 in artboard with 0.25 in of bleed; correcting it moves
+drawn content — the artboard and the trim are one statement — so it is the
+captain's decision and not an edit, and `docs/print.md` § The page the book
+declares is not the page Printify prints states the three options. Meanwhile
+the page size is declared data on the book and **no test or component may read
+a page size from anywhere else**, and nothing derives an inch figure from
+anything but the book or that module.
+
+**The cover print area is a wrap and the shop composes it.**
+`lib/book/cover-wrap.ts` lays out back wash, bare spine and the square front at
+a product's measured dimensions, drawn by the one renderer as a three-layer
+`PageTemplate` with the square supplied as hashed bytes. The captain's decision
+of 15 November is **one square per look** — the back a wash from the look's
+palette (`Look.wash`, absent meaning the cover's own ground), the spine bare —
+because a hardcover spine is wider than a softcover's and no wrap can be
+stretched into another. The **hardcover is declared and unmeasured**:
+`COVER_PRODUCTS` is a union with the template on one arm only, so asking for
+one refuses with what to fetch, exactly as `lib/shop/shipping.ts` leaves
+`RATES` null. The square is unchanged and the shop never imports the module —
+`test/cover-wrap.test.ts` reads the import graph and measures where the
+title's ink lands on the wrap.
 
 ## The shop around the book
 

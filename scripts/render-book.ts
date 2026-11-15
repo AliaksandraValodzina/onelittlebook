@@ -1,8 +1,9 @@
 /**
  * Write the book's evidence, and produce a whole book on demand.
  *
- *     npm run book                       # the committed evidence
+ *     npm run book                        # the committed evidence
  *     npm run book -- --all --out ./out   # the whole 25-page PDF, somewhere else
+ *     npm run book -- --wrap              # the cover wrap, into .artwork/
  *
  * `scripts/render-print.ts` is the same script for the single page and says why
  * a committed artefact beats a dimension in a README. The one difference is
@@ -33,9 +34,27 @@ import { FIXTURE_BOOK_FILL } from "../fixtures/book-order";
 import { bookRev } from "../lib/book/rev";
 import { pageCount, pageSequence, pageWithSlot, pagesWithSlot } from "../lib/book/derive";
 import { SLOT } from "../lib/book/slots";
-import { printProblems, renderBookPagePng, renderBookPdf } from "../lib/book/print";
+import {
+  printProblems,
+  renderBookPagePng,
+  renderBookPdf,
+  renderCoverWrapPng,
+} from "../lib/book/print";
+import { COVER_PRODUCT_IDS, isCoverProductId } from "../lib/book/cover-wrap";
 
 const OUT = path.join(process.cwd(), "data", "bk-first-book-buyer-flow");
+
+/**
+ * Where a cover wrap is written, and **not `data/`**, deliberately.
+ *
+ * The committed evidence is re-rendered on every pull request and compared
+ * byte for byte, which is what makes it evidence; a 4790 × 2400 cover on top
+ * of that is several more megabytes in a public repository to prove something
+ * `test/cover-wrap.test.ts` proves from the bytes without committing any. So
+ * `--wrap` writes where the artwork already goes — `.artwork/` is in
+ * `.gitignore` — and prints the path.
+ */
+const WRAP_OUT = path.join(process.cwd(), ".artwork", "cover-wrap");
 
 function arg(name: string): string | undefined {
   const at = process.argv.indexOf(`--${name}`);
@@ -55,6 +74,33 @@ async function main() {
   if (problems.length) {
     for (const p of problems) console.error(`${p.code}  ${p.where}  ${p.detail}`);
     throw new Error(`${problems.length} problem(s); nothing written`);
+  }
+
+  /**
+   * The cover wrap: back cover, spine and front in one piece, which is what
+   * Printify's cover print area takes. `lib/book/cover-wrap.ts` carries the
+   * whole argument; a product whose template nobody has measured refuses here
+   * rather than writing a plausible wrong file.
+   */
+  if (process.argv.includes("--wrap")) {
+    // `--wrap` alone is the softcover; `--wrap hardcover` names a product. A
+    // following flag is not a product name.
+    const named = arg("wrap");
+    const asked = named && !named.startsWith("--") ? named : "softcover";
+    if (!isCoverProductId(asked)) {
+      throw new Error(`no such product "${asked}"; the products are ${COVER_PRODUCT_IDS.join(", ")}`);
+    }
+    const wrapOut = arg("out") ?? WRAP_OUT;
+    await mkdir(wrapOut, { recursive: true });
+    const started = Date.now();
+    const wrap = await renderCoverWrapPng(FIRST_BOOK, FIXTURE_BOOK_FILL, { product: asked });
+    await writeFile(path.join(wrapOut, wrap.filename), wrap.png);
+    console.log(
+      `wrote ${wrap.pixels.width}×${wrap.pixels.height} ${asked} cover wrap ` +
+        `(${(wrap.png.length / 1024 / 1024).toFixed(1)} MB) in ` +
+        `${Math.round((Date.now() - started) / 1000)} s to ${path.join(wrapOut, wrap.filename)}`,
+    );
+    return;
   }
 
   const everything = process.argv.includes("--all");

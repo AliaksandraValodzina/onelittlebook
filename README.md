@@ -141,16 +141,24 @@ is traced, sampled or copied. The two fixture photographs are generated too, by
 `scripts/make-fixture-photos.ts`, so the repository carries no real face and no
 stock licence.
 
-**The print file.** The book is **3600 × 3600 a page** on an 8.5 in artboard —
-an 8.00 in trim with a quarter inch of bleed — written as a PNG a page or one
-PDF of the whole book. My Forever is 3150 × 3150 at 300 DPI. The committed
+**The print file.** The book is **3600 × 3600 a page**, on an artboard the
+template declares as 8.5 in with a quarter inch of bleed — written as a PNG a
+page or one PDF of the whole book. My Forever is 3150 × 3150 at 300 DPI. The committed
 examples are [`data/bk-first-book-buyer-flow/`](data/bk-first-book-buyer-flow/)
 and [`data/bk-spine-template-and-print/`](data/bk-spine-template-and-print/).
 
-**What is still open about those numbers is [`docs/print.md`](docs/print.md) §
-The square trim nobody has pinned down — read it before changing a canvas.**
-The page size is declared data on the book, so the answer is an edit to two
-fields and a restamp.
+**What those numbers really are was measured on 15 November out of Printify's
+own templates — [`docs/print.md`](docs/print.md) § What Printify's templates
+actually say — and the book's declaration has not caught up with them: the
+interior print area is 8.00 in with 0.125 in of bleed, where the template
+declares 8.5 in with 0.25. Read § The page the book declares is not the page
+Printify prints before changing a canvas**, because correcting it moves drawn
+content and that is the captain's call.
+
+**The cover is a separate print area and is not square.** Printify takes the
+back cover, the spine and the front as one wide image; `lib/book/cover-wrap.ts`
+composes it from the same square the website shows, at the measured dimensions
+of each product, and refuses outright for a product nobody has measured.
 
 **The artwork contract.** What the captain generates, exactly, is
 [`docs/look-upload-contract.md`](docs/look-upload-contract.md), and
