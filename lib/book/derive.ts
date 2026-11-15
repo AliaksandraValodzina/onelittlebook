@@ -204,12 +204,20 @@ export function spreadSideOf(
 /**
  * The right-hand page of every spread, as indices into `pageSequence`.
  *
- * **The pages the child is drawn on**, in the artwork the captain is making:
- * each of their twelve spreads is one 2.000:1 scene cut down the middle, with
- * the baby on one half and the quiet half taking the words. The right-hand
- * halves are therefore the only pages a character swap has to touch, and
- * `lib/book/artwork.ts` makes them the default of the clean-artwork download
- * for exactly that reason.
+ * **The half of each spread the child is centred on** — each of the captain's
+ * twelve spreads is one 2.000:1 scene cut down the middle, and the child
+ * stands on the right-hand half of it with the quiet half taking the words.
+ *
+ * **It is not the list of pages the child appears on, and it used to be used
+ * as one.** The child's limbs cross the fold onto eleven of the twelve
+ * left-hand pages — measured, in `lib/book/artwork.ts` § Which pages a
+ * character swap has to touch — so a character swap selected from this list
+ * regenerates a book with the buyer's child on one page of a spread and the
+ * stock look's arm on the page facing it. `pagesCarryingTheChild` is that
+ * list. What this one is still right for is where a *single figure* belongs:
+ * `lib/book/ghost.ts` stands the photo path's placeholder here, because this
+ * is the half the figure is drawn on and the half the captain's golden ghost
+ * spreads cover.
  *
  * It is **twelve** for this book and nothing says twelve: it is one per spread,
  * counted from the page list.
@@ -218,6 +226,36 @@ export function rightHandPages(book: BookTemplate): number[] {
   return spreads(book)
     .slice(1)
     .flatMap((group) => (group.length > 1 ? [group[1]] : []));
+}
+
+/**
+ * **Every page the child is on**, as indices into `pageSequence` — which is
+ * what a character swap has to regenerate.
+ *
+ * Selected from the artwork's own declaration and not from a side of the book:
+ * a page is in this list unless the spread it is a half of declares
+ * `BookPage.childless` on **every** half of itself. For this book that is the
+ * cover and twenty-two of the twenty-four interior pages; the two it leaves
+ * out are the babyless opening spread, which has no child in it in any look and
+ * is therefore the one spread that carries the buyer's own photograph and
+ * words.
+ *
+ * **Why the spread and not the page.** The artwork is one wide scene cut down
+ * the middle, so the child's limbs cross the fold; a swap that regenerated one
+ * half of a scene would put a new child's shoulder against the old child's arm
+ * at the gutter. Asking the spread means a book that declared only one half
+ * childless still gets both halves regenerated, which is the safe way for that
+ * disagreement to resolve.
+ *
+ * **Nothing here says twenty-three.** It is counted out of `spreads()` and the
+ * pages' own declarations, so a book with a different number of spreads, or a
+ * second babyless one, needs no edit.
+ */
+export function pagesCarryingTheChild(book: BookTemplate): number[] {
+  const sequence = pageSequence(book);
+  return spreads(book)
+    .filter((group) => group.some((index) => sequence[index]?.childless !== true))
+    .flat();
 }
 
 /**

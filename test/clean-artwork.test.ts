@@ -43,10 +43,12 @@ import {
   renderCleanArtworkZip,
 } from "../lib/book/artwork";
 import {
+  isCover,
   pageCount,
   pageFillFor,
   pageSequence,
   pageTemplateFor,
+  pagesCarryingTheChild,
   rightHandPages,
   spreadSideOf,
   spreads,
@@ -207,33 +209,103 @@ describe("the pixels of the clean cover", () => {
   });
 });
 
+/**
+ * **Which pages a character swap regenerates, asserted against the template.**
+ *
+ * This download defaulted to the twelve right-hand pages on the stated
+ * assumption that the left halves were the same picture in every look. They are
+ * not — a spread is one wide scene and the child's limbs cross the fold, which
+ * `lib/book/artwork.ts` § Which pages a character swap has to touch measures —
+ * and the consequence was a printed book with the buyer's child on one page of
+ * a spread and the stock look's arm facing it.
+ *
+ * So the assertions below are deliberately two-sided: a left-hand page that
+ * carries the child **is** in the set, and the pages of the babyless opening
+ * spread are **not**. Either half alone would let the old bug back — "every
+ * page" passes the first and "every right-hand page" passes the second — and
+ * every number comes off the book.
+ */
 describe("which pages the download carries", () => {
-  it("defaults to one page per spread — the right-hand half, counted not typed", () => {
-    const right = cleanArtworkPages(FIRST_BOOK, "right");
-    expect(right).toEqual(rightHandPages(FIRST_BOOK));
-    // One per spread, with the cover's own group of one excluded.
-    expect(right.length).toBe(spreads(FIRST_BOOK).length - 1);
-    // Every one of them really is the second page of a spread.
-    for (const index of right) {
-      expect(spreadSideOf(FIRST_BOOK, index)?.side).toBe("right");
+  /** Both halves of the spread the book declares has no child in it. */
+  const babyless = pageSequence(FIRST_BOOK).flatMap((page, index) =>
+    page.childless ? [index] : [],
+  );
+
+  it("defaults to every page the child is on, counted off the book", () => {
+    const swap = cleanArtworkPages(FIRST_BOOK, "swap");
+    expect(swap).toEqual(pagesCarryingTheChild(FIRST_BOOK));
+    // Every page of the book except the spread declared childless — derived at
+    // both ends, so a book with a different number of spreads needs no edit
+    // here either.
+    expect(babyless.length).toBeGreaterThan(0);
+    expect(swap.length).toBe(pageCount(FIRST_BOOK) - babyless.length);
+    expect(swap).toEqual([...Array(pageCount(FIRST_BOOK)).keys()].filter((i) => !babyless.includes(i)));
+  });
+
+  it("includes the left-hand pages, which is the bug this set exists to fix", () => {
+    const swap = cleanArtworkPages(FIRST_BOOK, "swap");
+    const lefts = swap.filter((i) => spreadSideOf(FIRST_BOOK, i)?.side === "left");
+    const rights = swap.filter((i) => spreadSideOf(FIRST_BOOK, i)?.side === "right");
+
+    // One of each per spread that carries the child, and the two counts agree:
+    // a spread is regenerated whole or not at all, because it is one picture.
+    expect(lefts.length).toBe(rights.length);
+    expect(rights.length).toBe(spreads(FIRST_BOOK).length - 1 - 1);
+    // The arm the captain noticed is on spread four's left page, so name that
+    // page by derivation and assert it specifically.
+    const spreadFourLeft = spreads(FIRST_BOOK)[4][0];
+    expect(spreadSideOf(FIRST_BOOK, spreadFourLeft)).toEqual({ spread: 4, side: "left" });
+    expect(swap).toContain(spreadFourLeft);
+    // The paired negative: this is exactly what the old default did not carry.
+    expect(rightHandPages(FIRST_BOOK)).not.toContain(spreadFourLeft);
+    expect(swap.length).toBeGreaterThan(rightHandPages(FIRST_BOOK).length);
+  });
+
+  it("excludes the babyless spread, and the cover is not it", () => {
+    const swap = cleanArtworkPages(FIRST_BOOK, "swap");
+    for (const index of babyless) {
+      expect(swap, `${pageSequence(FIRST_BOOK)[index].id} has no child on it`).not.toContain(index);
     }
-    // And none of them is a left-hand page, which is what makes the default a
-    // saving rather than a different arbitrary list.
-    expect(right.some((i) => spreadSideOf(FIRST_BOOK, i)?.side === "left")).toBe(false);
+    // Both halves of it, not merely the half with the photograph on it: the
+    // spread is one picture and regenerating half of one is the same bug.
+    expect(babyless.map((i) => spreadSideOf(FIRST_BOOK, i)?.side)).toEqual(["left", "right"]);
+    // The cover carries the child and is in the set — it is the page the old
+    // twelve-page default also left out, and a stock child on the front of a
+    // book whose inside has the buyer's is the same fault.
+    expect(swap).toContain(0);
   });
 
-  it("offers every interior page, and those plus the cover", () => {
-    expect(cleanArtworkPages(FIRST_BOOK, "all").length).toBe(FIRST_BOOK.pages.length);
-    expect(cleanArtworkPages(FIRST_BOOK, "all")).not.toContain(0);
-    expect(cleanArtworkPages(FIRST_BOOK, "everything").length).toBe(pageCount(FIRST_BOOK));
-    expect(cleanArtworkPages(FIRST_BOOK, "everything")[0]).toBe(0);
+  it("regenerates a spread whole when only one half of it is declared childless", () => {
+    // A book nobody would author, which is the point: the two halves of one
+    // scene disagreeing must resolve towards regenerating the picture, never
+    // towards half of it.
+    const half: BookTemplate = {
+      ...FIRST_BOOK,
+      pages: FIRST_BOOK.pages.map((page, at) => (at === 2 ? { ...page, childless: true } : page)),
+    };
+    const spread = spreads(half)[2];
+    expect(spread).toContain(3);
+    for (const index of spread) expect(pagesCarryingTheChild(half)).toContain(index);
   });
 
-  it("reads only the three selections it offers", () => {
-    expect(isCleanSelection("right")).toBe(true);
-    expect(isCleanSelection("all")).toBe(true);
+  it("offers the whole book as the other selection", () => {
+    const everything = cleanArtworkPages(FIRST_BOOK, "everything");
+    expect(everything.length).toBe(pageCount(FIRST_BOOK));
+    expect(everything[0]).toBe(0);
+    // The default nests inside it, which is what makes the two a choice rather
+    // than two different lists.
+    for (const index of cleanArtworkPages(FIRST_BOOK, "swap")) {
+      expect(everything).toContain(index);
+    }
+  });
+
+  it("reads only the two selections it offers", () => {
+    expect(isCleanSelection("swap")).toBe(true);
     expect(isCleanSelection("everything")).toBe(true);
-    for (const bad of ["", "left", "RIGHT", "1", null, undefined, 3]) {
+    // `right` and `all` were the old spellings and are gone: a saved URL asking
+    // for the twelve right-hand pages must fall back to the correct set rather
+    // than keep working.
+    for (const bad of ["", "right", "all", "left", "SWAP", "1", null, undefined, 3]) {
       expect(isCleanSelection(bad), String(bad)).toBe(false);
     }
   });
@@ -242,7 +314,7 @@ describe("which pages the download carries", () => {
 describe("the archive the captain downloads", () => {
   it("holds one clean page per selected page, plus the note, named in reading order", async () => {
     const result = await renderCleanArtworkZip(SMALL, FIXTURE_BOOK_FILL, {
-      which: "right",
+      which: "swap",
       ref: "BK-7QX4K2P",
     });
     const names = readZipListing(result.zip).map((e) => e.name);
@@ -261,7 +333,7 @@ describe("the archive the captain downloads", () => {
   });
 
   it("holds real PNGs and not empty files", async () => {
-    const result = await renderCleanArtworkZip(SMALL, FIXTURE_BOOK_FILL, { which: "right" });
+    const result = await renderCleanArtworkZip(SMALL, FIXTURE_BOOK_FILL, { which: "swap" });
     const first = cleanEntryName(SMALL, result.pages[0]);
     const bytes = readZipEntry(result.zip, first);
     expect(bytes).not.toBeNull();
@@ -271,13 +343,21 @@ describe("the archive the captain downloads", () => {
 
   it("carries a note whose numbers come from the book rather than from a sentence", async () => {
     const note = async (book: BookTemplate) => {
-      const result = await renderCleanArtworkZip(book, FIXTURE_BOOK_FILL, { which: "right" });
+      const result = await renderCleanArtworkZip(book, FIXTURE_BOOK_FILL, { which: "swap" });
       return new TextDecoder().decode(readZipEntry(result.zip, "HOW-TO-SEND-THESE-BACK.txt")!);
     };
     const small = await note(SMALL);
     expect(small).toContain("240 x 240");
-    expect(small).toContain("page-002.png");
-    expect(small).toContain("spread-01-right.png");
+    // Both spellings of a page that is in the download, named by derivation:
+    // the first interior page the child is on, which is a **left** half.
+    const first = pagesCarryingTheChild(SMALL).filter((i) => !isCover(i))[0];
+    const side = spreadSideOf(SMALL, first)!;
+    expect(side.side).toBe("left");
+    expect(small).toContain(`${pageSequence(SMALL)[first].id}.png`);
+    expect(small).toContain(`spread-0${side.spread}-left.png`);
+    // And the opening spread, which the download leaves out, is not asked for.
+    expect(small).not.toContain("spread-01-right.png");
+    expect(small).not.toContain("page-002.png");
     // It says the rule, in the file the captain is holding when they are about
     // to put a page into an image tool.
     expect(small).toContain("Text must never make a round trip through an image model");
@@ -293,12 +373,12 @@ describe("the archive the captain downloads", () => {
 
   it("names the file for the order, the book revision and what is inside it", async () => {
     const result = await renderCleanArtworkZip(SMALL, FIXTURE_BOOK_FILL, {
-      which: "all",
+      which: "everything",
       ref: "BK-7QX4K2P",
     });
     expect(result.filename).toContain("BK-7QX4K2P");
     expect(result.filename).toContain(FIRST_BOOK.rev);
-    expect(result.filename).toContain("clean-all");
+    expect(result.filename).toContain("clean-everything");
     expect(result.filename).toContain(`${result.pages.length}pages`);
     expect(result.filename).toContain("240x240");
   });
@@ -314,7 +394,7 @@ describe("the archive the captain downloads", () => {
     // file carries nothing the buyer typed, so refusing it would be the wrong
     // way round.
     const overlong = { ...FIXTURE_BOOK_FILL, dedication: "x".repeat(5000) };
-    const result = await renderCleanArtworkZip(SMALL, overlong, { which: "right" });
-    expect(result.pages.length).toBe(rightHandPages(SMALL).length);
+    const result = await renderCleanArtworkZip(SMALL, overlong, { which: "swap" });
+    expect(result.pages.length).toBe(pagesCarryingTheChild(SMALL).length);
   });
 });

@@ -45,7 +45,13 @@ import {
 import { artworkPageIds, bookWithOrderArtwork } from "../lib/book/order-art";
 import { validateBook } from "../lib/book/validate";
 import { printProblems } from "../lib/book/print";
-import { pageSequence, pageTemplateFor, rightHandPages, spreadSideOf } from "../lib/book/derive";
+import {
+  pageSequence,
+  pageTemplateFor,
+  pagesCarryingTheChild,
+  spreadSideOf,
+} from "../lib/book/derive";
+import { cleanArtworkPages, cleanEntryName } from "../lib/book/artwork";
 import { renderPrintPng } from "../lib/render/raster";
 import { hexAt, raster } from "./pixels";
 import type { BookTemplate } from "../lib/book/types";
@@ -117,15 +123,24 @@ describe("the captain's own filenames", () => {
     expect(pageForArtworkName(FIRST_BOOK, "00-cover-clean.png")).toEqual({ index: 0 });
   });
 
-  it("takes back the name the clean-artwork download handed over", () => {
+  it("takes back every name the clean-artwork download handed over", () => {
     // The likeliest thing a person does with a file they were given is save
-    // over it, so the name that went out has to be a name that comes back.
-    const index = rightHandPages(FIRST_BOOK)[2];
-    const side = spreadSideOf(FIRST_BOOK, index)!;
-    const given =
-      `${REF}-${String(index).padStart(2, "0")}-${pageSequence(FIRST_BOOK)[index].id}` +
-      `-spread-${String(side.spread).padStart(2, "0")}-${side.side}-clean.png`;
-    expect(pageForArtworkName(FIRST_BOOK, given)).toEqual({ index });
+    // over it, so the name that went out has to be a name that comes back —
+    // for **every** page of the download and not for a sample of it. The two
+    // ends are asked of the same book, so the day the download's set changes
+    // this is the test that says whether the upload still takes it.
+    const out = cleanArtworkPages(FIRST_BOOK, "swap");
+    expect(out).toEqual(pagesCarryingTheChild(FIRST_BOOK));
+    for (const index of out) {
+      const given = cleanEntryName(FIRST_BOOK, index, REF);
+      expect(pageForArtworkName(FIRST_BOOK, given), given).toEqual({ index });
+    }
+    // The control: the names really do carry both spellings, including a
+    // left-hand half — which the download did not hand over until the child
+    // was found to be on those pages too.
+    const lefts = out.filter((i) => spreadSideOf(FIRST_BOOK, i)?.side === "left");
+    expect(lefts.length).toBeGreaterThan(0);
+    expect(cleanEntryName(FIRST_BOOK, lefts[0], REF)).toContain("-left-clean.png");
   });
 
   it("refuses a name it cannot place, rather than guessing", () => {
@@ -149,14 +164,24 @@ describe("the captain's own filenames", () => {
 });
 
 describe("the upload, against the contract the looks are held to", () => {
-  it("accepts a partial upload of the right-hand pages", () => {
-    const files = rightHandPages(FIRST_BOOK).map((index) => ({
+  it("accepts exactly the set the clean-artwork download hands over", () => {
+    // **The two doors have to agree.** The pages that go out to an image tool
+    // are the pages that come back, so the upload is checked against the
+    // download's own selection rather than against a list written here —
+    // including the eleven left-hand halves it did not used to carry.
+    const out = cleanArtworkPages(FIRST_BOOK, "swap");
+    const files = out.map((index) => ({
       name: `${pageSequence(FIRST_BOOK)[index].id}.png`,
       bytes: page([200, 40, 180]),
     }));
     const check = checkOrderArtwork(FIRST_BOOK, files);
     expect(check.problems).toEqual([]);
-    expect(check.pages.map((p) => p.index)).toEqual(rightHandPages(FIRST_BOOK));
+    expect(check.pages.map((p) => p.index)).toEqual(out);
+    // A partial upload is still legitimate, which is what makes the set above
+    // a default rather than a requirement.
+    const some = checkOrderArtwork(FIRST_BOOK, files.slice(0, 3));
+    expect(some.problems).toEqual([]);
+    expect(some.pages.length).toBe(3);
   });
 
   it("reports every problem in one pass rather than the first", () => {
@@ -304,7 +329,17 @@ describe("no customer's artwork can reach git", () => {
 });
 
 describe("the book an order prints from once its artwork is uploaded", () => {
-  const index = rightHandPages(FIRST_BOOK)[1];
+  /**
+   * **A left-hand page, deliberately.**
+   *
+   * These are the pages the clean-artwork download did not hand over until the
+   * child was found to be on them, so the per-order repaint had never been read
+   * back out of a print file on one. Found rather than typed, so it is this
+   * book's first such page whatever the page list becomes.
+   */
+  const index = pagesCarryingTheChild(FIRST_BOOK).find(
+    (i) => spreadSideOf(FIRST_BOOK, i)?.side === "left",
+  )!;
   const pageId = pageSequence(FIRST_BOOK)[index].id;
   const MAGENTA: [number, number, number] = [200, 40, 180];
 

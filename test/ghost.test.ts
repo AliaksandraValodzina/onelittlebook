@@ -36,7 +36,7 @@ import { describe, expect, it } from "vitest";
 import { FIRST_BOOK } from "../templates/first-book";
 import { FIXTURE_BOOK_FILL } from "../fixtures/book-order";
 import { GHOST_CAPTION } from "../lib/render/ghost";
-import { ghostFor, ghostPreviewOf, pageCarriesTheChild } from "../lib/book/ghost";
+import { ghostFor, ghostPreviewOf, ghostBelongsOn } from "../lib/book/ghost";
 import {
   lookOf,
   pageCount,
@@ -126,7 +126,7 @@ describe("which pages hold a place", () => {
 
   it("every other page of the drawn book, counted rather than listed", () => {
     const all = Array.from({ length: pageCount(FIRST_BOOK) }, (_, i) => i);
-    const withGhost = all.filter((i) => pageCarriesTheChild(FIRST_BOOK, i));
+    const withGhost = all.filter((i) => ghostBelongsOn(FIRST_BOOK, i));
     const babyless = all.filter((i) => {
       const page = pageSequence(FIRST_BOOK)[i];
       return page.art.kind === "drawn" && page.art.scene.babyless === true;
@@ -137,16 +137,34 @@ describe("which pages hold a place", () => {
 
   it("the right-hand pages and the cover once the artwork is uploaded", () => {
     // An uploaded page is an opaque PNG and declares nothing about who is on
-    // it, so the answer comes from the shape of the captain's artwork instead:
-    // one 2.000:1 scene a spread, with the child on the right-hand half.
+    // it, so where a *figure* stands comes from the shape of the captain's
+    // artwork instead: one 2.000:1 scene a spread, the child standing on the
+    // right-hand half. (Part of them is on the left half too —
+    // `lib/book/artwork.ts` has the measurement — and `lib/book/ghost.ts`
+    // § The two things this still cannot do says why no silhouette goes there.)
     const uploaded = {
       ...FIRST_BOOK,
       cover: { ...FIRST_BOOK.cover, art: asset("cover") },
       pages: FIRST_BOOK.pages.map((p) => ({ ...p, art: asset(p.id) })),
     };
     const all = Array.from({ length: pageCount(uploaded) }, (_, i) => i);
-    const withGhost = all.filter((i) => pageCarriesTheChild(uploaded, i));
-    expect(withGhost).toEqual([0, ...rightHandPages(uploaded)]);
+    const withGhost = all.filter((i) => ghostBelongsOn(uploaded, i));
+
+    // **Minus the opening spread, which is a right-hand page with nobody on
+    // it.** This fixture drops every page's drawn scene, which is what
+    // `bookWithReleaseArtwork` does once every look is delivered — and with
+    // the answer resting on `SceneSpec.babyless` alone this assertion read
+    // `[0, ...rightHandPages]` and the preview would have held a place for a
+    // child on the buyer's own dedication spread. `BookPage.childless`
+    // survives the binding, which is why it is a fact about the page.
+    const childless = all.filter((i) => pageSequence(uploaded)[i].childless === true);
+    expect(childless.length).toBeGreaterThan(0);
+    expect(withGhost).toEqual(
+      [0, ...rightHandPages(uploaded)].filter((i) => !childless.includes(i)),
+    );
+    // The control, in case the filter above ever becomes the whole answer.
+    expect(withGhost).toContain(0);
+    expect(withGhost.length).toBe(rightHandPages(uploaded).length);
   });
 
   function asset(id: string) {

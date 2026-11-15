@@ -11,7 +11,7 @@
  * |---|---|---|
  * | **The 24 finished pages** | nothing at all | They already satisfy `docs/look-upload-contract.md` § 2 — 3600 × 3600, sRGB, no alpha — so they are stored byte for byte. Re-encoding would change the digest, cost quality and buy nothing. |
  * | **The portraits** | flattened onto white | They are RGBA with a transparent background and **nothing in them is fully opaque** — the subject tops out at alpha 249–253. A portrait with an alpha channel could never pass the page validator, and a tile with 2 % transparency over a dark page would show the page through the baby. |
- * | **The 12 golden spreads** | split, right half kept | Each is one 1774 × 887 spread. Every left half is babyless and identical to the real artwork, so importing both halves would import the left pages twice at a quarter of the resolution. |
+ * | **The 12 golden spreads** | split, right half kept | Each is one 1774 × 887 spread. The gold figure stands on the right-hand half, which is the only half a held place in the preview belongs on (`lib/book/ghost.ts`), so importing both halves would store twelve more unprintable files nothing would draw. |
  *
  * ## What it does not re-check
  *

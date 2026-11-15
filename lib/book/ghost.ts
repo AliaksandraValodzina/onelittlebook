@@ -17,26 +17,29 @@
  *
  * ## Which pages those are, derived rather than listed
  *
- * The page's own artwork says, and it says it differently in the two states
- * the project's artwork can be in — which is not a special case, it is the two
- * states having different facts available:
+ * **The question here is narrower than "is the child on this page", and the
+ * difference is the whole reason this is a separate answer from
+ * `pagesCarryingTheChild`.** A ghost is one figure of a declared size standing
+ * in one place, so this asks where such a figure *belongs* — which is where
+ * the artwork puts the child, not everywhere a part of them appears. The page's
+ * own artwork says, and it says it differently in the two states the project's
+ * artwork can be in:
  *
  * **A drawn placeholder page** declares `babyless` (`lib/book/types.ts`
- * § `SceneSpec`). A babyless page carries no child in any look — it is the
- * opening spread, which is the one spread identical across all twelve looks and
- * therefore the one that carries the buyer's photograph and dedication. No
- * child, no ghost. Every other drawn page has one.
+ * § `SceneSpec`) when the placeholder draws no figure on it — the opening
+ * spread, which has no child in it in any look, and every verse page, where the
+ * words are drawn in the band the figure would have stood in. Nothing to hold a
+ * place for, no ghost. Every other drawn page has one.
  *
  * **An uploaded page** is an opaque PNG and declares nothing, so the answer
  * comes from the shape of the artwork: each of the captain's twelve spreads is
- * one 2.000:1 scene cut down the middle with the baby on the right-hand half,
- * plus the cover. `rightHandPages` counts those out of `spreads()`.
+ * one 2.000:1 scene cut down the middle with the child standing on the
+ * right-hand half, plus the cover. `rightHandPages` counts those out of
+ * `spreads()`.
  *
- * **The two states now exist in one book**, which is why `pageCarriesTheChild`
+ * **The two states now exist in one book**, which is why `ghostBelongsOn`
  * takes a look: one look has artwork and the rest are still drawn, so
- * the same page answers differently for different babies. It is not a
- * refinement — the left half of every delivered spread has no child on it, and
- * a white silhouette there would be a placeholder standing on an empty floor.
+ * the same page answers differently for different babies.
  *
  * ## What the golden halves changed, and what they did not
  *
@@ -47,7 +50,7 @@
  * anything. `GhostOptions.figure` carries that to the renderer, which then
  * draws the caption and no silhouette.
  *
- * ## The one thing this still cannot do, stated
+ * ## The two things this still cannot do, stated
  *
  * On a **drawn** page the placeholder baby is removed before the ghost is
  * drawn — `babyless` is forced on the derived artwork, so there is no look's
@@ -59,6 +62,17 @@
  * if the photo path were ever to sell at volume, and it is written here so the
  * next person reads it before believing the preview is perfect. The golden
  * halves close it for the one look that has them.
+ *
+ * The second is the other half of the same page. **The child's limbs cross the
+ * fold onto the left-hand page of eleven of the twelve delivered spreads** —
+ * measured, in `lib/book/artwork.ts` § Which pages a character swap has to
+ * touch — and that page gets no ghost, so on the photo path a reader sees the
+ * stock look's arm beside the held place for their own child. Drawing a second
+ * silhouette there would be worse: there is no golden left half to use, the
+ * only thing available is a white figure of the declared size, and the one
+ * place on that page it would fit is the band the verse is printed in. So this
+ * is left as it is and written down. It is the preview only — the **print**
+ * file regenerates both halves, which is what `pagesCarryingTheChild` is for.
  */
 
 import type { PageTemplate } from "../template/types";
@@ -71,33 +85,39 @@ const WHERE = { x: 0.5, y: 0.6 };
 const SIZE = 0.34;
 
 /**
- * Does the child appear on this page?
+ * Does a held place for the child belong on this page?
  *
- * Exported because the clean-artwork download and this answer the same question
- * from opposite ends, and a test asserts they agree about the cover.
+ * **Not "is the child on this page"** — `pagesCarryingTheChild` is that
+ * question and answers it for more pages than this one does, for the reason
+ * this file's docblock gives. Exported because the golden-half import asks the
+ * same narrower question from the other end (`lib/artwork/prepare.ts`): a
+ * spread whose figure is nowhere has no ghost half to store.
  */
-export function pageCarriesTheChild(
-  book: BookTemplate,
-  index: number,
-  lookId?: string,
-): boolean {
+export function ghostBelongsOn(book: BookTemplate, index: number, lookId?: string): boolean {
   const page = pageSequence(book)[index];
   if (!page) return false;
 
-  // **Babyless is a fact about the page in every look**, so it is asked first
-  // and it settles the one case the artwork's shape gets wrong on its own:
-  // `page-002` is a right-hand page *and* has no child on it, because the
-  // opening spread is the one the buyer's photograph and dedication sit on.
+  // **A page with no child in it in any look, first**, because it is the one
+  // case the artwork's shape gets wrong on its own: `page-002` is a right-hand
+  // page *and* has nobody on it, since the opening spread is the one the
+  // buyer's photograph and dedication sit on. Read off the page rather than off
+  // the scene, which `bookWithReleaseArtwork` drops once every look is
+  // delivered.
+  if (page.childless === true) return false;
+  // Then the placeholder's own answer: a drawn page declaring `babyless` draws
+  // no figure, so there is no place to hold — the verse pages, where the words
+  // are in the band a figure would have stood in.
   if (page.art.scene?.babyless === true) return false;
   if (page.art.kind === "drawn") return true;
 
   // **The answer differs by look, now that it can.** For a look the captain has
   // delivered, the page is an opaque PNG that declares nothing, so the answer
   // comes from the shape of their artwork: one 2.000:1 scene a spread with the
-  // child on the right-hand half, plus the cover. For a look still being drawn
-  // the page falls back to its scene, where the placeholder baby is on both
-  // halves — and drawing a ghost over the left half of the captain's artwork,
-  // which has no child on it, is exactly what this distinction prevents.
+  // child standing on the right-hand half, plus the cover. For a look still
+  // being drawn the page falls back to its scene. The left-hand half of a
+  // delivered spread does carry part of the child and still gets no ghost —
+  // this file's docblock § The two things this still cannot do says why that is
+  // the lesser of the two wrongs.
   const uploaded = lookId
     ? page.art.byLook[lookId] !== undefined
     : Object.keys(page.art.byLook).length > 0;
@@ -114,7 +134,7 @@ export function pageCarriesTheChild(
  * to the middle of every page would walk straight into it.
  */
 export function ghostFor(book: BookTemplate, index: number, lookId?: string): GhostOptions | null {
-  if (!pageCarriesTheChild(book, index, lookId)) return null;
+  if (!ghostBelongsOn(book, index, lookId)) return null;
   const page = pageSequence(book)[index];
   const scene = page.art.scene ?? null;
   return {

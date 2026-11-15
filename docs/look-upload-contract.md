@@ -215,7 +215,9 @@ shadow, no "text here" placeholder, and nothing busy:
   page. Six lines of small typewriter text sit in a band across the **middle**
   of it, and it needs a quiet ground: soft, out of focus, light in value, low
   in detail, which is the captain's own `verse_zone` wording to whoever
-  generates a spread.
+  generates a spread. What has to be clear is the **band**, not the page: the
+  child's limbs crossing the fold onto this page are the scene and are correct
+  — see § 4.
 
   **This paragraph used to say "the upper third" and the artwork was drawn
   against the middle**, which is the disagreement this document exists to
@@ -286,6 +288,42 @@ This is the rule that is easiest to break and hardest to see.
 Two pages being byte-identical across looks is reported as a note rather than
 an error: a page with no baby in it legitimately is the same file, and a page
 with a baby in it legitimately is not.
+
+### Only the opening spread is the same file in every look
+
+**This section used to be cited for a claim it never made, and the claim was
+wrong**, so here is the measurement. `lib/book/artwork.ts` said the left-hand
+halves "are the same file in every look anyway (§ 4)" and selected a character
+swap's pages on that basis. Every left-hand page of the fairest look (`blonde`)
+against the darkest (`deep-brown-curls`), 700 × 700, mean absolute difference
+per page and the worst single channel:
+
+```
+spread-01-left   0.00   max   0   <- identical; the babyless opening
+spread-02-left   3.38   max  31
+spread-03-left   1.57   max  63
+spread-04-left   4.85   max 125   <- an arm
+spread-05-left   3.18   max  26
+spread-06-left   3.10   max  62
+spread-07-left   2.57   max  28
+spread-08-left   4.12   max 112
+spread-09-left   2.92   max  52
+spread-10-left   2.88   max  40
+spread-11-left   4.14   max  39
+spread-12-left   4.20   max  43
+```
+
+That is the artwork being right, not wrong: a spread is one wide scene cut down
+the middle and **the child's limbs cross the fold**, so eleven of the twelve
+left-hand pages carry an arm, a foot or a shoulder. Keep drawing them that way.
+
+The consequence is for anything that *regenerates* a page. **A character swap
+has to do both halves of a spread**, or the printed book has the buyer's child
+on one page and the stock look's arm on the page facing it. The clean-artwork
+download now hands over every page the child is on —
+`lib/book/derive.ts` § `pagesCarryingTheChild`, selected from each page's own
+`BookPage.childless` and not from a side of the book — and § 7 below says what
+that means for one order.
 
 ---
 
@@ -363,7 +401,8 @@ What is different, and only this:
 | | |
 |---|---|
 | **It is per order, not per look** | The artwork replaces what the order's chosen look points at, for that order alone. `lib/book/order-art.ts` keeps the look id, the book id and the book revision: repainting an order must not rename it, and the reference is a hash of the fill. |
-| **A partial upload is normal** | The clean-artwork download defaults to the **right-hand page of each spread**, because that is the only half of a spread the child is on. The other pages keep the artwork they had. |
+| **A partial upload is normal** | The clean-artwork download defaults to **every page the child is on** — the cover and both halves of every spread but the babyless opening one, which is twenty-three of the twenty-five pages of this book. It defaulted to the twelve right-hand pages until the left halves were measured (§ 4): the child's limbs cross the fold, so a swap that did one half of a spread printed two different children facing each other. The pages not sent back keep the artwork they had. |
+| **A spread is swapped as one picture** | Both halves of a spread come out of the download together and should go into the image tool together, so the arm on the left page belongs to the child on the right one. |
 | **Your own filenames are accepted** | `spread-03-right.png` as well as `page-006.png`, and the name the download handed over. The mapping is derived from the book's own spread pairing, so it follows a page that moves. |
 | **Nothing is overwritten** | A re-upload is a new version and the previous one stays readable. A character swap that looks right in a thumbnail and wrong at 3600 px is found *after* the replacement, and a model will not regenerate the earlier pages identically. |
 | **None of it is ever committed** | Neither is, now: a regenerated child is one family's private document, and a look is two gigabytes. Both go through `lib/artwork/store.ts` — one interface over the local filesystem and two Cloudflare R2 buckets, the looks bucket public for the looks and the order-artwork bucket private for an order's own pages, with nothing able to cross between them. |

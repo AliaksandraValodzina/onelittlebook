@@ -55,9 +55,17 @@ import type { BookFill, BookPage, BookTemplate } from "./types";
  * The book this order prints from, given the artwork uploaded against it.
  *
  * A page the upload does not cover **keeps the artwork it already had**, which
- * is what makes the twelve-page default of the clean-artwork download work: the
- * left-hand halves and the babyless opening spread are the same in every look
- * and were never regenerated, so they draw exactly as they did before.
+ * is what makes a partial swap work at all: the clean-artwork download defaults
+ * to the pages the child is on (`./artwork.ts`, `./derive.ts`
+ * § `pagesCarryingTheChild`), and the babyless opening spread it leaves out has
+ * no child in it in any look, so it draws exactly as it did before.
+ *
+ * **That default used to be the twelve right-hand pages, and the left-hand
+ * halves this comment once described as "the same in every look" were not.**
+ * `./artwork.ts` has the measurement. Nothing in this function changed when it
+ * was fixed — it repaints whatever came back, by page id — which is the
+ * property to keep: the set of pages to regenerate is decided in one place and
+ * this is not it.
  *
  * `null` artwork returns the book unchanged rather than a special case, so a
  * caller does not have to ask whether an order has artwork before deciding
@@ -98,9 +106,9 @@ export function bookWithOrderArtwork(
     }
     return {
       ...page,
-      // Merged into whatever the page already declared, so the clean-artwork
-      // download's twelve-page default leaves the other thirteen pages exactly
-      // as they were, whichever state the project's artwork is in.
+      // Merged into whatever the page already declared, so whichever pages the
+      // captain did not send back are left exactly as they were, in whichever
+      // state the project's artwork is in.
       art: {
         kind: "asset",
         byLook: { ...already, [look.id]: asset },

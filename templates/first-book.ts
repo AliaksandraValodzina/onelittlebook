@@ -484,7 +484,7 @@ const STORY: readonly string[] = [
  * appears on that spread; move the slot to page six and the control moves with
  * it. Nobody writes down that it is page twelve.
  */
-const FEATURED: Record<string, { scene?: Partial<SceneSpec>; layers?: Layer[] }> = {
+const FEATURED: Record<string, { scene?: Partial<SceneSpec>; layers?: Layer[]; childless?: true }> = {
   /**
    * **The opening spread, left-hand page — and it has no baby in it.**
    *
@@ -508,6 +508,16 @@ const FEATURED: Record<string, { scene?: Partial<SceneSpec>; layers?: Layer[] }>
    * moment and stays.
    */
   "page-001": {
+    /**
+     * **`childless` is the fact about the artwork and `babyless` is the
+     * instruction to the placeholder**, and this is the one page of the book
+     * where both are true for the same reason. Every verse page below declares
+     * the second and not the first: the captain's delivered left-hand halves
+     * carry the child's limbs across the fold, measured in
+     * `lib/book/artwork.ts`, and only this spread is the same picture in every
+     * look. That is what a character swap is selected from.
+     */
+    childless: true,
     scene: { babyless: true },
   },
 
@@ -542,6 +552,8 @@ const FEATURED: Record<string, { scene?: Partial<SceneSpec>; layers?: Layer[] }>
    * size here rather than the other way round.
    */
   "page-002": {
+    /** No child here either, in any look — see `page-001` above. */
+    childless: true,
     scene: { babyless: true },
     layers: [
       {
@@ -703,32 +715,38 @@ function interior(index: number): BookPage {
 
   return {
     id,
+    // **A fact about the artwork and not about the drawing**, so it is read
+    // straight off `FEATURED` rather than derived from the scene — see
+    // `BookPage.childless` and the note on `babyless` below.
+    ...(featured?.childless ? { childless: true as const } : {}),
     art: artFor({
       // `index >> 1` is the spread this page is a half of: pages 1 and 2 are
       // spread 0, pages 3 and 4 are spread 1, and so on.
       ...SCENES[(index >> 1) % SCENES.length],
       seed: 2000 + index,
       /**
-       * **A page of words is a page with no baby drawn on it**, in the
-       * placeholder exactly as in the artwork it stands in for.
+       * **A page of words draws no baby**, because the words are drawn where
+       * the one placeholder figure would stand.
        *
-       * `lib/book/derive.ts` § `rightHandPages`, `lib/book/ghost.ts` and
-       * `lib/artwork/prepare.ts` all already say this about the delivered
-       * pages — one 2.000:1 scene a spread, the child on the right-hand half,
-       * *"every left half is the quiet half — the words"*. The placeholder was
-       * the only thing in the repository claiming otherwise, and it drew its
-       * baby at the page's own centre.
+       * The verse sits in a 160 pt band down the middle of the page
+       * (`VERSE_TOP` above) and the placeholder draws a single figure at the
+       * page's own centre, so the two were the same pixels: a verse printed
+       * across a drawn face, which is what moving the band off the top twelfth
+       * on 12 November exposed. The honest fix is not a smaller baby pushed to
+       * the foot of the page — at `VERSE_TOP_ON["page-011"]` there is no room
+       * for one.
        *
-       * That claim was invisible while the verse sat in the top twelfth and
-       * became a verse printed across a drawn face the moment it moved into
-       * the band the artwork reserves (`VERSE_TOP` above). The honest fix is
-       * not a smaller baby pushed to the foot of the page — at
-       * `VERSE_TOP_ON["page-011"]` there is no room for one — it is for the
-       * stand-in to stand in for the right thing.
+       * **This does not say the delivered left-hand page has no child on it,
+       * and it must not be read as saying so.** The captain's spread is one
+       * 2.000:1 scene cut down the middle: the child stands on the right-hand
+       * half and their limbs cross the fold onto this one, which is measured
+       * in `lib/book/artwork.ts` § Which pages a character swap has to touch.
+       * What the artwork keeps clear is the *band*, not the page. The fact a
+       * character swap reads is `BookPage.childless`, which this book declares
+       * on the opening spread alone — see `FEATURED` § `page-001`.
        *
-       * The opening spread's left page says the same through `FEATURED`, for
-       * its own reason, and the spread order below puts `featured?.scene`
-       * after this so a page may still override it.
+       * The spread order below puts `featured?.scene` after this so a page may
+       * still override it.
        */
       ...(story ? { babyless: true } : {}),
       ...featured?.scene,
@@ -891,7 +909,7 @@ const LOOKS: Look[] = GENDERS.flatMap(({ id: gender }, column) =>
 export const FIRST_BOOK: BookTemplate = {
   schema: 1,
   id: "the-book-of-you",
-  rev: "80b4996b",
+  rev: "138d9d97",
   /**
    * **"When They Were Small".**
    *
@@ -1008,10 +1026,11 @@ export const FIRST_BOOK: BookTemplate = {
    * Two reasons, and both were found by looking at the rendered grid rather
    * than by reasoning about it.
    *
-   * **Page one is babyless** — see its entry in `FEATURED` — so a grid drawn
-   * from it would be one identical tile per look under the question "which baby?".
-   * `validateBook` refuses a babyless page here, so that cannot regress by
-   * somebody making another page babyless and forgetting this line.
+   * **Page one has no child in it** — see its entry in `FEATURED` — so a grid
+   * drawn from it would be one identical tile per look under the question
+   * "which baby?". `validateBook` refuses a page declaring `childless`, or a
+   * drawn one declaring `babyless`, here — so that cannot regress by somebody
+   * declaring either on another page and forgetting this line.
    *
    * **Page three carries story text, and a tile is drawn with no name in it.**
    * `storyTextFor` deliberately leaves `{name}` in place when there is no name

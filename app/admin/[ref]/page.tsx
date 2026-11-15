@@ -82,7 +82,7 @@ export default async function AdminOrder(props: {
   const artworkVersions = await artworkStore.versions(record.ref);
   const currentArtwork = artworkVersions[artworkVersions.length - 1] ?? null;
   const justUploaded = (await props.searchParams).artwork;
-  const cleanCount = cleanArtworkPages(FIRST_BOOK, "right").length;
+  const cleanCount = cleanArtworkPages(FIRST_BOOK, "swap").length;
   const everyPage = pageCount(FIRST_BOOK);
 
   // What the shop would draw this order with, which is not a fact the
@@ -227,22 +227,21 @@ export default async function AdminOrder(props: {
           href={`/api/admin/artwork/${record.ref}`}
           data-testid="clean-artwork-link"
         >
-          Download the clean artwork ({cleanCount} right-hand pages, ZIP)
+          Download the clean artwork ({cleanCount} pages the child is on, ZIP)
         </a>
       </p>
       <p className="mt-3 text-sm opacity-75">
-        The right-hand page of each spread is the only page the child is on, so the other pages are
-        not worth regenerating. If you need them:{" "}
-        <a className="underline" href={`/api/admin/artwork/${record.ref}?pages=all`} data-testid="clean-all-link">
-          all {cleanArtworkPages(FIRST_BOOK, "all").length} interior pages
-        </a>{" "}
-        or{" "}
+        Every page the child is on, which is <b>both halves of each spread</b> — a spread is one
+        wide picture cut down the middle and the child&rsquo;s limbs cross the fold, so swap a
+        facing pair as one picture. The only pages left out are the opening spread, which has no
+        child in it in any look and is the one carrying the photograph and the dedication. If you
+        need those too:{" "}
         <a
           className="underline"
           href={`/api/admin/artwork/${record.ref}?pages=everything`}
           data-testid="clean-everything-link"
         >
-          those and the cover
+          all {cleanArtworkPages(FIRST_BOOK, "everything").length} pages
         </a>
         .
       </p>

@@ -18,10 +18,17 @@
  *
  * ## What the GET carries
  *
- * `?pages=right` — the default — is the twelve right-hand pages, which are the
- * only pages the captain's artwork puts the child on. `?pages=all` is the
- * twenty-four interiors; `?pages=everything` adds the cover. Twelve is not
- * written down anywhere: it is one page per spread, counted out of the book.
+ * `?pages=swap` — the default — is **every page the child is on**: the cover
+ * and both halves of every spread but the babyless opening one.
+ * `?pages=everything` is the finished book, all twenty-five pages.
+ *
+ * It used to default to `?pages=right`, the twelve right-hand pages, on the
+ * belief that the left halves were the same picture in every look. They are
+ * not — the child's limbs cross the fold — and the result was a book with the
+ * buyer's child on one page of a spread and the stock look's arm facing it.
+ * `lib/book/artwork.ts` § Which pages a character swap has to touch carries the
+ * measurement. Neither number is written down anywhere: both are counted out of
+ * the book.
  *
  * ## What the POST accepts
  *
@@ -92,7 +99,7 @@ export async function GET(request: Request, ctx: { params: Promise<{ ref: string
   if (!record) return refuse("no such order", 404);
 
   const asked = new URL(request.url).searchParams.get("pages");
-  const which = isCleanSelection(asked) ? asked : "right";
+  const which = isCleanSelection(asked) ? asked : "swap";
 
   // **The clean pages have to be the real artwork**, which is the whole point
   // of the download: the captain takes this book's own pictures into an image

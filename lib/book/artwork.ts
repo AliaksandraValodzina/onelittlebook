@@ -48,19 +48,57 @@
  * but no lettering is the page as it will print minus the words — where a page
  * with the panel removed would invite a child drawn where the name goes.
  *
- * ## Why the right-hand pages are the default
+ * ## Which pages a character swap has to touch, and the measurement
  *
- * Each of the captain's twelve spreads is one 2.000:1 scene cut down the
- * middle: the baby on one half, the quiet half taking the story text. So the
- * **right-hand page of each spread is the only page a character swap has to
- * touch** — twelve pages rather than twenty-five, and the left halves are the
- * same file in every look anyway (`docs/look-upload-contract.md` § 4), so
- * regenerating them is wasted work and a chance to introduce a difference
- * between looks that should not exist.
+ * **This download defaulted to the twelve right-hand pages, and that was
+ * wrong.** The reasoning was that each of the captain's twelve spreads is one
+ * 2.000:1 scene cut down the middle with the baby on one half, so the
+ * right-hand halves were the only pages a swap could need — twelve pages
+ * rather than twenty-five, and the left halves were held to be the same file in
+ * every look anyway.
  *
- * Twelve is not written down here. `rightHandPages` counts one per spread out
- * of `spreads()`, so a book with a different number of spreads has a different
- * number of pages in this download and no edit is needed.
+ * They are not. A spread is one wide scene and **the child's limbs cross the
+ * fold**, so the left page carries an arm, a foot or a shoulder. The fairest
+ * look (`blonde`) against the darkest (`deep-brown-curls`), every left-hand
+ * page, 700 × 700, mean absolute difference per page and the worst single
+ * channel:
+ *
+ * ```
+ * spread-01-left   0.00   max   0   <- identical; the babyless opening
+ * spread-02-left   3.38   max  31
+ * spread-03-left   1.57   max  63
+ * spread-04-left   4.85   max 125   <- the arm the captain noticed
+ * spread-05-left   3.18   max  26
+ * spread-06-left   3.10   max  62
+ * spread-07-left   2.57   max  28
+ * spread-08-left   4.12   max 112
+ * spread-09-left   2.92   max  52
+ * spread-10-left   2.88   max  40
+ * spread-11-left   4.14   max  39
+ * spread-12-left   4.20   max  43
+ * ```
+ *
+ * **Only spread one is genuinely shared.** The consequence of the old default
+ * was a printed book with the buyer's child on the right-hand page and the
+ * stock look's arm on the page facing it — two different children on one
+ * spread, which is not a thing a thumbnail shows and is not a thing a parent
+ * misses.
+ *
+ * So the default is **every page the child is on**, which is
+ * `pagesCarryingTheChild` (`./derive.ts`): the cover and both halves of every
+ * spread but the babyless opening. The part of the old reasoning that survives
+ * is its last clause — regenerating a page with no child on it is wasted work
+ * *and* a chance to introduce a difference between looks that should not exist
+ * — and it is why the opening spread is still left out rather than this
+ * becoming "all twenty-five". That spread has no child in it in any look, which
+ * is exactly why it is the one carrying the buyer's photograph and words, and a
+ * regenerated copy of it would make somebody's dedication page look different
+ * from every other buyer's for no reason at all.
+ *
+ * **Twenty-three is not written down here.** `pagesCarryingTheChild` counts the
+ * spreads out of `spreads()` and reads `BookPage.childless` off each page, so a
+ * book with a different number of spreads, or a second spread with no child in
+ * it, needs no edit here.
  *
  * **Node only.** It rasterises.
  */
@@ -73,7 +111,7 @@ import {
   pageCount,
   pageSequence,
   pageTemplateFor,
-  rightHandPages,
+  pagesCarryingTheChild,
   spreadSideOf,
 } from "./derive";
 import { BookNotPrintable, orderFileStem } from "./print";
@@ -83,27 +121,38 @@ import type { BookFill, BookTemplate } from "./types";
 /**
  * Which pages the download carries.
  *
- * `right` is the default for the reason above. `all` is the twenty-four
- * interior pages, for a book being regenerated wholesale. `everything` adds
- * the cover, which carries the child too and is the one page the twelve-page
- * default genuinely leaves out — it is a separate value rather than part of
- * `all` because the cover is a separate object everywhere else in this
- * codebase and quietly folding it in would make "all 24" mean twenty-five.
+ * **Two selections, and the first one nests inside the second**, which is the
+ * whole of the design. `swap` is the default and is every page the child is on
+ * — the answer to the question the captain is actually asking when they open
+ * this download. `everything` is the finished book, cover and babyless spread
+ * included, for a book being regenerated wholesale or for a page somebody wants
+ * for its own sake.
+ *
+ * It was three — `right`, `all` and `everything` — where `right` was the twelve
+ * right-hand pages and `all` was the twenty-four interiors without the cover.
+ * Both went with the measurement above: `right` was the wrong set, and `all`
+ * existed only to name "the interiors but not the cover", which was a
+ * distinction worth drawing when the default left the cover out and is a trap
+ * now that it does not.
  */
-export type CleanSelection = "right" | "all" | "everything";
+export type CleanSelection = "swap" | "everything";
 
-export const CLEAN_SELECTIONS: readonly CleanSelection[] = ["right", "all", "everything"];
+export const CLEAN_SELECTIONS: readonly CleanSelection[] = ["swap", "everything"];
 
 export function isCleanSelection(value: unknown): value is CleanSelection {
   return typeof value === "string" && (CLEAN_SELECTIONS as readonly string[]).includes(value);
 }
 
-/** The pages a selection names, as indices into `pageSequence`. */
+/**
+ * The pages a selection names, as indices into `pageSequence`.
+ *
+ * Both are derived: the swap set from the spreads and each page's own
+ * `childless`, and `everything` from the book's page count. Neither says how
+ * many pages this book has.
+ */
 export function cleanArtworkPages(book: BookTemplate, which: CleanSelection): number[] {
-  const interior = Array.from({ length: pageCount(book) - 1 }, (_, i) => i + 1);
-  if (which === "right") return rightHandPages(book);
-  if (which === "all") return interior;
-  return [0, ...interior];
+  if (which === "swap") return pagesCarryingTheChild(book);
+  return Array.from({ length: pageCount(book) }, (_, i) => i);
 }
 
 /**
@@ -214,7 +263,7 @@ export async function renderCleanArtworkZip(
   const problems = validateBook(book);
   if (problems.length) throw new BookNotPrintable(problems);
 
-  const which = options.which ?? "right";
+  const which = options.which ?? "swap";
   const pages = cleanArtworkPages(book, which);
   const sequence = pageSequence(book);
   const entries: ZipEntry[] = [];
@@ -277,6 +326,16 @@ function instructions(
     "So: these clean pages go into the image tool, the regenerated pages come",
     "back, and the name, the dedication and the story are drawn afterwards by the",
     "renderer, the same way they always are.",
+    "",
+    "EACH SPREAD IS ONE SCENE, SO DO BOTH HALVES TOGETHER",
+    "",
+    "A spread is one wide picture cut down the middle and the child's limbs cross",
+    "the fold: the left-hand page carries an arm, a foot or a shoulder. That is why",
+    "the pages below come in facing pairs. Swap a pair as one picture, so the arm on",
+    "the left page belongs to the child on the right one.",
+    "",
+    "The one exception is the opening spread, which has no child in it in any look",
+    "and is therefore not in this download at all unless it was asked for by name.",
     "",
     "WHAT TO SEND BACK",
     "",

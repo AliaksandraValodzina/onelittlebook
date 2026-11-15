@@ -119,7 +119,11 @@ export function validateBook(book: BookTemplate): Problem[] {
     const page = pageSequence(book).find((p) => p.id === book.tilePage);
     if (!page) {
       say("tile.pageUnknown", book.id, `tilePage "${book.tilePage}" is not a page of this book`);
-    } else if (page.art.kind === "drawn" && page.art.scene.babyless) {
+    } else if (page.childless === true || (page.art.kind === "drawn" && page.art.scene.babyless)) {
+      // Both facts, because they fail the same way and are available in
+      // different states of the artwork: `childless` is the page having no
+      // child in any look, and a drawn `babyless` scene is the placeholder
+      // drawing none. Either way every tile in the grid is the same picture.
       say(
         "tile.pageBabyless",
         book.tilePage,
@@ -470,12 +474,15 @@ function artProblems(book: BookTemplate, page: BookPage, where: string): Problem
   // --- the photo path's preview artwork, which can never print ------------
   if (page.ghost) {
     const [w, h] = page.ghost.px;
-    const babyless = page.art.scene?.babyless === true;
+    const babyless = page.childless === true || page.art.scene?.babyless === true;
     if (babyless) {
-      // Nothing would ever draw it: `./ghost.ts` asks whether the child is on
-      // the page before it asks whether there is artwork for them. A golden
-      // half sitting on a babyless page is somebody's work silently unused,
-      // which is exactly the kind of thing a reviewer cannot see in a preview.
+      // Nothing would ever draw it: `./ghost.ts` § `ghostBelongsOn` asks
+      // whether a held place belongs on the page before it asks whether there
+      // is artwork for one. A golden half sitting on a page with no figure on
+      // it is somebody's work silently unused, which is exactly the kind of
+      // thing a reviewer cannot see in a preview. Both declarations are read,
+      // because `childless` survives a fully delivered import and the scene
+      // does not.
       say(
         "ghost.onBabylessPage",
         "a preview ghost on a page the book declares babyless; no path would ever draw it",
