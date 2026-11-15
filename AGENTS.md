@@ -67,7 +67,7 @@ reads the ink's bounding box out of a **difference** between two renders
 (`test/pixels.ts` § `changedBox`). Change a type size or a box in
 `templates/first-book.ts` and that file re-measures and says by how much.
 
-**The verse's band is the artwork's, and the left page carries no child.** The
+**The verse's band is the artwork's, and the band is not the page.** The
 verses sit on each spread's **left** page, centred down it —
 `templates/first-book.ts` § `VERSE_TOP`, with `VERSE_TOP_ON` as the one
 declared exception and the measurement that chose both. They were in the top
@@ -75,10 +75,22 @@ twelfth until 12 November, over the fairy lights and the picture frame, because
 the renderer and the captain's `verse_zone` had never agreed;
 `docs/look-upload-contract.md` § 3 is now the single statement of the band. The
 consequence that bit: a page of words is declared **`babyless`** in the
-placeholder too, because the delivered artwork puts the child on the right-hand
-half only (`lib/book/derive.ts` § `rightHandPages`) and the stand-in was the
-one thing claiming otherwise — which showed up as a verse printed across a
-drawn face the moment the band moved.
+placeholder too, because the placeholder draws one figure at the page's centre
+and that is where the words now are — which showed up as a verse printed across
+a drawn face the moment the band moved.
+
+**`SceneSpec.babyless` and `BookPage.childless` are two different facts and the
+difference cost a bug.** The first is an instruction to the placeholder
+renderer; the second is *this page's artwork has no child in it, in any look*.
+Eleven left-hand pages declare the first and not the second: a spread is one
+wide scene cut down the middle and the child's limbs cross the fold, so the
+delivered left halves carry an arm or a foot. Only the opening spread declares
+`childless`. **Anything that regenerates pixels reads `childless`** — the
+character swap did not, and shipped twelve regenerated right-hand pages facing
+twelve stock-look arms. `lib/book/artwork.ts` § Which pages a character swap has
+to touch is the measurement; `docs/look-upload-contract.md` § 4 is the contract
+half; `lib/book/derive.ts` § `pagesCarryingTheChild` is the one selection, and
+`rightHandPages` is now only *where a single figure stands* (the ghost).
 
 ## The three rules this codebase is built on
 
@@ -355,9 +367,10 @@ redraws the lettering as a garbled near-word; the captain's own artwork survey
 found roughly twenty-five pieces in that state. Clean pages out, regenerated art
 back, the renderer draws the words afterwards. `test/clean-artwork.test.ts`
 reads the pixels of the name's own box, paired against the render that does
-carry it. The default is **the right-hand page of each spread** — one per spread,
-counted out of `spreads()` and never written down — because that is the half the
-captain's artwork puts the child on.
+carry it. The default is **every page the child is on** — the cover and both
+halves of every spread but the babyless opening, counted out of `spreads()` and
+each page's own `childless` and never written down. It was one page per spread
+until 15 November; see the note on `childless` above for why that was wrong.
 
 **The file the captain actually ships is the pages, not the PDF.** Printify
 takes one raster per print area, so `lib/book/print.ts` § `renderBookPagesZip`

@@ -56,7 +56,7 @@ import {
   rightHalfOf,
 } from "../lib/artwork/import";
 import { pageAgainstContract } from "../lib/book/upload";
-import { ghostFor, ghostPreviewOf, pageCarriesTheChild } from "../lib/book/ghost";
+import { ghostFor, ghostPreviewOf, ghostBelongsOn } from "../lib/book/ghost";
 import { GHOST_CAPTION } from "../lib/render/ghost";
 import { lookOf, pageFillFor, pageSequence, pageTemplateFor } from "../lib/book/derive";
 import { validateBook } from "../lib/book/validate";
@@ -535,34 +535,37 @@ describe("the golden ghost spreads", () => {
 
   it("leaves the left-hand page alone, delivered or not", async () => {
     const art = await store();
-    // The captain's spreads put the child on the right-hand half only, so the
-    // left half of a delivered spread has nobody on it — and a white silhouette
-    // standing on an empty floor is worse than no placeholder at all.
+    // **No silhouette on a left-hand page**, and the reason is where a *figure*
+    // can stand rather than whether any part of the child is there. The
+    // captain's spreads stand the child on the right-hand half; part of them
+    // does cross the fold onto this page — `lib/book/artwork.ts` has the
+    // measurement — but the only place a white figure of the declared size
+    // would fit on this page is the band the verse is printed in, and there is
+    // no golden left half to use instead. `lib/book/ghost.ts` § The two things
+    // this still cannot do states that as the limit it is.
     //
     // **A look still being drawn gets the same answer**, and that is the part
-    // that moved: the placeholder used to put a baby on both halves, so this
-    // page used to carry one for an undelivered look and a pearlescent ghost
-    // was drawn on it. It stood for a child the finished page was never going
-    // to have. `templates/first-book.ts` § `interior` now declares every page
-    // of words babyless, which is what the artwork it stands in for is, and
-    // the two branches of `pageCarriesTheChild` agree here instead of
-    // disagreeing.
+    // that moved: the placeholder used to put a baby at this page's own centre,
+    // so an undelivered look carried a pearlescent ghost where the words go.
+    // `templates/first-book.ts` § `interior` now declares every page of words
+    // `babyless`, and the two branches of `ghostBelongsOn` agree here instead
+    // of disagreeing.
     const page = "page-003";
     const index = pageSequence(FIRST_BOOK).findIndex((p) => p.id === page);
     await art.put(lookSet(DELIVERED), [{ pageId: page, bytes: square([30, 60, 90]) }], NOW);
     const book = await bookAsDelivered(FIRST_BOOK, art);
 
-    expect(pageCarriesTheChild(book, index, DELIVERED)).toBe(false);
-    expect(pageCarriesTheChild(book, index, UNDELIVERED)).toBe(false);
+    expect(ghostBelongsOn(book, index, DELIVERED)).toBe(false);
+    expect(ghostBelongsOn(book, index, UNDELIVERED)).toBe(false);
     expect(ghostFor(book, index, DELIVERED)).toBeNull();
     expect(ghostFor(book, index, UNDELIVERED)).toBeNull();
 
     // And the right-hand half of the same spread carries one either way, which
     // is what keeps the four assertions above from being satisfied by a
-    // `pageCarriesTheChild` that had simply stopped saying yes to anything.
+    // `ghostBelongsOn` that had simply stopped saying yes to anything.
     const right = pageSequence(FIRST_BOOK).findIndex((p) => p.id === "page-004");
-    expect(pageCarriesTheChild(book, right, DELIVERED)).toBe(true);
-    expect(pageCarriesTheChild(book, right, UNDELIVERED)).toBe(true);
+    expect(ghostBelongsOn(book, right, DELIVERED)).toBe(true);
+    expect(ghostBelongsOn(book, right, UNDELIVERED)).toBe(true);
     expect(ghostFor(book, right, DELIVERED)).not.toBeNull();
     expect(ghostFor(book, right, UNDELIVERED)).not.toBeNull();
   });
@@ -590,13 +593,16 @@ describe("the golden ghost spreads", () => {
   it("is refused on a page the book says has no child on it", async () => {
     const art = await store();
     const half = rightHalfOf(square(LEFT, { size: 40, width: 80, right: RIGHT }));
-    // `page-002` is the right-hand half of the opening spread and is babyless:
-    // it carries the buyer's photograph and dedication. Nothing would ever draw
-    // a ghost there, which is why the captain's own `spread-01` has no gold
-    // figure in it — and why storing one is a refusal rather than a silent
-    // nothing.
+    // `page-002` is the right-hand half of the opening spread and the book
+    // declares it `childless`: no child in it in any look, which is why it is
+    // the page carrying the buyer's photograph and dedication. Nothing would
+    // ever draw a ghost there, which is why the captain's own `spread-01` has
+    // no gold figure in it — and why storing one is a refusal rather than a
+    // silent nothing. It is the one page where the answer must survive a fully
+    // delivered import, which is what a page-level declaration buys and the
+    // scene does not.
     const index = pageSequence(FIRST_BOOK).findIndex((p) => p.id === "page-002");
-    expect(pageCarriesTheChild(FIRST_BOOK, index)).toBe(false);
+    expect(ghostBelongsOn(FIRST_BOOK, index)).toBe(false);
     expect(ghostFor(FIRST_BOOK, index)).toBeNull();
 
     await art.put(GHOSTS_SET, [{ pageId: "page-002", bytes: half }], NOW);

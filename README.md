@@ -217,9 +217,13 @@ rendered onto the page, and a model asked to swap the character redraws the
 lettering — the captain's own earlier artwork survey found roughly twenty-five
 pieces carrying garbled near-words, which is exactly that. So clean pages go
 out, regenerated art comes back, and the renderer draws the words afterwards.
-The default is the **right-hand page of each spread**, which is the only half the
-artwork puts the child on; all twenty-four and all twenty-five are options.
-[`lib/book/artwork.ts`](lib/book/artwork.ts).
+The default is **every page the child is on** — the cover and both halves of
+every spread but the babyless opening one — and all twenty-five is the other
+option. It defaulted to the twelve right-hand pages until the left halves were
+measured: a spread is one wide scene and the child's limbs cross the fold, so
+eleven of the twelve left-hand pages carry an arm or a foot, and a swap that
+skipped them printed two different children facing each other.
+[`lib/book/artwork.ts`](lib/book/artwork.ts) has the numbers.
 
 **The regenerated pages, uploaded against one order.** Held to the same contract
 the twelve looks are — 3600 × 3600 exactly, PNG, sRGB, 8-bit, no alpha — by the

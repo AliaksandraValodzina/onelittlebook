@@ -73,7 +73,7 @@ import { artworkBytesFor } from "../lib/artwork/store";
 import { prepareLookPages } from "../lib/artwork/prepare";
 import { assetRouteUrl, hrefIn } from "../lib/assets/address";
 import { pageSequence, spreadSideOf } from "../lib/book/derive";
-import { pageCarriesTheChild } from "../lib/book/ghost";
+import { ghostBelongsOn } from "../lib/book/ghost";
 import { validateBook } from "../lib/book/validate";
 import { sha256 } from "../lib/assets/digest";
 import type { AssetRef } from "../lib/template/types";
@@ -182,7 +182,12 @@ function rightPageOfSpread(spread: number): string {
 }
 
 /**
- * The first `count` interior pages the book says have a child on them.
+ * The first `count` interior pages a held place for the child belongs on.
+ *
+ * `ghostBelongsOn` and not `pagesCarryingTheChild`, because these pages are
+ * given golden ghost halves as well as look artwork and `validateBook` refuses
+ * a ghost on a page no figure stands on — `lib/book/ghost.ts` is where the two
+ * questions are told apart.
  *
  * **The cover is excluded, and that is a fact about the book rather than a
  * convenience here**: a delivered cover is `{ kind: "asset" }`, which stops the
@@ -193,7 +198,7 @@ function rightPageOfSpread(spread: number): string {
  */
 function babyPages(count: number) {
   return pageSequence(FIRST_BOOK)
-    .filter((page, index) => page.id !== FIRST_BOOK.cover.id && pageCarriesTheChild(FIRST_BOOK, index))
+    .filter((page, index) => page.id !== FIRST_BOOK.cover.id && ghostBelongsOn(FIRST_BOOK, index))
     .slice(0, count);
 }
 

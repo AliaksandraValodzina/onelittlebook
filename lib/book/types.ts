@@ -200,10 +200,18 @@ export interface SceneSpec {
   /**
    * The ground and nothing in it. Absent is `false`.
    *
-   * The opening spread of this book is babyless on purpose: it is the one
-   * spread identical across every look, which is what makes it the right
-   * place for the buyer's own photograph and dedication. `lib/render/decoration.ts`
-   * § `scene` carries the rest of the argument.
+   * **This is an instruction to the placeholder renderer and not a fact about
+   * the captain's delivered artwork**, and the two are genuinely different
+   * things. `lib/render/decoration.ts` § `scene` draws one figure at
+   * `babyAt`, so a page whose words sit where that figure would stand has to
+   * say so — which is why `templates/first-book.ts` sets this on every verse
+   * page as well as on the opening spread, for two unrelated reasons.
+   *
+   * The fact about the artwork is `BookPage.childless`, which is the one a
+   * character swap reads: the captain's delivered spreads put the child's
+   * limbs across the fold onto eleven of the twelve left-hand pages, where the
+   * placeholder draws nothing at all. `lib/book/artwork.ts` § Which pages a
+   * character swap has to touch has the measurement.
    */
   babyless?: boolean;
   /**
@@ -275,6 +283,30 @@ export interface BookPage {
   /** Stable within the book, forever. An order's print file is named with it. */
   id: string;
   art: PageArt;
+  /**
+   * **No child anywhere in this page's artwork, in any look.** Absent means
+   * the child is in it.
+   *
+   * A fact about the *pictures*, which is why it is here and not in
+   * `SceneSpec`: it holds for the drawn placeholder, for every look the captain
+   * has delivered, and for the looks still being drawn. `SceneSpec.babyless`
+   * is the other thing — whether the placeholder renderer draws its one figure
+   * — and this book sets that on eleven pages this is absent on.
+   *
+   * **It is what a character swap is selected from** (`./derive.ts`
+   * § `pagesCarryingTheChild`): a page with the child in it must be
+   * regenerated with the buyer's own, and a page without one must not be,
+   * because regenerating it is a chance to introduce a difference between
+   * looks that should not exist. The opening spread of this book declares it,
+   * on both halves, and that is exactly why the buyer's photograph and words
+   * sit there — see `tilePage` and `templates/first-book.ts` § `page-001`.
+   *
+   * Declared per page rather than per spread because a page is what the
+   * artwork is delivered as; `pagesCarryingTheChild` reads the spread, and a
+   * spread with one half declared and one not is regenerated whole — a scene
+   * cut down the middle cannot have a new child on one half of it.
+   */
+  childless?: boolean;
   /**
    * The authored narrative line or two for this spread.
    *

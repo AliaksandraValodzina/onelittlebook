@@ -147,9 +147,12 @@ drawn white silhouette (`lib/render/ghost.ts`) on every page that has one, and
 the renderer still draws the caption over it, because every word in this book is
 the renderer's.
 
-**Only the right halves are kept.** Every left page is babyless and identical to
-the real artwork, so importing both halves would import the left pages twice at
-a quarter of the resolution.
+**Only the right halves are kept.** The gold figure stands on the right-hand
+half of each spread, which is the only half a held place in the preview belongs
+on (`lib/book/ghost.ts`), so importing both halves would store twelve more
+unprintable files nothing would ever draw. It is **not** that the left half has
+no part of the child in it — it does, on eleven of the twelve spreads, and
+[`look-upload-contract.md`](look-upload-contract.md) § 4 has the measurement.
 
 **`spread-01` is skipped**, and it is skipped by *derivation* rather than by a
 list: its right half is `page-002`, the book declares that page babyless — it is

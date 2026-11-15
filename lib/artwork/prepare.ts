@@ -32,7 +32,7 @@ import {
 } from "./import";
 import { tilePageId } from "./release";
 import { checkOrderArtwork } from "../book/order-upload";
-import { pageCarriesTheChild } from "../book/ghost";
+import { ghostBelongsOn } from "../book/ghost";
 import { pageSequence, spreadSideOf } from "../book/derive";
 import { readPngHeader } from "../render/png";
 import type { Problem } from "../template/validate";
@@ -143,14 +143,23 @@ export function preparePortraits(book: BookTemplate, files: ImportFile[]): Prepa
 /**
  * **The twelve golden spreads, split, right halves only.**
  *
- * Every left half is the quiet half — the words — and is identical to the real
- * artwork, so importing both would import the left pages a second time at a
- * quarter of the resolution under a type that says they can never print.
+ * A golden half is 887 px — a quarter of a page's linear resolution — and
+ * exists to hold a place in the *preview*, so the only pages worth one are the
+ * pages a held place belongs on: `ghostBelongsOn` is that question and its
+ * answer is the half the figure stands on. Storing the left halves too would be
+ * twelve more unprintable files for pages nothing would ever draw them on.
+ *
+ * **It is not that the left half has no part of the child in it.** It does, on
+ * eleven of the twelve spreads — `lib/book/artwork.ts` § Which pages a
+ * character swap has to touch has the measurement, and this comment used to
+ * claim the opposite. What is true is that the *figure* is on the right-hand
+ * half, which is where a silhouette can stand, and `lib/book/ghost.ts` § The
+ * two things this still cannot do states the consequence for the left one.
  *
  * The babyless spread is **skipped and derived, never listed**: the opening
- * spread carries the buyer's photograph and dedication and has no child on it,
- * which is exactly why the captain's own `spread-01` has no gold figure in it.
- * Storing it would be `ghost.onBabylessPage` from `validateBook`.
+ * spread carries the buyer's photograph and dedication and has no child on it
+ * at all, which is exactly why the captain's own `spread-01` has no gold figure
+ * in it. Storing it would be `ghost.onBabylessPage` from `validateBook`.
  */
 export function prepareGhostHalves(book: BookTemplate, files: ImportFile[]): Prepared {
   const sequence = pageSequence(book);
@@ -182,7 +191,7 @@ export function prepareGhostHalves(book: BookTemplate, files: ImportFile[]): Pre
     }
     const pageId = sequence[index].id;
 
-    if (!pageCarriesTheChild(book, index)) {
+    if (!ghostBelongsOn(book, index)) {
       skipped.push(`${file.name} → ${pageId} (the book declares it babyless)`);
       continue;
     }
