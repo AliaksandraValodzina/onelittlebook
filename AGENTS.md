@@ -184,12 +184,19 @@ Printify's own PSDs on 15 November with the filenames beside them — the
 interior print area is **2400 × 2400 px, 8.00 in at 300 dpi**, the softcover
 cover wrap is **4790 × 2400 px** finished 4715 × 2325 with a 2220 × 2250
 safety zone a panel, and the bleed derives at **0.125 in**. The 11 November
-reading of "12 × 12" was wrong and is withdrawn. `templates/first-book.ts`
-still declares an 8.5 in artboard with 0.25 in of bleed; correcting it moves
-drawn content — the artboard and the trim are one statement — so it is the
-captain's decision and not an edit, and `docs/print.md` § The page the book
-declares is not the page Printify prints states the three options. Meanwhile
-the page size is declared data on the book and **no test or component may read
+reading of "12 × 12" was **the hardcover** — a real 12 × 12 product from the
+same supplier, captain-confirmed 16 November and deliberately not built; the
+softcover these templates describe is 8 × 8 only, and the withdrawal of that
+reading as an error was itself wrong. (3600 × 3600 px is exactly 300 dpi across
+12 in, so the artwork already fits the larger book and would need no
+regenerating; `docs/print.md` § The 12 × 12 is the hardcover, confirmed and
+not built.) `templates/first-book.ts` still declares an 8.5 in artboard with 0.25 in of bleed; correcting it moves
+drawn content — the artboard and the trim are one statement — and **the captain
+decided on 16 November to leave it**: the error runs in the safe direction,
+8 × 8 is Printify's own product name, and the first printed proof will inform it
+better than arithmetic. `docs/print.md` § The page the book declares is not the
+page Printify prints is the settled record and carries the revisit trigger
+(a printed proof in hand). Meanwhile the page size is declared data on the book and **no test or component may read
 a page size from anywhere else**, and nothing derives an inch figure from
 anything but the book or that module.
 
@@ -553,8 +560,9 @@ and confirm it goes red.
 
 **Derive the numbers a test asserts, never type them.** Boxes come from the
 template's own slots, floors from the slot that implies them, counts from the
-list. The trim is an open question, so a suite full of hand-typed coordinates
-is a suite that has to be rewritten the day it is answered — and in the
+list. The declared trim is left wrong on purpose and revisitable, so a suite
+full of hand-typed coordinates is a suite that has to be rewritten the day it
+moves — and in the
 meantime every one of those assertions points at empty cream without saying so.
 
 **React here is glue and is tested without a browser.** There is no DOM in the

@@ -90,7 +90,8 @@ describe("the book as published", () => {
     /**
      * **DPI is derived, never declared** — the whole reason the format carries
      * no DPI field. The assertion is a *floor* rather than a value, which is
-     * the honest shape while the trim question in `docs/print.md` is open: 300
+     * the honest shape while `docs/print.md`'s declared trim overstates the
+     * object and may yet be corrected: 300
      * is what a printer asks for and generating above it is deliberate,
      * because downscaling is free and upscaling is the expensive mistake.
      */

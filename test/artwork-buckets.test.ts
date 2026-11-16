@@ -404,8 +404,9 @@ describe("re-uploading", () => {
 describe("validating before uploading", () => {
   it("accepts a page that meets the contract the twelve looks are held to", () => {
     // The book's own declared print size, read off the template and never
-    // typed here: the trim is an open question and a test that hard-coded a
-    // number would have to be rewritten the day it is answered.
+    // typed here: the declared trim is revisitable (`docs/print.md`) and a
+    // test that hard-coded a number would have to be rewritten the day it
+    // moves.
     const prepared = prepareLookPages(FIRST_BOOK, [
       { name: "spread-02-right.png", bytes: square([180, 40, 40], SIZE) },
     ]);

@@ -49,7 +49,7 @@
  * and `rev` is eight hex of that object's own content hash. Edit anything below
  * and `npm run book` refuses until `rev` is restamped; it prints the value.
  *
- * ## The page size, which is the open question
+ * ## The page size, which is known wrong and deliberately left alone
  *
  * **3600 × 3600 px on a 612 pt artboard** — an 8.00 in trim with a quarter inch
  * of bleed on every edge, so the file runs at 450 DPI across the trim and
@@ -64,10 +64,11 @@
  * What the measurement also says is that the page is **8.00 in and not 8.5**,
  * and that its finished size is **7.75 in and not 8.00** — so the two
  * constants below describe the right pixels with the wrong inches. Correcting
- * them moves drawn content, which makes it the captain's decision rather than
- * a data edit; `docs/print.md` § The page the book declares is not the page
- * Printify prints has the arithmetic and the options. § `SIDE` below is the
- * short version.
+ * them moves drawn content, and **the captain decided on 16 November to leave
+ * it**: the error runs in the safe direction and 8 × 8 is Printify's own
+ * product name. `docs/print.md` § The page the book declares is not the page
+ * Printify prints has the arithmetic, the decision and the revisit trigger.
+ * § `SIDE` below is the short version.
  *
  * ## What is a placeholder, and what is not
  *
@@ -113,15 +114,18 @@ import { SLOT } from "../lib/book/slots";
  * (`lib/render/svg.ts`), so what is wrong here is the description and not the
  * file.
  *
- * **It has not been corrected in place, deliberately.** The artboard and the
+ * **It has not been corrected in place, deliberately — decided, not pending.**
+ * The artboard and the
  * trim are one statement: shrinking 612 to 576 while every layer below keeps
  * its coordinates slides the whole book 18 pt off centre, and keeping the
  * picture identical means re-authoring every coordinate, type size and
  * baseline in this file by 16/17 — including the captain's verse marks and the
  * measurements each of them was chosen against. That is a reflow of twelve
  * spreads and a product decision about what the shop says the book measures,
- * so it is the captain's: `docs/print.md` § The page the book declares is not
- * the page Printify prints states the three options.
+ * so it was the captain's — and on 16 November they decided to leave it:
+ * `docs/print.md` § The page the book declares is not the page Printify prints
+ * is the settled record and names the one thing that would reopen it, a
+ * printed proof in hand.
  *
  * Nothing is at risk in the meantime. The declaration is conservative in the
  * safe direction — it puts the trim guide further inside the file than the

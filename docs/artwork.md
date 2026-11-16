@@ -213,14 +213,19 @@ number beside the look id in the order's record, now that the bytes have a home.
 - **Pinning a chosen-look order to an artwork version**, as § 4 above says.
 - **The trim**: measured on 15 November out of Printify's own templates —
   `print.md` § What Printify's templates actually say. The interior print area
-  is **2400 × 2400 px, 8.00 in at 300 dpi**, and the finished page is 7.75 in;
-  the 11 November note that the book is 12 × 12 in was a reading rather than a
-  measurement and is **withdrawn**. The delivered 3600 px pages are half again
-  as many pixels as Printify asks for across that page, so **no artwork is
-  regenerated** — 3600 downscales. What is open is the book's own
-  *declaration*, which still says 8.5 in with 0.25 in of bleed: correcting it
-  moves drawn content, so it is the captain's decision —
-  `print.md` § The page the book declares is not the page Printify prints.
+  is **2400 × 2400 px, 8.00 in at 300 dpi**, and the finished page is 7.75 in.
+  The 11 November note of 12 × 12 in was about the **hardcover** — a real
+  12 × 12 product from the same supplier, captain-confirmed on 16 November and
+  deliberately not built — and not an error about this one; 3600 px is exactly
+  300 dpi across 12 in, so that book too would need no artwork regenerated
+  (`print.md` § The 12 × 12 is the hardcover, confirmed and not built). The
+  delivered 3600 px pages are half again as many pixels as Printify asks for
+  across the 8 in page, so **no artwork is regenerated** — 3600 downscales.
+  The book's own *declaration* still says 8.5 in with 0.25 in of bleed, and
+  **the captain decided on 16 November to leave it**: correcting it moves drawn
+  content, the error runs in the safe direction, and the revisit trigger is a
+  printed proof in hand — `print.md` § The page the book declares is not the
+  page Printify prints.
 - **A cover square for every look**, which is what the cover wrap is composed
   from — `lib/book/cover-wrap.ts`. One square per look serves the website, the
   softcover and the hardcover; the back is a wash and the spine is bare, so

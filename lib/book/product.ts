@@ -77,12 +77,13 @@ export function bookFacts(market: Market): Fact[] {
        * wording. This claim follows the declared trim, so it says 8 in — the
        * same thing the listing and the SKU say.
        *
-       * **Correcting it is one decision and not two.** The declared trim
-       * cannot be changed without moving drawn content (`docs/print.md` § The
-       * page the book declares is not the page Printify prints), and what the
-       * shop *states* a book measures is the captain's to settle rather than a
-       * consequence of a template edit. It is derived from the template rather
-       * than typed either way, so it moves when the declaration does.
+       * **Correcting it is one decision and not two, and it was decided.** The
+       * declared trim cannot be changed without moving drawn content
+       * (`docs/print.md` § The page the book declares is not the page Printify
+       * prints), and what the shop *states* a book measures was the captain's
+       * to settle rather than a consequence of a template edit: on 16 November
+       * they decided to leave both as they are. It is derived from the template
+       * rather than typed either way, so it moves when the declaration does.
        */
       label: "Finished page",
       confirmed: true,

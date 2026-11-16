@@ -41,9 +41,9 @@
  * `page.print`), which is what made the trim question a data edit for as long
  * as it was open. It is answered now — Printify's interior print area is
  * 2400 × 2400 px, 8.00 in at 300 dpi — and the declaration has **not** been
- * changed to match, because doing so moves drawn content:
- * `docs/print.md` § The page the book declares is not the page Printify
- * prints is the whole of it, and is the captain's decision.
+ * changed to match, because doing so moves drawn content. The captain decided
+ * on 16 November to leave it there; `docs/print.md` § The page the book
+ * declares is not the page Printify prints is the whole of it.
  */
 
 import type { AssetRef, Canvas, Colour, Layer, PhotoFill, PrintSpec } from "../template/types";
