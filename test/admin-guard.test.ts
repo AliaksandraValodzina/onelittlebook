@@ -130,6 +130,10 @@ async function routes() {
     pages: (await import("../app/api/admin/pages/[ref]/route")).GET,
     artwork: (await import("../app/api/admin/artwork/[ref]/route")).GET,
     upload: (await import("../app/api/admin/artwork/[ref]/route")).POST,
+    // The cover wrap is the same order's front cover at print resolution,
+    // with the child's name on it — a download with the customer in it, so it
+    // is named here as well as covered structurally below.
+    cover: (await import("../app/api/admin/cover/[ref]/route")).GET,
   };
 }
 
@@ -152,7 +156,7 @@ function withEnv<T>(env: Record<string, string | undefined>, body: () => Promise
 describe("the files behind the door", () => {
   it("hand back nothing to a request with no secret", async () => {
     await withEnv({ ADMIN_SECRET: SECRET }, async () => {
-      const { print, photo, dispatch, pages, artwork, upload } = await routes();
+      const { print, photo, dispatch, pages, artwork, upload, cover } = await routes();
       const params = Promise.resolve({ ref: REF });
 
       for (const [name, response] of [
@@ -168,6 +172,7 @@ describe("the files behind the door", () => {
             { params },
           ),
         ],
+        ["the cover wrap", await cover(new Request(`https://e.test/api/admin/cover/${REF}`), { params })],
       ] as const) {
         expect(response.status, name).toBe(401);
         expect(response.headers.get("content-type"), name).toContain("application/json");
@@ -218,9 +223,10 @@ describe("the files behind the door", () => {
       expect(pictured.status).toBe(503);
       expect(await printed.json()).toMatchObject({ detail: "no order store" });
 
-      const { pages, artwork, upload } = await routes();
+      const { pages, artwork, upload, cover } = await routes();
       for (const [name, response] of [
         ["the finished pages", await pages(new Request(`https://e.test/api/admin/pages/${REF}`, { headers }), { params })],
+        ["the cover wrap", await cover(new Request(`https://e.test/api/admin/cover/${REF}`, { headers }), { params })],
         ["the clean artwork", await artwork(new Request(`https://e.test/api/admin/artwork/${REF}`, { headers }), { params })],
         [
           "the artwork upload",
@@ -240,7 +246,7 @@ describe("the files behind the door", () => {
     await withEnv({ ADMIN_SECRET: SECRET }, async () => {
       const { print } = await routes();
       const headers = { authorization: `Bearer ${SECRET}` };
-      const { pages, artwork, upload } = await routes();
+      const { pages, artwork, upload, cover } = await routes();
       for (const bad of ["../../etc/passwd", "orders/BK-ABCDEFG", "", "BK-ABC"]) {
         const params = Promise.resolve({ ref: bad });
         for (const [name, response] of [
@@ -253,6 +259,7 @@ describe("the files behind the door", () => {
               params,
             }),
           ],
+          ["cover", await cover(new Request("https://e.test/api/admin/cover/x", { headers }), { params })],
         ] as const) {
           // A reference becomes a path segment in the artwork store, so this is
           // not only about the bucket: `../../` would be a directory outside it.

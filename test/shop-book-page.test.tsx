@@ -7,9 +7,10 @@
  * **Every number is derived.** The page count comes from the page list, the
  * trim from the artboard less its declared bleed, the dispatch window from the
  * module the confirmation email reads it out of, and both prices from
- * `EDITIONS`. The trim is an **open question** — `docs/print.md` § The square
- * trim nobody has pinned down — so a hand-typed "8 inches" would be a claim
- * that outlived the answer. These assertions compute the same values the page
+ * `EDITIONS`. The trim the page states is the book's **declared** one, and
+ * `docs/print.md` § The page the book declares is not the page Printify prints
+ * records that the object is 7.75 in where the declaration says 8.00 — so a
+ * hand-typed "8 inches" here would be a claim that outlived the correction. These assertions compute the same values the page
  * does, from the template, which is the only way the two can stay married.
  *
  * **What nobody knows is marked, not hidden.** `lib/product.ts` is a union

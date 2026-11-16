@@ -37,6 +37,7 @@ import { artworkStoreFromEnv } from "../../../lib/artwork/store";
 import { releaseArtworkFor } from "../../../lib/artwork/release";
 import { cleanArtworkPages } from "../../../lib/book/artwork";
 import { artworkPageIds } from "../../../lib/book/order-art";
+import { COVER_PRODUCTS, measuredProduct, wrapGeometry } from "../../../lib/book/cover-wrap";
 import { pageCount } from "../../../lib/book/derive";
 import { addressLines, chargedAs, isReference } from "../../../lib/orders/record";
 import { editionOf, priceOf } from "../../../lib/book/editions";
@@ -46,6 +47,18 @@ import { lookOf } from "../../../lib/book/derive";
 import Gate from "../_Gate";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * The cover wrap's own dimensions, read off the one measured template rather
+ * than written into this page — `lib/print/printify.ts` is where the numbers
+ * live and the file they were read out of is named beside them.
+ */
+const WRAP = wrapGeometry(measuredProduct("softcover").template);
+
+/** What the hardcover is still waiting for, in the words of the module that refuses. */
+const HARDCOVER_NEEDS = COVER_PRODUCTS.hardcover.measured
+  ? null
+  : COVER_PRODUCTS.hardcover.needs;
 
 export const metadata: Metadata = {
   title: pageTitle("Order"),
@@ -204,6 +217,38 @@ export default async function AdminOrder(props: {
         </a>{" "}
         <span className="opacity-60">— for reading it, not for uploading it.</span>
       </p>
+
+      {/*
+        **The cover print area is not the square.** Printify wants one wide
+        image carrying the back cover, the spine and the front, because a
+        softcover is printed flat and wrapped round the block. The shop
+        composes it from the same square the buyer approved —
+        `lib/book/cover-wrap.ts` says why that is one file per look rather than
+        three, and why a hardcover wrap cannot be made from a softcover one.
+      */}
+      <h3 className="mt-6 font-semibold">The cover, as the press wants it</h3>
+      <p className="mt-2 text-sm opacity-75">
+        The {COVER_PRODUCTS.softcover.label.toLowerCase()} cover wrap: the back cover and the
+        spine in this order&apos;s own colourway, and the front cover on the right, at{" "}
+        {WRAP.pixels.width} × {WRAP.pixels.height} — the size Printify&apos;s own template states
+        for this product. The page files above still carry the square cover, which is what the
+        interior print area takes.
+      </p>
+      <p className="mt-3">
+        <a
+          className="inline-block rounded-lg border-2 border-current/25 px-5 py-3 font-semibold"
+          href={`/api/admin/cover/${record.ref}`}
+          data-testid="cover-wrap-link"
+        >
+          Download the {COVER_PRODUCTS.softcover.label.toLowerCase()} cover wrap (PNG)
+        </a>
+      </p>
+      {HARDCOVER_NEEDS ? (
+        <p className="mt-3 text-sm opacity-75" data-testid="cover-wrap-unmeasured">
+          There is <b>no {COVER_PRODUCTS.hardcover.label.toLowerCase()} wrap</b> and asking for one
+          refuses rather than producing a file: {HARDCOVER_NEEDS}
+        </p>
+      ) : null}
 
       {/*
         TEXT NEVER MAKES A ROUND TRIP THROUGH AN IMAGE MODEL. The download

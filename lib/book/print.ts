@@ -1,9 +1,14 @@
 /**
  * **The file the captain downloads and sends to a printer.**
  *
- * One PDF of the whole book at print resolution, and a PNG of any single page
- * as the alternative. Both come out of `renderPrintPixels`/`renderPrintPng`,
- * which come out of `renderPrintSvg`, which comes out of `renderPageSvg` — the
+ * One PDF of the whole book at print resolution, a PNG of any single page as
+ * the alternative, every finished page as a ZIP — which is the one that
+ * actually ships — and the **cover wrap**, which is the only artefact here
+ * that is not a page of the book: Printify's cover print area is one wide
+ * image carrying the back cover, the spine and the front, and
+ * `./cover-wrap.ts` composes it from the square. All of them come out of
+ * `renderPrintPixels`/`renderPrintPng`, which come out of `renderPrintSvg`,
+ * which comes out of `renderPageSvg` — the
  * same function that drew the preview the buyer approved. There is no second
  * drawing path anywhere in this module and `test/one-renderer.test.ts` is what
  * keeps it that way.
@@ -37,12 +42,19 @@
 
 import { createHash } from "node:crypto";
 import { BRAND } from "../brand";
+import { sha256 } from "../assets/digest";
 import { canonicalJson } from "../template/rev";
 import { blockingProblems, type Problem } from "../template/validate";
 import { renderPrintPixels, renderPrintPng, type PrintResult, type SuppliedBytes } from "../render/raster";
 import { buildPdf, type PdfPage } from "../render/pdf";
 import { buildZip, type ZipEntry } from "../zip";
 import { pageCount, pageFillFor, pageSequence, pageTemplateFor } from "./derive";
+import {
+  coverWrapFill,
+  coverWrapTemplate,
+  measuredProduct,
+  type CoverProductId,
+} from "./cover-wrap";
 import { validateBook, validateBookFill } from "./validate";
 import type { BookFill, BookTemplate } from "./types";
 
@@ -110,10 +122,11 @@ export function printFileName(
 /**
  * Everything in a download's name that identifies **which order** it is.
  *
- * Extracted because there are now four artefacts an order produces — the whole
- * book as a PDF, one page as a PNG, the finished pages as a ZIP and the clean
- * artwork as a ZIP — and a second naming scheme for any of them would be a
- * folder on a desk where two files from the same order do not sort together.
+ * Extracted because there are now five artefacts an order produces — the whole
+ * book as a PDF, one page as a PNG, the finished pages as a ZIP, the clean
+ * artwork as a ZIP and the cover wrap as a PNG — and a second naming scheme
+ * for any of them would be a folder on a desk where two files from the same
+ * order do not sort together.
  * Everything that decides what is *inside* the file is still appended by the
  * caller, which is what keeps two orders from the same buyer distinguishable.
  */
@@ -219,6 +232,72 @@ export async function renderBookPagePng(
   const template = pageTemplateFor(book, index, { lookId: fill.lookId, coverId: fill.coverId });
   const result = await renderPrintPng(template, pageFillFor(book, index, fill), supplied);
   return { ...result, filename: printFileName(book, fill, "png", index) };
+}
+
+// ---------------------------------------------------------------------------
+// The cover, as the press wants it
+// ---------------------------------------------------------------------------
+
+export interface CoverWrapResult extends PrintResult {
+  filename: string;
+  /** Which product the wrap was composed for. */
+  product: CoverProductId;
+  /** The square it was composed from, for a caller that wants both files. */
+  front: PrintResult;
+}
+
+/**
+ * **The cover wrap: back, spine and front, as one image.**
+ *
+ * `renderBookPagePng(book, 0, …)` is the square the website shows, unchanged
+ * and unaware — this calls it, hashes the bytes it gets back, and hands them
+ * to the wrap as an `image` layer through the **`supplied` seam the renderer
+ * already has** (`lib/render/raster.ts` § `SuppliedBytes`, "bytes the caller
+ * already holds, keyed by content hash"). So there is no compositor here and
+ * no second drawing path: the wrap is a `PageTemplate` with three layers and
+ * `renderPrintPng` draws it exactly as it draws every page of the book.
+ *
+ * The digest is computed from the bytes rather than declared, which is the
+ * rule `lib/assets/resolve.ts` states for every `AssetRef` in the codebase —
+ * an address is a claim, and the one claim that cannot be wrong is the one
+ * taken from the thing it addresses.
+ *
+ * **It refuses rather than approximating.** A product whose template nobody
+ * has opened raises `CoverWrapUnavailable` before anything is rendered —
+ * `lib/book/cover-wrap.ts` § `COVER_PRODUCTS` says why a plausible wrong wrap
+ * is the worst thing this function could produce.
+ */
+export async function renderCoverWrapPng(
+  book: BookTemplate,
+  fill: BookFill,
+  options: { product?: CoverProductId; supplied?: SuppliedBytes } = {},
+): Promise<CoverWrapResult> {
+  const product = options.product ?? "softcover";
+  // Before a single page is rasterised: an unmeasured product is a refusal and
+  // not a slow one.
+  measuredProduct(product);
+
+  // Index 0 is the cover — `pageSequence` puts it there and `isCover` is the
+  // one answer to that question.
+  const front = await renderBookPagePng(book, 0, fill, options.supplied);
+  const digest = sha256(front.png);
+  const supplied: SuppliedBytes = new Map(options.supplied ?? []);
+  supplied.set(digest, front.png);
+
+  const template = coverWrapTemplate(book, fill, product, {
+    sha256: digest,
+    mime: "image/png",
+    px: [front.pixels.width, front.pixels.height],
+    label: `${book.name} — front cover`,
+  });
+  const wrap = await renderPrintPng(template, coverWrapFill(book, product), supplied);
+  const { width, height } = template.print.pixels;
+  return {
+    ...wrap,
+    front,
+    product,
+    filename: `${orderFileStem(book, fill)}-cover-${product}-wrap-${width}x${height}.png`,
+  };
 }
 
 // ---------------------------------------------------------------------------

@@ -55,19 +55,19 @@
  * of bleed on every edge, so the file runs at 450 DPI across the trim and
  * 423.5 across the artboard. Declared here, once, in two numbers.
  *
- * The **trim** is settled: the captain's specification names Printify's
- * Softcover Photo Book (8 × 8 in, its only size) and Hardcover Photo Book
- * (8 × 8 in, one of four), and one artwork set serves both. What is **not**
- * settled is Printify's stated print-area pixel size for that product, which
- * is published only inside their signed-in Product Creator. 3600 is generated
- * deliberately above every candidate: 8 in at 300 DPI is 2400 px, so 3600
- * downscales to it with room, and downscaling is free where upscaling is the
- * expensive mistake.
+ * **Printify's print area is now measured** — 2400 × 2400 px at 300 dpi for an
+ * interior page, read out of their own template on 15 November — so 3600 is
+ * half again as many pixels as they ask for across the same page. That is
+ * deliberate and stays: downscaling is free where upscaling is the expensive
+ * mistake.
  *
- * `docs/print.md` § The square trim nobody has pinned down carries the
- * evidence, including what is odd about the 3150 this repository's other
- * template uses. **Nothing here resolves it** — both numbers are fields on one
- * object, so the answer is a data edit and a restamp.
+ * What the measurement also says is that the page is **8.00 in and not 8.5**,
+ * and that its finished size is **7.75 in and not 8.00** — so the two
+ * constants below describe the right pixels with the wrong inches. Correcting
+ * them moves drawn content, which makes it the captain's decision rather than
+ * a data edit; `docs/print.md` § The page the book declares is not the page
+ * Printify prints has the arithmetic and the options. § `SIDE` below is the
+ * short version.
  *
  * ## What is a placeholder, and what is not
  *
@@ -97,24 +97,44 @@ import { SLOT } from "../lib/book/slots";
 // ---------------------------------------------------------------------------
 
 /**
- * 612 pt = 8.5 in: **the 8 × 8 in trim plus a quarter inch of bleed on every
- * edge.**
+ * 612 pt, declared as 8.5 in: **the 8 × 8 in trim plus a quarter inch of bleed
+ * on every edge** — and the inches are known to be wrong by 6.25%.
  *
- * `BLEED` below takes that quarter inch off each side, so the trim is
- * 576 pt — **8.00 inches exactly**, which is the size of both Printify photo
- * books this book is for. The artboard is the page *including* bleed because
- * that is what `docs/print.md` establishes Printify's stated print area to be.
+ * `BLEED` below takes that quarter inch off each side, so the declared trim is
+ * 576 pt, 8.00 in. The artboard is the page *including* bleed, because that is
+ * what `docs/print.md` establishes Printify's stated print area to be.
  *
- * With `print.pixels` at 3600 this file is **423.5 DPI across the artboard and
- * 450 DPI across the trim** — far above the 300 a printer asks for, which is
- * deliberate: the captain generates masters once, and downscaling is free where
- * upscaling is the expensive mistake. See `docs/print.md` § The square trim for
- * what is still open about the number, and note that nothing about it is
- * resolved here — both values are data on this one object.
+ * **Printify's interior print area is 2400 × 2400 px at 300 dpi, which is
+ * 8.00 in — not 8.5** — measured out of their own template on 15 November, and
+ * their finished page is 7.75 in rather than 8.00. So this artboard is really
+ * 576 pt and this bleed is really 9, and `print.pixels` at 3600 is **450 DPI**
+ * across the page rather than the 423.5 the declaration implies. The *pixels*
+ * are unaffected: a page is a shape rather than a size
+ * (`lib/render/svg.ts`), so what is wrong here is the description and not the
+ * file.
+ *
+ * **It has not been corrected in place, deliberately.** The artboard and the
+ * trim are one statement: shrinking 612 to 576 while every layer below keeps
+ * its coordinates slides the whole book 18 pt off centre, and keeping the
+ * picture identical means re-authoring every coordinate, type size and
+ * baseline in this file by 16/17 — including the captain's verse marks and the
+ * measurements each of them was chosen against. That is a reflow of twelve
+ * spreads and a product decision about what the shop says the book measures,
+ * so it is the captain's: `docs/print.md` § The page the book declares is not
+ * the page Printify prints states the three options.
+ *
+ * Nothing is at risk in the meantime. The declaration is conservative in the
+ * safe direction — it puts the trim guide further inside the file than the
+ * real cut — and every slot is checked against it.
  */
 const SIDE = 612;
 
-/** 0.25 in, declared conservatively. `canvas.bleed` below carries the argument. */
+/**
+ * 0.25 in as declared, 2.94% of the artboard in fact, where Printify's own
+ * template puts the cut at 1.5625% — so this is **over**-declared and the
+ * guide sits inside the real one. `canvas.bleed` below carries the argument
+ * and `docs/print.md` § The page the book declares carries the measurement.
+ */
 const BLEED = 18;
 
 /**
@@ -978,11 +998,15 @@ export const FIRST_BOOK: BookTemplate = {
        * 0.25 in of bleed, declared conservatively exactly as `my-forever.ts`
        * declares it: over-declaring moves the trim guide *inwards*, which keeps
        * content further from any real cut line, where under-declaring moves it
-       * towards one. `docs/print.md` carries the evidence and the open question.
+       * towards one.
        *
-       * Here it also does the arithmetic that makes the trim the product's own
-       * size: 612 − 2 × 18 = 576 pt = **8.00 in**, which is both Printify photo
-       * books exactly.
+       * It is over-declared here too, and now measurably: Printify's own
+       * template cuts 1.5625% off each edge where this declares 2.94%. The
+       * arithmetic it does — 612 − 2 × 18 = 576 pt — therefore names an 8.00 in
+       * trim for a book whose finished page is 7.75. See § `SIDE` and
+       * `docs/print.md` § The page the book declares is not the page Printify
+       * prints: the correction moves drawn content, so it is a decision rather
+       * than an edit.
        */
       bleed: BLEED,
       /** A further 0.25 in. Nothing a buyer can see crosses it. */

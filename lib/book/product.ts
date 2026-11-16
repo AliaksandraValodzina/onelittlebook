@@ -11,9 +11,13 @@
  * It is a second module rather than a parameter on the first because the two
  * products have genuinely different open questions. My Forever's finished size
  * is unknown because Printify does not publish where the trim falls inside a
- * stated print area; this book's is unknown for that reason **and** because
- * nobody has yet established what 3600 × 3600 is 3600 of. Collapsing the two
- * into one table would mean one `needs` sentence doing two jobs badly.
+ * stated print area, and nobody has downloaded its template; this book's was
+ * open for the same reason **and** because nobody had established what
+ * 3600 × 3600 was 3600 of — both of which were **answered on 15 November** by
+ * reading the real templates (`lib/print/printify.ts`). What is left here is a
+ * declaration that has not caught up with the measurement, which is a
+ * different kind of thing: `docs/print.md` § The page the book declares is not
+ * the page Printify prints, and the note on *Finished page* below.
  *
  * Every confirmed fact here is derived from `templates/first-book.ts` rather
  * than typed, so a fact cannot drift from the artefact: change the page size
@@ -26,6 +30,7 @@ import { photoFloor } from "./photo";
 import { EDITIONS, priceLabel } from "./editions";
 import { DEFAULT_MARKET, type Market } from "../shop/market";
 import { deliveryTimeLine } from "../shop/shipping";
+import { SOFTCOVER_INTERIOR_AREA as PRINTIFY_INTERIOR } from "../print/printify";
 import { DISPATCH_WINDOW } from "../email/order";
 import type { Fact } from "../product";
 
@@ -63,13 +68,21 @@ export function bookFacts(market: Market): Fact[] {
     },
     {
       /**
-       * **The trim is settled; the file's relationship to it is not.**
+       * **The size the product is sold as, derived from the template's own
+       * declaration — and the declaration is 6.25% larger than the object.**
        *
-       * 8 × 8 in is the captain's decision and it is the only square size
-       * Printify's softcover photo book comes in, so this is a number the page
-       * may state. It is derived from the template rather than typed, which is
-       * what keeps it true: `trimBox` takes the declared bleed off the declared
-       * artboard, so the claim moves when the page size does.
+       * Printify's own template, measured 15 November, makes the finished page
+       * **7.75 in** square: the product is *named* 8 × 8 and trimmed to 7.75,
+       * which is the industry's ordinary arrangement and Printify's own SKU
+       * wording. This claim follows the declared trim, so it says 8 in — the
+       * same thing the listing and the SKU say.
+       *
+       * **Correcting it is one decision and not two.** The declared trim
+       * cannot be changed without moving drawn content (`docs/print.md` § The
+       * page the book declares is not the page Printify prints), and what the
+       * shop *states* a book measures is the captain's to settle rather than a
+       * consequence of a template edit. It is derived from the template rather
+       * than typed either way, so it moves when the declaration does.
        */
       label: "Finished page",
       confirmed: true,
@@ -78,20 +91,21 @@ export function bookFacts(market: Market): Fact[] {
     },
     {
       /**
-       * What is still open is **Printify's stated print-area pixel size**, which
-       * is published only inside their signed-in Product Creator. It does not
-       * stop a file being made — 3600 px over-covers 8 in at 300 DPI by half
-       * again — but it is the difference between supplying what they ask for and
-       * supplying something they will rescale, and nobody has read it yet.
+       * **Answered on 15 November**, by downloading Printify's own templates
+       * for this product and reading their headers rather than reasoning about
+       * round numbers. It was the open one here for a month, and the shape of
+       * the answer is why it mattered: 3600 px is half again as many pixels as
+       * they ask for across the same page, so the file downscales rather than
+       * upscaling, which is the direction that costs nothing.
        */
       label: "Printify's asked-for file size",
-      confirmed: false,
-      needs:
-        "the print-area pixels Printify states for the 8 × 8 photo book, which only shows inside " +
-        `their signed-in Product Creator. This file is ${b.page.print.pixels.width} px, which is ` +
-        `${Math.round((b.page.print.pixels.width / trim.width) * 72)} DPI across the trim — above ` +
-        "any figure they are likely to ask for, so it downscales rather than upscales either way. " +
-        "See docs/print.md.",
+      confirmed: true,
+      value:
+        `${PRINTIFY_INTERIOR.width} × ${PRINTIFY_INTERIOR.height} px an interior page; ` +
+        `this file is ${b.page.print.pixels.width} px, which downscales to it`,
+      source:
+        "lib/print/printify.ts — read out of the interior template downloaded from Printify's " +
+        "Product Creator, 15 November; docs/print.md § What Printify's templates actually say",
     },
     {
       label: "Paper and binding",

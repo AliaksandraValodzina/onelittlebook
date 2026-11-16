@@ -38,9 +38,12 @@
  * `app/_book/CropSurface.tsx` carry that distinction.
  *
  * The page size is a **declared value on the book** (`page.canvas`,
- * `page.print`) and the open trim question is why: see `docs/print.md`
- * § The square trim nobody has pinned down. Changing 3600 to 3150, or to
- * anything else, is editing two numbers and re-running `npm run book`.
+ * `page.print`), which is what made the trim question a data edit for as long
+ * as it was open. It is answered now — Printify's interior print area is
+ * 2400 × 2400 px, 8.00 in at 300 dpi — and the declaration has **not** been
+ * changed to match, because doing so moves drawn content:
+ * `docs/print.md` § The page the book declares is not the page Printify
+ * prints is the whole of it, and is the captain's decision.
  */
 
 import type { AssetRef, Canvas, Colour, Layer, PhotoFill, PrintSpec } from "../template/types";
@@ -117,6 +120,27 @@ export interface Look {
    * mapping from the captain's numbering to these ids.
    */
   tile?: AssetRef;
+  /**
+   * The wash the **back cover and the spine** are painted, for this look.
+   *
+   * The captain's decision of 15 November is one square cover per look, a
+   * plain back wash *"drawn from that look's own palette"* and a bare spine,
+   * with the shop composing the wrap — `lib/book/cover-wrap.ts` carries the
+   * whole argument, including why composing is the only way both products can
+   * be right.
+   *
+   * **Absent means the cover's own ground**, which for a book whose cover
+   * takes the buyer's colourway is that colourway: the back of the book is
+   * the colour of the front of it, with nothing declared anywhere. This field
+   * is for the state that arrives with delivered cover artwork — a square the
+   * captain drew in its own palette, whose back cannot be derived from a
+   * colour the book declares — and it is the only thing a look may say about
+   * the wrap, for the same reason a look may say nothing else about a page.
+   *
+   * It is never read by the shop. The picker, the preview and the basket show
+   * the square cover and know nothing about wraps.
+   */
+  wash?: Colour;
 }
 
 /**
@@ -431,10 +455,12 @@ export interface BookTemplate {
   /**
    * **The page size, declared once for every page of the book.**
    *
-   * One place, so changing it is a data edit. `docs/print.md` § The square trim
-   * nobody has pinned down is why that matters: 3600 × 3600 is 12.00 in at 300
-   * dpi and 3150 × 3150 is 10.5 in, which is not a square trim anybody sells —
-   * and the question of which is right is the captain's, not this file's.
+   * One place, so changing it is a data edit — which is what keeps the
+   * correction `docs/print.md` § The page the book declares is not the page
+   * Printify prints describes a *decision* rather than a project. Printify's
+   * interior print area is 2400 × 2400 px, 8.00 in at 300 dpi, measured; this
+   * book declares an 8.5 in artboard and 3600 px, which is the same pixels
+   * described 6.25% too large.
    */
   page: {
     canvas: Canvas;

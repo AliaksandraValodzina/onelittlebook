@@ -135,13 +135,16 @@ watercolour linework goes mushy under AI upscaling and it would be printed that
 way. This is the one number worth over-shooting, and it is the reason this
 contract can be settled today while the trim question is still open.
 
-**The exact file size Printify asks for is still open, and this contract does
-not depend on it.** The page size is a declared value in the book template
-(`templates/first-book.ts`, `page.canvas` and `page.print`), so changing it is a
-data edit and a re-render, not a code change — and **you would not regenerate
-anything**, because 3600 downscales to every candidate. See
-[`print.md`](print.md) § The square trim nobody has pinned down for what is
-actually unknown and who can close it.
+**The file size Printify asks for is now measured, and this contract does not
+depend on it either way.** The interior print area is 2400 × 2400 px — 8.00 in
+at 300 dpi, read out of their own template on 15 November — so the 3600 px
+pages in this contract are half again as many pixels as they ask for across the
+same page, and **nothing is regenerated**: 3600 downscales, which is free. The
+page size is a declared value in the book template (`templates/first-book.ts`,
+`page.canvas` and `page.print`), so changing it is a data edit and a re-render,
+not a code change. See [`print.md`](print.md) § What Printify's templates
+actually say for the measurements, and § The page the book declares is not the
+page Printify prints for the declaration that has not caught up with them.
 
 ### Where the trim falls, and the safe area
 

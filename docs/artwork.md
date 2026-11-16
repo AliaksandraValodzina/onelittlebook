@@ -211,13 +211,20 @@ number beside the look id in the order's record, now that the bytes have a home.
   the deployed shop renders the placeholder book and the artwork is on one
   laptop.
 - **Pinning a chosen-look order to an artwork version**, as § 4 above says.
-- **The trim**: `print.md` § The square trim nobody has pinned down. The captain
-  confirmed **12 × 12 inches** on 11 November, over which the delivered 3600 px
-  pages are 300 DPI native with no upscaling — so **no artwork is regenerated**
-  when it is applied. What is still unconfirmed is the interior bleed, about
-  225 px an edge, and the repository still *declares* 8.00 in: applying the
-  answer is an edit to `page.canvas`/`page.print`, a restamp and a re-run of
-  `npm run print`.
+- **The trim**: measured on 15 November out of Printify's own templates —
+  `print.md` § What Printify's templates actually say. The interior print area
+  is **2400 × 2400 px, 8.00 in at 300 dpi**, and the finished page is 7.75 in;
+  the 11 November note that the book is 12 × 12 in was a reading rather than a
+  measurement and is **withdrawn**. The delivered 3600 px pages are half again
+  as many pixels as Printify asks for across that page, so **no artwork is
+  regenerated** — 3600 downscales. What is open is the book's own
+  *declaration*, which still says 8.5 in with 0.25 in of bleed: correcting it
+  moves drawn content, so it is the captain's decision —
+  `print.md` § The page the book declares is not the page Printify prints.
+- **A cover square for every look**, which is what the cover wrap is composed
+  from — `lib/book/cover-wrap.ts`. One square per look serves the website, the
+  softcover and the hardcover; the back is a wash and the spine is bare, so
+  there is nothing extra to draw.
 
 ---
 

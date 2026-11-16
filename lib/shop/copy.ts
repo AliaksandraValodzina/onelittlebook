@@ -17,8 +17,9 @@
  * less its declared bleed, the dispatch window from the module the confirmation
  * email reads it out of, and the prices from `EDITIONS`. The artefact says
  * "Twenty-four pages, 8 inches square"; this says the same thing and would say
- * something else the day the book's page size is answered — see
- * `docs/print.md` § The square trim nobody has pinned down.
+ * something else the day the book's declared page size is corrected — which is
+ * an open decision rather than an open measurement: `docs/print.md` § The page
+ * the book declares is not the page Printify prints.
  *
  * ## What is deliberately not here
  *
