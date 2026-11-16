@@ -33,6 +33,12 @@
 import { createHash } from "node:crypto";
 import type { Problem } from "../template/validate";
 import { NotAPng, hasAlphaChannel, pngChunkTypes, readPngHeader } from "../render/png";
+import {
+  checkCoverWraps,
+  coverFileKindOf,
+  coverWrapFileName,
+  missingCoverWraps,
+} from "./cover-upload";
 import type { BookTemplate } from "./types";
 
 /** One file as it arrived, named relative to its look's folder. */
@@ -62,17 +68,6 @@ export interface ManifestLook {
 
 const LOOK_ID = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const PAGE_FILE = /^page-(\d{3})\.png$/;
-const COVER_FILE = "cover.png";
-
-/**
- * Names refused rather than ignored.
- *
- * A back cover and a spine are not in scope, and the difference between
- * "ignored" and "refused" is whether anybody ever finds out that the files they
- * carefully made were never used. Refusing is also what makes adding them later
- * a decision rather than a discovery.
- */
-const RESERVED = new Set(["cover-back.png", "spine.png"]);
 
 function digest(bytes: Uint8Array): string {
   return createHash("sha256").update(bytes).digest("hex");
@@ -172,24 +167,30 @@ export function checkUpload(book: BookTemplate, upload: Upload): Problem[] {
     }
 
     const numbered = new Map<number, UploadedFile>();
-    let cover: UploadedFile | null = null;
     const withinLook = new Map<string, string>();
 
+    /**
+     * **The cover is two wraps and they are checked by their own contract.**
+     *
+     * `./cover-upload.ts` owns the naming, the supplied sizes and the refusals,
+     * including the ones for a name that is nearly right — the old `cover.png`,
+     * and the `cover-back.png`/`spine.png` this file used to reserve. They were
+     * reserved because a back cover and a spine were not in scope; they are
+     * refused now for a better reason, which is that they are regions of one
+     * file rather than files.
+     */
+    const covers = checkCoverWraps(look.files, look.look);
+    problems.push(...covers.problems);
+
     for (const file of look.files) {
-      if (RESERVED.has(file.name)) {
-        say("look.reservedName", `${look.look}/${file.name}`, "back covers and spines are not in scope");
-        continue;
-      }
-      if (file.name === COVER_FILE) {
-        cover = file;
-        continue;
-      }
+      if (coverFileKindOf(file.name) !== null) continue;
       const match = PAGE_FILE.exec(file.name);
       if (!match) {
         say(
           "look.fileUnexpected",
           `${look.look}/${file.name}`,
-          "not cover.png and not page-NNN.png",
+          `not page-NNN.png and not one of the cover wraps (${coverWrapFileName("softcover")}, ` +
+            `${coverWrapFileName("hardcover")})`,
         );
         continue;
       }
@@ -205,7 +206,18 @@ export function checkUpload(book: BookTemplate, upload: Upload): Problem[] {
       numbered.set(number, file);
     }
 
-    if (!cover) say("look.coverMissing", look.look, "no cover.png");
+    for (const product of missingCoverWraps(covers.wraps)) {
+      // A look takes two wraps. This is the formal contract check rather than
+      // an import, so a partial cover is a refusal here — `npm run artwork`
+      // takes whichever wraps are in hand and reports which, because
+      // re-delivering one corrected cover is a real and ordinary state.
+      say(
+        "look.coverWrapMissing",
+        `${look.look}/${coverWrapFileName(product)}`,
+        `no ${product} cover wrap; a look's cover is one wrap per product and the display ` +
+          "cover is cut out of the softcover one",
+      );
+    }
     if (numbered.size === 0) {
       say("look.noPages", look.look, "no page-NNN.png in the folder");
     }
@@ -223,9 +235,15 @@ export function checkUpload(book: BookTemplate, upload: Upload): Problem[] {
       }
     }
 
-    for (const file of [...(cover ? [cover] : []), ...numbered.values()]) {
+    for (const file of [...numbered.values(), ...covers.wraps.map((w) => w.file)]) {
       const where = `${look.look}/${file.name}`;
-      problems.push(...pageAgainstContract(file, where, size));
+      // The wraps have already been through their own contract above, which is
+      // a different contract for a different object: a page is 3600 square and
+      // a wrap is wide. What is shared is the digest comparison below, because
+      // "this file is also that file" is the same mistake whatever the file is.
+      if (coverFileKindOf(file.name) === null) {
+        problems.push(...pageAgainstContract(file, where, size));
+      }
 
       const d = digest(file.bytes);
       const twin = withinLook.get(d);

@@ -29,7 +29,7 @@ in this document follows from.
 | | |
 |---|---|
 | **Interior pages** | **24** — twelve spreads at 2.000:1 |
-| **Cover** | **1**, separate from the interior |
+| **Cover** | **2 wraps per look** — softcover and hardcover — separate from the interior, § 2b |
 | **Page size** | **3600 × 3600 px**, every page, exactly |
 | **Trim** | **8 × 8 in.** The file is the trim plus 0.25 in of bleed on every edge |
 | **Target products** | Printify's **8 × 8 in softcover**, **24 pages fixed**, one raster per page. A **12 × 12 in hardcover** exists at the same supplier — captain-confirmed 16 November, deliberately not built — and 3600 px is exactly 300 dpi across it, so this same set would serve it: [`print.md`](print.md) § The 12 × 12 is the hardcover, confirmed and not built |
@@ -57,13 +57,15 @@ and the ladder that order is.
 looks/
   looks.json            <- declares each look: id, label, gender
   girl-01/              <- one folder per look, named for the look
-    cover.png
+    cover-softcover.png   <- 4790 x 2400, the whole wrap, wordless
+    cover-hardcover.png   <- 5370 x 2850, the whole wrap, wordless
     page-001.png
     page-002.png
     …
     page-024.png
   boy-01/
-    cover.png
+    cover-softcover.png
+    cover-hardcover.png
     page-001.png
     …
 ```
@@ -97,13 +99,15 @@ upload and not a release.
 |---|---|
 | **One folder per look**, named for the look | The folder name *is* the look id. It must match `^[a-z0-9]+(-[a-z0-9]+)*$` — lowercase, digits, single hyphens. No spaces, no capitals, no accents: it ends up in a filename, a URL and a JSON key. |
 | **Interior pages are `page-NNN.png`**, zero-padded to three digits, numbered **in reading order from 001 with no gaps**, up to **024** | Zero-padding is so `ls`, Finder, a zip and the validator all sort them the same way. `page-9.png` sorts after `page-10.png` in half the tools that will touch it. |
-| **The cover is `cover.png`** and is **not** one of the numbered pages | The cover is a different object: different stock, trimmed differently, and the only page the buyer picks a colour for. Numbering it `page-001.png` makes every interior page number off by one forever. |
+| **The cover is two wraps**, `cover-softcover.png` and `cover-hardcover.png`, and neither is one of the numbered pages | The cover is a different object: different stock, trimmed differently, printed as one wide wrap rather than a page, and the only part of the book the buyer picks a colour for. § 2b is the whole of it. Numbering either `page-001.png` makes every interior page number off by one forever. |
 | **Nothing else in the folder** | No `.DS_Store`, no `thumbs/`, no `page-012 copy.png`, no PSDs, no `final-FINAL.png`. An unexpected file is reported rather than ignored, because the commonest version of this mistake is two files that both look like page twelve. |
 
-**Back covers and spines are not in scope.** `cover-back.png` and `spine.png`
-are reserved names and are refused today rather than silently ignored, so that
-when a printer asks for them nobody has to work out whether an existing upload
-already had them.
+**There is no `cover.png` any more, and no `cover-back.png` or `spine.png`.**
+The back cover and the spine are *regions of a wrap* rather than files, and the
+square the shop shows is **cut out of the softcover wrap** rather than supplied
+beside it. All three names are refused rather than ignored, each with a message
+saying what replaced it, so that nobody finds out months later that the file
+they carefully made was never used.
 
 ---
 
@@ -183,6 +187,99 @@ faces another. Even-numbered pages gutter on the left, odd on the right.
 
 ---
 
+<a id="2b-the-cover-is-two-wraps"></a>
+
+## 2b. The cover is two wraps, and the square is cut out of one of them
+
+A cover does not arrive as a square. The captain uploads spreads to Printify
+directly, so what the artwork pipeline produces per look is **two finished
+wraps** — back cover, spine and front in one wide piece, at each product's own
+supplied size.
+
+| File | Size, exactly | What it is |
+|---|---|---|
+| `cover-softcover.png` | **4790 × 2400 px** | Printify's own supplied area for the 8 × 8 softcover cover, bleed included. Measured out of their PSD — [`print.md`](print.md) § What Printify's templates actually say. |
+| `cover-hardcover.png` | **5370 × 2850 px** | The captain's own export, counted off three files. Stored and reported; see § The hardcover below. |
+
+Everything else about the bytes is § 2: PNG, 8 bits, sRGB, no alpha, no
+interlacing, full bleed to all four edges. The **3600 × 3600 rule does not
+apply to a wrap and is not loosened to let one through** — a page is square and
+a wrap is wide, and the way to keep the page rule strict is to not ask it this
+question. `lib/book/cover-upload.ts` is the contract and
+`lib/book/upload.ts` § `pageAgainstContract` is still the pages'.
+
+**Both wraps are wordless.** The title *"When {name} Turned One"* carries the
+buyer's name and is drawn by the renderer onto the front panel, exactly as the
+verses are drawn onto the interior pages. § 3 applies to a wrap unchanged.
+
+### The square the shop shows is cut, never supplied
+
+The display cover — the picture the picker, the preview and the basket show —
+is the **front panel of the softcover wrap, taken out of it**: a 2325 × 2325
+window at x = 2428, y = 38, derived from the measured bleed, panel and spine.
+
+That is exactly the size the captain's own separate square export comes out at,
+so the arithmetic is confirmed from two directions. It is cut anyway, and that
+is the point: the separate square and the wrap were composed by hand, twice, and
+on the looks in hand the two are not the same composition. Supplying the square
+would mean a buyer previews one cover and receives another, with nothing
+anywhere noticing. **Cut from the wrap and the two cannot disagree.**
+
+So: do not send a square. If one arrives it is refused by name, with a message
+saying what replaced it.
+
+### A wrong size is refused, and the message names both numbers
+
+A wrap has already arrived at **4715 × 2325** — that is the template's
+*FINISHED SIZE* line and not its *IMAGE SIZE* line, so it had no bleed at all,
+and any drift in the guillotine would have printed a white hairline down the
+edge of a finished cover. The refusal names the number given and the number
+wanted and says which line of the template each is, because a message that said
+only "wrong size" sends somebody back to the same line of the same file.
+
+### The hardcover is stored and nothing is drawn on it
+
+We know the hardcover wrap is 5370 × 2850 because the captain exported three of
+them at that size. We do **not** have its template, so we do not know where its
+front panel begins. The arithmetic is self-consistent and worth writing down —
+2850 − 2400 = 450, so 225 px (0.75 in) of wrap allowance top and bottom;
+5370 − 4800 − 450 = 120, so a 120 px (0.40 in) spine with the same allowance
+each side; panels 2400 square — and it is **recorded and not used**
+(`lib/print/printify.ts` § `HARDCOVER_COVER_WRAP_DERIVED`).
+
+The file is accepted, checked against its size, stored and reported. Nothing is
+cut from it and **no title is printed on it**: the bytes are right whatever
+anybody believes about the panel, so keeping them costs nothing, and a title
+placed against unchecked arithmetic would be a plausible wrong file — correct on
+a screen and wrong on a hinge.
+
+**What to fetch to close it:** Printify's hardcover 8 × 8 cover template, and
+the four numbers in its header — supplied area, finished size, safety zone per
+panel, resolution. Those make a `MeasuredTemplate` and flip
+`COVER_PRODUCTS.hardcover` to its measured arm. **Nothing has to be
+re-delivered.**
+
+### What no check can do, said plainly
+
+A **brown-haired cover was submitted for the ginger look** once, whose
+twenty-four interior pages are all ginger. There is no check for that and
+deliberately not: measuring hair colour to catch it was tried twice and failed
+both times, because the warm wooden floors, the blankets and the backgrounds
+swamp the hair and the skin, and ginger, blonde and brown came back within half
+a degree of hue of each other. A pass/fail gate on a measurement that does not
+work is a check named for the thing it does not catch, which is worse than no
+check.
+
+What is checked instead is the mechanical half, which is about bytes and is
+reliable: two wraps of one look that are the same file (`cover.wrapsIdentical`),
+and one look's cover byte-identical to another's
+(`page.identicalAcrossLooks`). The baby itself is **a reported comparison for
+the captain's eye** — `npm run artwork -- look …` prints the cut front panel
+beside a page of the same look, and `npm run artwork -- status` says which wraps
+each look has. It is a prompt and not a gate, and it says so.
+
+---
+
 ## 3. What must *not* be in the artwork
 
 ### No text, burned in, anywhere
@@ -244,11 +341,11 @@ leave the areas clear.
 
 | Page | Carries | Keep clear |
 |---|---|---|
-| `cover.png` | the baby's name, large, on a cream panel; the buyer's cover colour tints the whole ground | the middle third |
-| `page-001.png` | the baby's name, on the title page | the upper middle |
+| `cover-softcover.png`, `cover-hardcover.png` | **on the front panel only**: *"When {name} Turned One"*, three lines, on a cream panel. Nothing is drawn on the back cover or the spine | the middle of the **front panel** — roughly a third of its height, centred |
+| `page-001.png` | nothing — the name slots went on 12 November and the name now reaches the book only inside authored copy | — |
 | `page-002.png` | **the buyer's photograph, the dedication and the from-line** | see below — most of the page |
 | `page-003.png`, 005, 007 … 023 | six lines of story, 160 pt tall | **a 160 pt band whose top is this spread's own**, not one shared band: the captain marked nine of the twelve on 13 November and each took its own position — 185, 113, 177, 320, 138, 148, 168, 122 and 182 for spreads 3–6 and 8–12. `page-003` and `page-013` carry no mark and take the median, **168** (y 168–328). Every band is inside the `verse_zone`, the middle 60% (y 122–490), so keeping that zone clear keeps all of them clear. `templates/first-book.ts` § `VERSE_TOP_ON` is the table and the measurement |
-| `page-024.png` | the baby's name, closing page | the upper middle |
+| `page-024.png` | nothing, for the same reason as `page-001` | — |
 
 ### `page-001` and `page-002` are the babyless spread
 
@@ -347,13 +444,18 @@ stable code:
 | `manifest.genderUnknown` | a `gender` the book does not offer |
 | `look.nameMalformed` | the folder name is not a usable look id |
 | `look.noPages` | the folder has no `page-NNN.png` at all |
-| `look.coverMissing` | no `cover.png` |
+| `look.coverWrapMissing` | one of the two cover wraps is not in the folder — § 2b |
 | `look.pageCountMismatch` | this look's page count disagrees with the book template |
 | `look.pageCountDisagrees` | this look's page count disagrees with a sibling look |
 | `look.pageMissing` | a gap in the numbering, or page 1 missing |
 | `look.pageUnexpected` | a numbered page beyond the book's page count |
-| `look.fileUnexpected` | a file in the folder that is not a page or the cover |
-| `look.reservedName` | `cover-back.png` or `spine.png`, which are not in scope |
+| `look.fileUnexpected` | a file in the folder that is not a page and not a cover wrap |
+| `cover.productUnnamed` | a cover file that does not say which product — including the old `cover.png` |
+| `cover.pieceOfAWrap` | `cover-back.png`, `spine.png`: regions of a wrap, not files |
+| `cover.duplicateProduct` | two files claim to be the same product's wrap |
+| `cover.wrongSize` | not the product's supplied size — the message names both numbers and which template line each is |
+| `cover.notPng` / `cover.hasAlpha` / `cover.notEightBit` / `cover.interlaced` / `cover.notSrgb` | § 2's rules about the bytes, applied to a wrap |
+| `cover.wrapsIdentical` | the two wraps of one look are the same file |
 | `page.notPng` | the bytes are not a PNG, whatever the extension says |
 | `page.notSquare` | width and height differ |
 | `page.wrongSize` | square, but not the declared page size |
@@ -364,17 +466,19 @@ stable code:
 | `page.duplicateWithinLook` | two pages of the same look are byte-identical |
 | `page.identicalAcrossLooks` | a note, not an error — see above |
 
-**It cannot check** that the baby is the same person page to page, that a scene
-matches its sibling in another look, that the gutter is clear, that nothing
-important sits outside the safe area, or that no text is burned in. Those are
-the items in the human checklist below, and they are the ones that cost a
-reprint.
+**It cannot check** that the baby is the same person page to page, **that the
+baby on the cover is the baby in the book**, that a scene matches its sibling in
+another look, that the gutter is clear, that nothing important sits outside the
+safe area, or that no text is burned in. Those are the items in the human
+checklist below, and they are the ones that cost a reprint. § 2b § What no check
+can do, said plainly is why the cover one is listed here rather than built.
 
 ---
 
 ## 6. The checklist to run through once, by eye
 
-- [ ] Every page is **3600 × 3600**, and there are **24 of them plus a cover** in every folder. (`npm run looks` does this one.)
+- [ ] Every page is **3600 × 3600**, and there are **24 of them plus two cover wraps** in every folder. (`npm run looks` does this one.)
+- [ ] The **baby on the cover is the baby in the book** — open the cut front panel beside a page of the same look. `npm run artwork -- look …` prints both addresses. **No check does this one**, and a brown-haired cover has already been submitted for the ginger look.
 - [ ] **`page-001` and `page-002` have no baby on them**, and are the same file in every look.
 - [ ] The **middle column of `page-002` is clear** — a photograph, ten lines and a signature go there.
 - [ ] **No white at any edge** on any page, before trimming.

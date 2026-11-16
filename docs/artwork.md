@@ -43,10 +43,17 @@ spread pairing** — so `spread-03-right` is `page-006` because that is what
 for byte: they already satisfy the contract, and re-encoding would change the
 digest and cost quality for nothing.
 
-**There is no cover.** The cover is generated per order with a stored fallback
-and neither exists yet, so the book's cover page is still the drawn
-placeholder — visibly, which is the honest state. `npm run artwork -- status`
-says so every time it runs.
+**The cover is two wraps, in the look's folder beside its pages.** The captain
+uploads spreads to Printify directly, so what they produce per look is a
+**softcover wrap (4790 × 2400)** and a **hardcover wrap (5370 × 2850)**, both
+wordless. The square the shop shows is **cut out of the softcover wrap's front
+panel** rather than supplied beside it, so what a buyer previews and what the
+press prints cannot differ —
+[`look-upload-contract.md`](look-upload-contract.md) § 2b. They are stored as
+their own set per look (`covers-<lookId>`), so re-delivering one corrected cover
+does not touch twenty-four pages. `npm run artwork -- status` reports which of
+the two wraps each look has; a look with none keeps the drawn placeholder
+cover — visibly, which is the honest state.
 
 **The rest are still being drawn.** That is why `PageArt` has a `scene` beside
 `byLook`: a page carries the captain's artwork for the looks that have it and
@@ -204,7 +211,9 @@ number beside the look id in the order's record, now that the bytes have a home.
 
 - **Every look but one.** One has pages; `npm run artwork -- status` counts the
   rest off the book rather than quoting a number here that goes stale.
-- **A cover for every look.** There is no cover artwork at all.
+- **Two cover wraps for every look.** Three looks are in hand and correctly
+  sized (girl-01, girl-02, girl-03); `npm run artwork -- status` reports the
+  rest off the book rather than quoting a number here.
 - **The two portrait replacements.** § 2 above.
 - **Uploading it.** The storage decision is answered — see § 6 — and the command
   is `npm run artwork:upload`. Until somebody runs it against the real token,
@@ -226,10 +235,17 @@ number beside the look id in the order's record, now that the bytes have a home.
   content, the error runs in the safe direction, and the revisit trigger is a
   printed proof in hand — `print.md` § The page the book declares is not the
   page Printify prints.
-- **A cover square for every look**, which is what the cover wrap is composed
-  from — `lib/book/cover-wrap.ts`. One square per look serves the website, the
-  softcover and the hardcover; the back is a wash and the spine is bare, so
-  there is nothing extra to draw.
+- **Printify's hardcover 8 × 8 cover template**, and the four numbers in its
+  header: supplied area, finished size, safety zone per panel, resolution. The
+  hardcover wraps the captain has delivered are stored and reported and
+  **nothing is drawn on them**, because where their front panel starts is
+  arithmetic nobody has checked — `print.md` § The hardcover's wrap is in hand
+  and its template is not. Reading those four numbers turns the title on with
+  **no file re-delivered**.
+- **A decision about the colourway on a delivered cover.** A look with a
+  delivered wrap has one wrap and not three, so blush/sage/oat changes nothing
+  on its cover. Same section of `print.md` lists the three ways out; all three
+  are the captain's.
 
 ---
 

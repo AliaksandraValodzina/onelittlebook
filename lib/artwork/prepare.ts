@@ -23,6 +23,7 @@
  */
 
 import {
+  cutOut,
   flattenOntoWhite,
   portraitAgainstContract,
   portraitMapping,
@@ -30,13 +31,21 @@ import {
   spreadNumberOf,
   type ImportFile,
 } from "./import";
-import { tilePageId } from "./release";
+import { coverWrapPageId, tilePageId } from "./release";
 import { checkOrderArtwork } from "../book/order-upload";
+import {
+  checkCoverWraps,
+  coverFileKindOf,
+  coverWrapFileNames,
+  missingCoverWraps,
+} from "../book/cover-upload";
+import { COVER_PRODUCTS, measuredProduct } from "../book/cover-wrap";
+import { frontPanelPxOf } from "../print/printify";
 import { ghostBelongsOn } from "../book/ghost";
 import { pageSequence, spreadSideOf } from "../book/derive";
 import { readPngHeader } from "../render/png";
 import type { Problem } from "../template/validate";
-import type { BookTemplate } from "../book/types";
+import type { BookTemplate, CoverProductId } from "../book/types";
 
 /** One page of one set, ready to be handed to `ArtworkStore.put`. */
 export interface PreparedPage {
@@ -74,7 +83,19 @@ export interface Prepared {
  * page in the template moves which file lands on it.
  */
 export function prepareLookPages(book: BookTemplate, files: ImportFile[]): Prepared {
-  const check = checkOrderArtwork(book, files);
+  // The cover files are the other half of this folder and are prepared by
+  // `prepareCoverWraps` below. They are taken out **by the same partition**, so
+  // the two functions cannot disagree about which file is which — a file that
+  // one of them claimed and the other also claimed would be a page stored twice
+  // under two different contracts.
+  const interior = files.filter((file) => coverFileKindOf(file.name) === null);
+  if (interior.length === 0) {
+    // Not a problem. A folder of nothing but wraps is what re-delivering a
+    // corrected cover looks like, and `pagesNotCovered` is what says the pages
+    // are not here.
+    return { pages: [], problems: [], skipped: [] };
+  }
+  const check = checkOrderArtwork(book, interior);
   return {
     pages: check.pages.map((p) => ({ pageId: p.pageId, bytes: p.file.bytes, from: p.file.name })),
     problems: check.problems,
@@ -82,11 +103,18 @@ export function prepareLookPages(book: BookTemplate, files: ImportFile[]): Prepa
   };
 }
 
-/** The page ids of this book that a prepared set did not cover. */
-export function pagesNotCovered(book: BookTemplate, prepared: Prepared): string[] {
+/**
+ * The page ids of this book that nothing prepared covers.
+ *
+ * **Variadic over the sets**, because a look's folder now prepares two of them:
+ * the interior pages and the cover. Asking only about the pages would report
+ * the cover as undelivered on every import that delivered one, which is a
+ * command lying about the thing it just did.
+ */
+export function pagesNotCovered(book: BookTemplate, ...prepared: Prepared[]): string[] {
   return pageSequence(book)
     .map((p) => p.id)
-    .filter((id) => !prepared.pages.some((p) => p.pageId === id));
+    .filter((id) => !prepared.some((set) => set.pages.some((p) => p.pageId === id)));
 }
 
 /** One portrait, with the look it maps onto, for the table a command prints. */
@@ -214,3 +242,156 @@ export function prepareGhostHalves(book: BookTemplate, files: ImportFile[]): Pre
 export function pagesForStore(prepared: Prepared): Array<{ pageId: string; bytes: Uint8Array }> {
   return prepared.pages.map((p) => ({ pageId: p.pageId, bytes: p.bytes }));
 }
+
+// ---------------------------------------------------------------------------
+// The cover wraps, and the square cut out of one of them
+// ---------------------------------------------------------------------------
+
+/**
+ * **Which product's wrap the display cover is cut out of.**
+ *
+ * The softcover, because its template is the one somebody has read and because
+ * it is the product being sold. Declared here rather than inferred from
+ * whichever file a directory listing produced first — the day the hardcover is
+ * measured its panel will be a different size, and "which cover does the shop
+ * show" should be a sentence somebody wrote.
+ */
+export const DISPLAY_COVER_FROM: CoverProductId = "softcover";
+
+/** One cover file, with the product it is for, for the table a command prints. */
+export interface PreparedCover extends PreparedPage {
+  /** The product this wrap is for; absent on the cut display cover. */
+  product?: CoverProductId;
+}
+
+export interface PreparedCovers extends Prepared {
+  pages: PreparedCover[];
+  /** Which products this folder delivered no wrap for. Never a problem. */
+  missing: CoverProductId[];
+  /**
+   * **The two page ids to look at side by side, when there are two.**
+   *
+   * The cut front panel and a page of this look's own interior, so somebody can
+   * see at a glance whether it is the same baby. `lib/book/cover-upload.ts`
+   * § What cannot be checked, said plainly is why this is a report and not a
+   * gate: measuring hair colour was tried twice and failed twice, and a gate
+   * that silently fails to catch the thing it is named for is worse than none.
+   */
+  compare: { cover: string; page: string } | null;
+}
+
+/**
+ * **One look's cover: two wraps stored as delivered, and the display cover cut
+ * out of the softcover one.**
+ *
+ * Three things happen and the order matters.
+ *
+ * **The wraps are checked against their own supplied sizes and refused
+ * outright if either is wrong** — `lib/book/cover-upload.ts`
+ * § `coverWrapAgainstContract`, whose message names both the number given and
+ * the number wanted because a wrap has already arrived at the template's
+ * *finished* size instead of its *image* size.
+ *
+ * **The wraps are stored byte for byte.** They are what goes to Printify, and
+ * re-encoding what the press is going to print would change the digest, cost
+ * quality and buy nothing — the same argument `prepareLookPages` makes about a
+ * page.
+ *
+ * **The display cover is cut out of the softcover wrap's front panel**
+ * (`lib/print/printify.ts` § `frontPanelPxOf`) and stored under the book's own
+ * cover page id, so the picker, the preview and the basket bind it exactly as
+ * they bind page nine. Cut rather than taken from the captain's separate square
+ * export, which is the whole point:
+ * `lib/book/cover-upload.ts` § Why the square is cut and never supplied.
+ *
+ * **Nothing is cut from the hardcover wrap and no title will be printed on
+ * one.** Its internal geometry is arithmetic nobody has checked against a
+ * template (`lib/print/printify.ts` § `HARDCOVER_COVER_WRAP_DERIVED`), so the
+ * file is kept — the bytes are right either way — and `measuredProduct` goes on
+ * refusing to compose a wrap for it. A cut taken from a guessed panel origin
+ * would be a plausible cover with a strip of spine down one side.
+ */
+export function prepareCoverWraps(
+  book: BookTemplate,
+  lookId: string,
+  files: ImportFile[],
+): PreparedCovers {
+  const check = checkCoverWraps(files, lookId);
+  const pages: PreparedCover[] = [];
+  const problems = [...check.problems];
+  const skipped: string[] = [];
+
+  for (const wrap of check.wraps) {
+    pages.push({
+      pageId: coverWrapPageId(wrap.product),
+      bytes: wrap.file.bytes,
+      from: wrap.file.name,
+      did: `${wrap.want.width}×${wrap.want.height} ${wrap.product} wrap, as delivered`,
+      product: wrap.product,
+    });
+  }
+
+  for (const wrap of check.wraps) {
+    // **Which product the display cover comes out of, declared rather than
+    // "whichever file came first".** The softcover's template is the one that
+    // has been read, and when the hardcover's is read too the two panels will
+    // be different sizes — so this stays a decision somebody made and not a
+    // consequence of a directory listing.
+    if (wrap.product !== DISPLAY_COVER_FROM) continue;
+
+    // The one door is `measuredProduct`, so a product whose template nobody has
+    // opened cannot reach a panel origin by any route — including this one, if
+    // `DISPLAY_COVER_FROM` is ever pointed at it before it is measured.
+    let product;
+    try {
+      product = measuredProduct(wrap.product);
+    } catch {
+      skipped.push(
+        `${lookId}/${wrap.file.name} is kept whole and nothing is cut from it: ` +
+          `nobody has measured the ${wrap.product}'s template, so where its front panel ` +
+          "starts is arithmetic rather than a reading",
+      );
+      continue;
+    }
+    // A wrap the contract refused is not cut: `cutOut` checks the size again and
+    // would throw, and a refusal is a list of problems rather than an exception.
+    if (problems.some((p) => p.where === `${lookId}/${wrap.file.name}`)) continue;
+
+    const cut = frontPanelPxOf(product.template);
+    pages.push({
+      pageId: book.cover.id,
+      bytes: cutOut(wrap.file.bytes, product.template.area, cut),
+      from: wrap.file.name,
+      did:
+        `front panel cut at ${cut.x},${cut.y} → ${cut.width}×${cut.height} — ` +
+        "the display cover, so the preview and the press cannot differ",
+    });
+  }
+
+  for (const wrap of check.wraps) {
+    if (wrap.product === DISPLAY_COVER_FROM) continue;
+    // Two reasons and both worth printing. The first is the decision; the
+    // second is why that decision could not have gone the other way today.
+    skipped.push(
+      `${lookId}/${wrap.file.name} is kept whole and nothing is cut from it: the display ` +
+        `cover is the ${DISPLAY_COVER_FROM}'s front panel` +
+        (COVER_PRODUCTS[wrap.product].measured
+          ? ""
+          : `, and nobody has measured the ${wrap.product}'s template in any case — where its ` +
+            "front panel starts is arithmetic rather than a reading"),
+    );
+  }
+
+  const cover = pages.find((p) => p.pageId === book.cover.id);
+  const page = pageSequence(book).find((p) => p.id === book.tilePage) ?? book.pages[0];
+  return {
+    pages,
+    problems,
+    skipped,
+    missing: missingCoverWraps(check.wraps),
+    compare: cover && page ? { cover: cover.pageId, page: page.id } : null,
+  };
+}
+
+/** The wrap files a look's folder is expected to hold. For a usage line. */
+export { coverWrapFileNames };

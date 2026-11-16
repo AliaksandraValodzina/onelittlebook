@@ -220,19 +220,24 @@ export default async function AdminOrder(props: {
 
       {/*
         **The cover print area is not the square.** Printify wants one wide
-        image carrying the back cover, the spine and the front, because a
-        softcover is printed flat and wrapped round the block. The shop
-        composes it from the same square the buyer approved —
-        `lib/book/cover-wrap.ts` says why that is one file per look rather than
-        three, and why a hardcover wrap cannot be made from a softcover one.
+        image carrying the back cover, the spine and the front, because a book
+        is printed flat and wrapped round the block.
+
+        Which of the two wraps this download is, is decided by whether the
+        captain has delivered one for this order's look — `lib/book/print.ts`
+        § `renderCoverWrapPng`, and the copy below says both rather than
+        claiming one, because this page cannot read the artwork store without
+        a round trip it does not otherwise need.
       */}
       <h3 className="mt-6 font-semibold">The cover, as the press wants it</h3>
       <p className="mt-2 text-sm opacity-75">
-        The {COVER_PRODUCTS.softcover.label.toLowerCase()} cover wrap: the back cover and the
-        spine in this order&apos;s own colourway, and the front cover on the right, at{" "}
+        The {COVER_PRODUCTS.softcover.label.toLowerCase()} cover wrap at{" "}
         {WRAP.pixels.width} × {WRAP.pixels.height} — the size Printify&apos;s own template states
-        for this product. The page files above still carry the square cover, which is what the
-        interior print area takes.
+        for this product. Where this look&apos;s wrap has been delivered it is the captain&apos;s
+        own file with the title drawn on its front panel; where it has not, the back cover and the
+        spine are a wash of this order&apos;s own colourway and the front is the square the buyer
+        approved. The page files above still carry the square cover, which is what the interior
+        print area takes.
       </p>
       <p className="mt-3">
         <a

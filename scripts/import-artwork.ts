@@ -23,7 +23,13 @@
  * somebody ran a checker first: an import changes what a paid book looks like,
  * and a gate that can be skipped is not a gate. A look's pages are held to
  * `docs/look-upload-contract.md` § 2 by the same function an order's
- * regenerated pages are.
+ * regenerated pages are, and its **two cover wraps** to § 2b by
+ * `lib/book/cover-upload.ts`.
+ *
+ * **A look folder holds both and `look` imports both**, as two sets: the pages
+ * and the cover. `lib/artwork/release.ts` § `coverSet` says why they are two,
+ * and the short version is that handing this command one corrected cover must
+ * not delete twenty-four pages.
  *
  * Each import **adds a version and keeps the last** — `lib/artwork/store.ts`
  * § Versions carries that argument. Two of the first twelve portraits are being
@@ -36,6 +42,7 @@ import { FIRST_BOOK } from "../templates/first-book";
 import {
   GHOSTS_SET,
   TILES_SET,
+  coverSet,
   lookSet,
   releaseArtworkFor,
   releaseStoreFromEnv,
@@ -44,10 +51,15 @@ import { portraitName, type ImportFile } from "../lib/artwork/import";
 import {
   pagesForStore,
   pagesNotCovered,
+  prepareCoverWraps,
   prepareGhostHalves,
   prepareLookPages,
   preparePortraits,
 } from "../lib/artwork/prepare";
+import { coverWrapFileNames } from "../lib/book/cover-upload";
+import { COVER_PRODUCT_IDS } from "../lib/book/types";
+import { hrefIn } from "../lib/assets/address";
+import type { ReleaseArtwork } from "../lib/artwork/release";
 import type { Problem } from "../lib/template/validate";
 import type { BookTemplate } from "../lib/book/types";
 
@@ -126,7 +138,21 @@ function resolveLook(book: BookTemplate, token: string): string {
 
 // ---------------------------------------------------------------------------
 
-/** The captain's twenty-four finished pages, stored byte for byte. */
+/**
+ * **One look's folder: its finished pages and its cover wraps, as two sets.**
+ *
+ * The folder holds both and `lib/artwork/prepare.ts` partitions it with one
+ * function, so the two preparations cannot claim the same file. They are
+ * written as **two versions of two sets** — `lib/artwork/release.ts`
+ * § `coverSet` says why: a folder of nothing but a corrected cover is an
+ * ordinary thing to be handed, and one set would make writing it delete the
+ * interior pages.
+ *
+ * Everything is checked before anything is written, across both halves: a
+ * refusal in the covers stops the pages too, because the captain is about to go
+ * back to an image tool either way and half an import is the state nobody can
+ * read.
+ */
 async function importLook(dir: string, token: string): Promise<void> {
   const lookId = resolveLook(FIRST_BOOK, token);
   const files = await pngsIn(dir);
@@ -137,27 +163,89 @@ async function importLook(dir: string, token: string): Promise<void> {
   // `spread-NN-left|right` spelling is mapped onto page ids — derived from the
   // book's own spread pairing, so moving a page moves the name.
   const prepared = prepareLookPages(FIRST_BOOK, files);
-  report(prepared.problems);
+  const covers = prepareCoverWraps(FIRST_BOOK, lookId, files);
+  report([...prepared.problems, ...covers.problems]);
 
-  const version = await store.put(lookSet(lookId), pagesForStore(prepared), NOW);
-
-  for (const page of prepared.pages) console.log(`  ${page.from} → ${page.pageId}`);
-  const missing = pagesNotCovered(FIRST_BOOK, prepared);
-  console.log(
-    `stored ${version.pages.length} page(s) as ${lookSet(lookId)} v${version.version} in ${store.describe}`,
-  );
-  if (missing.length) {
-    // The honest statement of a partial delivery rather than a silent one.
-    // There is no cover artwork at all yet; the cover is generated per order
-    // with a stored fallback and neither exists.
+  if (prepared.pages.length) {
+    const version = await store.put(lookSet(lookId), pagesForStore(prepared), NOW);
+    for (const page of prepared.pages) console.log(`  ${page.from} → ${page.pageId}`);
     console.log(
-      `not delivered, still drawn from the placeholder: ${missing.join(", ")}` +
-        (missing.includes(FIRST_BOOK.cover.id)
-          ? "\n  — the cover is the one that matters: there is no cover artwork yet, so the " +
-            "book's cover is still the drawn placeholder and visibly is."
-          : ""),
+      `stored ${version.pages.length} page(s) as ${lookSet(lookId)} v${version.version} in ${store.describe}`,
+    );
+    // Both sets, so the cover this run just cut is not reported as missing.
+    const missing = pagesNotCovered(FIRST_BOOK, prepared, covers);
+    if (missing.length) {
+      // The honest statement of a partial delivery rather than a silent one.
+      console.log(`not delivered, still drawn from the placeholder: ${missing.join(", ")}`);
+    }
+  } else {
+    console.log(`no interior pages in this folder; ${lookSet(lookId)} is untouched`);
+  }
+
+  if (covers.pages.length) {
+    const version = await store.put(coverSet(lookId), pagesForStore(covers), NOW);
+    for (const page of covers.pages) {
+      console.log(`  ${page.from.padEnd(24)} → ${page.pageId.padEnd(22)} ${page.did ?? ""}`);
+    }
+    for (const line of covers.skipped) console.log(`  kept whole: ${line}`);
+    console.log(
+      `stored ${version.pages.length} cover file(s) as ${coverSet(lookId)} v${version.version} in ` +
+        store.describe,
+    );
+    if (covers.missing.length) {
+      console.log(
+        `no ${covers.missing.join(" and ")} wrap in this folder — expected ` +
+          `${coverWrapFileNames().join(" and ")}`,
+      );
+    }
+    if (covers.compare) {
+      console.log(compareByEye(lookId, covers.compare, await releaseArtworkFor(FIRST_BOOK, store)));
+    }
+  } else {
+    console.log(
+      `no cover wraps in this folder (expected ${coverWrapFileNames().join(" or ")}); ` +
+        `${coverSet(lookId)} is untouched and this look's cover is still the placeholder`,
     );
   }
+}
+
+/**
+ * **The one check for "is this the right baby", and it is a human looking.**
+ *
+ * It prints the cut front panel beside a page of the same look's interior, as
+ * two addresses to open. `lib/book/cover-upload.ts` § What cannot be checked,
+ * said plainly is the argument: a brown-haired cover was submitted for the
+ * ginger look once, measuring hair colour to catch it was tried twice and
+ * failed twice — the warm floors, blankets and backgrounds swamp hair and skin,
+ * and ginger, blonde and brown came back within half a degree of hue of each
+ * other. **This is a prompt and not a gate**, and saying so is the point: a
+ * check that silently fails to catch the thing it is named for is worse than no
+ * check.
+ */
+function compareByEye(
+  lookId: string,
+  compare: { cover: string; page: string },
+  art: ReleaseArtwork,
+): string {
+  const href = hrefIn(art.urls);
+  const pages = art.pages[lookId] ?? {};
+  const cover = pages[compare.cover];
+  // `tilePage` — the page the chooser's own grid is drawn from, which is the
+  // one page of this book chosen for showing *which baby* rather than which
+  // picture. If it has not been imported there is nothing to compare against
+  // and the prompt is left out rather than pointed at a babyless page.
+  const page = pages[compare.page];
+  if (!cover || !page) return "";
+  return [
+    "",
+    "COMPARE THESE BY EYE — is the baby on the cover the baby in the book?",
+    `  ${compare.cover.padEnd(8)} ${href(cover)}`,
+    `  ${compare.page.padEnd(8)} ${href(page)}`,
+    "A brown-haired cover was submitted for the ginger look once. Measuring hair colour to",
+    "catch that was tried twice and failed twice: the warm floors and blankets swamp it, and",
+    "ginger, blonde and brown came back within half a degree of hue of each other. So this is",
+    "a prompt and not a gate — nothing refuses on it.",
+  ].join("\n");
 }
 
 /** The portraits, flattened onto white, as the chooser's tiles. */
@@ -251,21 +339,79 @@ async function status(): Promise<void> {
           (copies < pictures ? " — `npm run artwork:upload -- --screens` makes the rest" : ""),
   );
 
-  const withoutCover = delivered.filter((id) => !art.pages[id][FIRST_BOOK.cover.id]);
-  if (withoutCover.length) {
-    console.log(`\nno cover artwork for: ${withoutCover.join(", ")} — the cover is still the placeholder.`);
-  }
+  console.log(coverState(art));
   // Counted out of the book and what the store holds, never typed: the number
   // of looks is data (`templates/first-book.ts` § `LOOKS`) and a sentence that
   // said "eleven" would be wrong the day the captain settles on a different
   // count — which is exactly what happened to the sentence this replaced.
   console.log(
-    `\nstill owed: ${FIRST_BOOK.looks.length - delivered.length} more look(s), a cover for every ` +
-      "look, and the portrait replacements in docs/artwork.md § 2. The storage question is\n" +
+    `\nstill owed: ${FIRST_BOOK.looks.length - delivered.length} more look(s), two cover wraps ` +
+      "for every look, and the portrait replacements in docs/artwork.md § 2. The storage question is\n" +
       "answered — two Cloudflare R2 buckets, the looks bucket public behind a custom domain\n" +
       "and the order-artwork bucket private; lib/artwork/r2.ts is the adapter and\n" +
       "`npm run artwork:upload` is how the looks get there.",
   );
+}
+
+/**
+ * **Which of the two wraps each look has, and whether its display cover was
+ * cut.**
+ *
+ * Reported per look and per product rather than as one count, because the
+ * states are genuinely different and the captain has to know which file to
+ * send: a look with a softcover wrap and no hardcover one is sellable today; a
+ * look with a hardcover wrap and no softcover one has **no display cover at
+ * all**, because the cut is taken from the softcover's front panel and only
+ * from a product whose template has been read.
+ *
+ * The columns come off `COVER_PRODUCT_IDS` and the rows off the book's own
+ * looks, so a third product or a fourteenth look changes this table and not
+ * this function.
+ */
+function coverState(art: ReleaseArtwork): string {
+  const rows = FIRST_BOOK.looks.map((look) => {
+    const wraps = art.wraps[look.id] ?? {};
+    const cut = Boolean(art.pages[look.id]?.[FIRST_BOOK.cover.id]);
+    return { look, wraps, cut, any: cut || COVER_PRODUCT_IDS.some((id) => wraps[id]) };
+  });
+  const some = rows.filter((r) => r.any);
+  if (some.length === 0) {
+    return (
+      `\nno cover artwork for any of the ${FIRST_BOOK.looks.length} look(s): every cover is ` +
+      "still the drawn placeholder, and the print path composes a wrap from it.\n" +
+      `A look's cover is two wraps — ${coverWrapFileNames().join(" and ")} — in the look's own ` +
+      "folder; docs/look-upload-contract.md § 2b."
+    );
+  }
+
+  const width = Math.max(...FIRST_BOOK.looks.map((l) => l.id.length), 4);
+  const head = ["look".padEnd(width), ...COVER_PRODUCT_IDS.map((id) => id.padEnd(10)), "display"];
+  const lines = [`\ncover state, per look:`, `  ${head.join("  ")}`];
+  for (const row of some) {
+    lines.push(
+      `  ${row.look.id.padEnd(width)}  ` +
+        COVER_PRODUCT_IDS.map((id) => (row.wraps[id] ? "yes" : "—").padEnd(10)).join("  ") +
+        `  ${row.cut ? "cut from the softcover wrap" : "none — the placeholder"}`,
+    );
+  }
+  const none = rows.length - some.length;
+  if (none) lines.push(`  and ${none} look(s) with no cover artwork at all`);
+  lines.push(
+    "The display cover is cut out of the softcover wrap's front panel and never supplied " +
+      "beside it,",
+    "so what a buyer previews and what the press prints cannot differ: " +
+      "lib/book/cover-upload.ts.",
+  );
+  if (some.some((r) => r.wraps.hardcover)) {
+    lines.push(
+      "A delivered hardcover wrap is stored and nothing is drawn on it: nobody has opened the " +
+        "hardcover's",
+      "own template, so where its front panel starts is arithmetic. " +
+        "lib/print/printify.ts § HARDCOVER_COVER_WRAP_DERIVED",
+      "names the four numbers to read out of it and what flips when they are read.",
+    );
+  }
+  return lines.join("\n");
 }
 
 async function main() {

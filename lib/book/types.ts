@@ -50,6 +50,27 @@ import type { AssetRef, Canvas, Colour, Layer, PhotoFill, PrintSpec } from "../t
 import type { PreviewAsset } from "./preview-art";
 
 // ---------------------------------------------------------------------------
+// The two things a cover can be printed on
+// ---------------------------------------------------------------------------
+
+/**
+ * Which bound object a cover wrap is for.
+ *
+ * It lives here, in the format, rather than in `./cover-wrap.ts` where the
+ * products themselves are, because a `Look` now **carries one delivered wrap
+ * per product** (§ `Look.wraps`) and the format cannot name a type that only
+ * the print path can see. `./cover-wrap.ts` re-exports all three of these, so
+ * every existing caller is unchanged and there is still one list.
+ */
+export type CoverProductId = "softcover" | "hardcover";
+
+export const COVER_PRODUCT_IDS: readonly CoverProductId[] = ["softcover", "hardcover"];
+
+export function isCoverProductId(value: unknown): value is CoverProductId {
+  return typeof value === "string" && (COVER_PRODUCT_IDS as readonly string[]).includes(value);
+}
+
+// ---------------------------------------------------------------------------
 // The looks axis
 // ---------------------------------------------------------------------------
 
@@ -139,8 +160,41 @@ export interface Look {
    *
    * It is never read by the shop. The picker, the preview and the basket show
    * the square cover and know nothing about wraps.
+   *
+   * **It is only read when no wrap has been delivered.** A look with a
+   * `wraps` entry (below) has the captain's own back cover and spine in the
+   * file, so there is nothing for a wash to paint.
    */
   wash?: Colour;
+  /**
+   * **The finished cover wraps the captain delivered for this look, one per
+   * product.**
+   *
+   * A cover does not arrive as a square. The captain uploads spreads to
+   * Printify directly, so what they produce per look is **two wordless
+   * wraps** — back cover, spine and front in one piece, at each product's own
+   * supplied size. `docs/look-upload-contract.md` § 2b is the contract and
+   * `./cover-upload.ts` is the check.
+   *
+   * It is the same shape as `tile` and is bound at release for the same
+   * reason: the pixels are not in this repository
+   * (`lib/artwork/release.ts` § Why none of it is in the repository), so this
+   * is environment state and the committed template declares none of it.
+   *
+   * **Partial on purpose, in both directions.** A look may have the softcover
+   * wrap and not the hardcover one, which is the ordinary state while only one
+   * product is being sold; and most looks have neither, which is the state a
+   * fresh clone and the whole test suite run in. Absent means
+   * `./cover-wrap.ts` composes the wrap from the square it always composed it
+   * from, with the wash above for the back.
+   *
+   * **A wrap being here does not mean a title can be printed on it.** That
+   * needs the product's own measured template, which exists for the softcover
+   * and not for the hardcover — `lib/print/printify.ts`
+   * § `HARDCOVER_COVER_WRAP_DERIVED` is the whole of what is known about the
+   * second one, and it refuses rather than placing a title against arithmetic.
+   */
+  wraps?: Partial<Record<CoverProductId, AssetRef>>;
 }
 
 /**

@@ -159,9 +159,10 @@ describe("reading every set of one book", () => {
   it("asks for every set at once rather than one after another", async () => {
     const store = twoLooks();
     await releaseArtworkFor(FIRST_BOOK, store);
-    // One `current` per look plus the tiles and the ghosts — all of them in
-    // flight together. Serial would make this 1.
-    expect(store.reads.length).toBe(FIRST_BOOK.looks.length + 2);
+    // Two `current` per look — its pages and its cover, which are two sets for
+    // `lib/artwork/release.ts` § `coverSet`'s reason — plus the tiles and the
+    // ghosts, all of them in flight together. Serial would make `concurrent` 1.
+    expect(store.reads.length).toBe(2 * FIRST_BOOK.looks.length + 2);
     expect(store.concurrent).toBe(store.reads.length);
   });
 

@@ -16,6 +16,9 @@ import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { FIRST_BOOK } from "../templates/first-book";
 import { blockingUploadProblems, checkUpload, type Upload } from "../lib/book/upload";
+import { coverWrapFileName } from "../lib/book/cover-upload";
+import { suppliedAreaOf } from "../lib/book/cover-wrap";
+import { COVER_PRODUCT_IDS } from "../lib/book/types";
 
 /** Everything under `root`, as the pure checker wants it. */
 async function readUpload(root: string): Promise<Upload> {
@@ -67,10 +70,16 @@ async function main() {
   const blocking = blockingUploadProblems(problems);
 
   const pages = upload.looks.reduce((n, l) => n + l.files.length, 0);
+  // Both contracts in the header, because they are two different objects and
+  // the sizes are two different numbers: a page is square and a wrap is wide.
   console.log(
     `${upload.looks.length} look(s), ${pages} file(s), against ${FIRST_BOOK.id}@${FIRST_BOOK.rev}: ` +
-      `${FIRST_BOOK.pages.length} interior pages + cover at ` +
-      `${FIRST_BOOK.page.print.pixels.width} × ${FIRST_BOOK.page.print.pixels.height}`,
+      `${FIRST_BOOK.pages.length} interior pages at ` +
+      `${FIRST_BOOK.page.print.pixels.width} × ${FIRST_BOOK.page.print.pixels.height}, plus ` +
+      COVER_PRODUCT_IDS.map((id) => {
+        const area = suppliedAreaOf(id);
+        return `${coverWrapFileName(id)} at ${area.width} × ${area.height}`;
+      }).join(" and "),
   );
 
   for (const p of problems) {

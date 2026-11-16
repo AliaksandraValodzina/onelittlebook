@@ -28,9 +28,10 @@
  *
  * `pngjs` is a **devDependency** and this module is imported only by
  * `scripts/` and `test/`. Nothing under `app/` or in the rendering path reaches
- * it, so a production install with `--omit=dev` is unaffected. The two
+ * it, so a production install with `--omit=dev` is unaffected. The three
  * operations here are the only places in this repository that decode a PNG's
- * pixels — the renderer hands PNGs to `resvg` and never looks inside one.
+ * pixels — the renderer hands PNGs to `resvg` and never looks inside one. The
+ * third is `cutOut`, which takes the display cover out of the softcover wrap.
  */
 
 import { PNG } from "pngjs";
@@ -310,4 +311,72 @@ const SPREAD_FILE = /^spread-(\d{1,2})\b.*\.png$/i;
 export function spreadNumberOf(name: string): number | null {
   const match = SPREAD_FILE.exec(name);
   return match ? Number(match[1]) : null;
+}
+
+// ---------------------------------------------------------------------------
+// The cover wraps
+// ---------------------------------------------------------------------------
+
+/** A wrap whose pixels are not the size the cut was derived for. */
+export class NotAWrap extends Error {}
+
+/**
+ * **A whole-pixel window out of a PNG.** The third pixel operation, and the
+ * one that makes the display cover.
+ *
+ * The captain delivers one wordless wrap per product and the square the shop
+ * shows is the **front panel of the softcover wrap, taken out of it** —
+ * `lib/book/cover-upload.ts` § Why the square is cut and never supplied is the
+ * argument, and `lib/print/printify.ts` § `frontPanelPxOf` is the box.
+ *
+ * **The size is checked against the bytes and not trusted.** A wrap that is not
+ * the dimensions the cut was derived from would cut a window out of the wrong
+ * part of the picture, and the result would be a plausible cover: a bit of the
+ * spine down one side, or the back of the book. `lib/book/cover-upload.ts`
+ * refuses a wrong size before anything gets here, and this refuses again rather
+ * than assuming that happened, because this is the function that would produce
+ * the wrong file.
+ *
+ * Output is colour type 2 with an `sRGB` chunk, exactly as the other two
+ * operations are: the contract is sRGB with no profile, and a chunk is a fact
+ * where a convention is somebody else's habit.
+ */
+export function cutOut(
+  bytes: Uint8Array,
+  of: { width: number; height: number },
+  box: { x: number; y: number; width: number; height: number },
+): Uint8Array {
+  const read = PNG.sync.read(Buffer.from(bytes));
+  if (read.width !== of.width || read.height !== of.height) {
+    throw new NotAWrap(
+      `the cut was derived for ${of.width} × ${of.height} and these bytes are ` +
+        `${read.width} × ${read.height}`,
+    );
+  }
+  if (
+    box.x < 0 ||
+    box.y < 0 ||
+    box.x + box.width > read.width ||
+    box.y + box.height > read.height
+  ) {
+    throw new NotAWrap(
+      `the window ${box.width} × ${box.height} at ${box.x},${box.y} is not inside ` +
+        `${read.width} × ${read.height}`,
+    );
+  }
+
+  const out = new PNG({ width: box.width, height: box.height });
+  for (let y = 0; y < box.height; y++) {
+    for (let x = 0; x < box.width; x++) {
+      const from = ((y + box.y) * read.width + x + box.x) * 4;
+      const to = (y * box.width + x) * 4;
+      out.data[to] = read.data[from];
+      out.data[to + 1] = read.data[from + 1];
+      out.data[to + 2] = read.data[from + 2];
+      out.data[to + 3] = 255;
+    }
+  }
+  return withSrgbChunk(
+    new Uint8Array(PNG.sync.write(out, { colorType: 2, inputHasAlpha: true, bitDepth: 8 })),
+  );
 }

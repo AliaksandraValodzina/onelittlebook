@@ -30,6 +30,19 @@
  * own template says, so a wrap composed from these numbers would be a
  * plausible wrong file: the back cover would be cut into and the spine would
  * not land on the hinge.
+ *
+ * ## What a size somebody counted looks like
+ *
+ * **A `DerivedWrap`, which is not a `MeasuredTemplate` and cannot be used as
+ * one.** The captain exported three hardcover wraps and they were all
+ * 5370 × 2850, so that size is known in the only way a size can be known
+ * without a template: by counting files. Everything inside it — where the front
+ * panel starts, how wide the spine is, how much wrap allowance there is — is
+ * arithmetic on two assumptions nobody has checked. So the outer size is
+ * recorded in a type with no `finished` and no `safety` on it, which makes it
+ * usable for the one question it can answer (*is this file the right size?*)
+ * and structurally unusable for the one it cannot (*where does the title go?*).
+ * `HARDCOVER_COVER_WRAP_DERIVED` is that record.
  */
 
 /** A size in pixels. The unit every number in a Printify template is in. */
@@ -175,3 +188,125 @@ export function panelPxOf(t: MeasuredTemplate): Px {
 export function spinePxOf(t: MeasuredTemplate): number {
   return t.finished.width - 2 * panelPxOf(t).width;
 }
+
+/**
+ * **The box the finished front panel occupies in a supplied wrap**, in that
+ * wrap's own pixels.
+ *
+ * This is the cut. The captain delivers one wordless wrap per product and the
+ * display cover is **taken out of it** rather than supplied beside it, for the
+ * reason `lib/book/cover-upload.ts` § Why the square is cut and never supplied
+ * gives: a separately-exported square and a wrap are composed by hand twice,
+ * and the day they differ a buyer previews one cover and receives another.
+ * Cutting makes that unrepresentable.
+ *
+ * Derived from the same four measurements as everything else — the panel, the
+ * bleed and the spine — so a product with another template cuts another box.
+ *
+ * **The trim does not land on a pixel boundary and the cut therefore rounds.**
+ * The softcover's bleed is 37.5 px, half a pixel, so the finished panel runs
+ * from x = 2427.5 to x = 4752.5 and no window of whole pixels is exactly it.
+ * The origin is rounded **up**, which moves the window half a pixel *away from
+ * the spine*: the spine is the fold, and a sliver of it on the front of the
+ * book is the one error of the two that is visible on a finished object. What
+ * is lost instead is half a pixel of panel at the inner edge, replaced by half
+ * a pixel of the bleed at the outer one — and bleed is artwork, so nothing is
+ * invented. The size stays the panel's own, exactly, which is what makes the
+ * cut the same square the captain's own separate export came out at.
+ */
+export function frontPanelPxOf(t: MeasuredTemplate): Px & { x: number; y: number } {
+  const panel = panelPxOf(t);
+  return {
+    x: Math.ceil(bleedPxOf(t) + panel.width + spinePxOf(t)),
+    y: Math.ceil(bleedPxOf(t)),
+    width: panel.width,
+    height: panel.height,
+  };
+}
+
+/**
+ * **A wrap whose outer size somebody counted and whose insides nobody has
+ * measured.**
+ *
+ * Deliberately **not** a `MeasuredTemplate`: it has no `file`, no `finished`
+ * and no `safety`, so TypeScript refuses it everywhere a template goes —
+ * `wrapGeometry`, `panelPxOf`, `frontPanelPxOf`, `spinePxOf`, the whole of
+ * `lib/book/cover-wrap.ts`. That is the same trick `lib/book/preview-art.ts`
+ * plays with `PreviewAsset` against `AssetRef`, and it is here for the same
+ * reason: the arithmetic below is self-consistent and unconfirmed, and the one
+ * outcome worse than refusing is a title printed 120 px off a hinge.
+ *
+ * It exists so the thing that *is* known can be used — the supplied size, which
+ * is what an uploaded file is checked against — without the thing that is not
+ * known being usable at all.
+ */
+export interface DerivedWrap {
+  /** What the file has to be. The only number here anybody actually counted. */
+  area: Px;
+  /** Derived from the panel coming out square at this resolution. */
+  dpi: number;
+  /** How the numbers were arrived at, and what they are worth. */
+  derivation: string;
+  /** What has to be read, from which file, to turn this into a template. */
+  needs: string;
+  /**
+   * The arithmetic, recorded rather than used.
+   *
+   * Nothing in this repository reads these. They are here so that whoever
+   * opens the real template can check it against what was inferred — and so
+   * that the inference is written down once instead of re-done from scratch by
+   * the next person holding three files of the same size.
+   */
+  inferred: {
+    /** The wrap allowance, each edge: what a hardcover turns round the board. */
+    allowance: number;
+    /** The spine, which is the number a hardcover cannot share with a softcover. */
+    spine: number;
+    panel: Px;
+  };
+}
+
+/**
+ * **The hardcover's cover wrap: one size, counted, and nothing else.**
+ *
+ * The captain exported three of these — girl-01, girl-02 and girl-03 — and all
+ * three came out **5370 × 2850 px**. That is a count of files and not a reading
+ * of a template, which is the whole distinction this module exists to keep.
+ *
+ * The arithmetic that follows from it is self-consistent, and that is exactly
+ * what makes it dangerous: 2850 − 2400 = 450, so 225 px (0.75 in) of wrap
+ * allowance top and bottom; 5370 − 4800 − 450 = 120, so a 120 px (0.40 in)
+ * spine with the same allowance each side; panels 2400 square, which is 8.00 in
+ * at 300 dpi and matches the interior area exactly. Every one of those numbers
+ * is a consequence of assuming the panels are 2400 and the allowance is equal
+ * on all four edges, and **neither assumption has been checked against
+ * anything**. A hardcover's spine depends on its board and its hinge, and a
+ * template is the only thing that says where its front panel starts.
+ *
+ * So the file is accepted, stored and reported, and **no title is drawn on
+ * it** — `lib/book/cover-wrap.ts` § `COVER_PRODUCTS` keeps the hardcover on the
+ * unmeasured arm and `measuredProduct` still refuses. The bytes are right
+ * whatever we believe about the panel, so keeping them costs nothing and
+ * re-delivery costs the captain a day; the title is the one thing that cannot
+ * be placed without the measurement, and it is the one thing that waits.
+ */
+export const HARDCOVER_COVER_WRAP_DERIVED: DerivedWrap = {
+  area: { width: 5370, height: 2850 },
+  dpi: 300,
+  derivation:
+    "counted off three files the captain exported on 16 November (girl-01, girl-02, girl-03), " +
+    "all three 5370 x 2850. The insides are inferred by assuming 2400 px square panels and an " +
+    "equal allowance on all four edges, and neither assumption has been checked against " +
+    "Printify's own template.",
+  needs:
+    "Printify's hardcover 8 x 8 cover template, and the four numbers in its header: the " +
+    "supplied area in pixels, the finished size in pixels, the safety zone per panel in " +
+    "pixels, and the resolution. Those make a MeasuredTemplate in lib/print/printify.ts and " +
+    "flip COVER_PRODUCTS.hardcover to its measured arm; nothing else changes, and the wraps " +
+    "already uploaded do not need re-delivering.",
+  inferred: {
+    allowance: (2850 - 2400) / 2,
+    spine: 5370 - 2 * 2400 - (2850 - 2400),
+    panel: { width: 2400, height: 2400 },
+  },
+};
