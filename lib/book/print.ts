@@ -52,7 +52,10 @@ import { pageCount, pageFillFor, pageSequence, pageTemplateFor } from "./derive"
 import {
   coverWrapFill,
   coverWrapTemplate,
+  deliveredWrapOf,
   measuredProduct,
+  suppliedCoverWrapFill,
+  suppliedCoverWrapTemplate,
   type CoverProductId,
 } from "./cover-wrap";
 import { validateBook, validateBookFill } from "./validate";
@@ -242,20 +245,51 @@ export interface CoverWrapResult extends PrintResult {
   filename: string;
   /** Which product the wrap was composed for. */
   product: CoverProductId;
-  /** The square it was composed from, for a caller that wants both files. */
+  /**
+   * The square the website shows, rendered for a caller that wants both files.
+   *
+   * On the composed path it is also **what the wrap was made from**. On the
+   * supplied path it is not: the wrap is the captain's own file and this is the
+   * same cover drawn at the page's own resolution. Either way it is byte-for-byte
+   * the render the preview and the basket show, which is what the admin page is
+   * for.
+   */
   front: PrintResult;
+  /**
+   * **Whose back cover and spine are in the file.** `"supplied"` is the
+   * captain's own wrap with the title drawn on its front panel; `"composed"` is
+   * the square on the right, a wash on the left and a bare spine between —
+   * which is what a look with no delivered wrap gets.
+   */
+  source: "supplied" | "composed";
 }
 
 /**
  * **The cover wrap: back, spine and front, as one image.**
  *
+ * Two ways in, and which one is used is decided by **whether the captain has
+ * delivered a wrap for this look and this product** — not by an option, so no
+ * caller can ask for the wrong one.
+ *
+ * **The delivered wrap, with the title drawn on its front panel.** The
+ * captain's file is the back cover, the spine and the front in one piece and it
+ * is wordless, which is correct: the title carries the buyer's name and is
+ * drawn by the renderer. `lib/book/cover-wrap.ts`
+ * § `suppliedCoverWrapTemplate` is the composition and it is two layers — the
+ * file, and the cover page's own title layers translated onto the panel the
+ * display cover was cut from. **One slot decides where the title sits**, and it
+ * is the slot the preview drew.
+ *
+ * **Composed from the square**, for a look with no delivered wrap:
  * `renderBookPagePng(book, 0, …)` is the square the website shows, unchanged
  * and unaware — this calls it, hashes the bytes it gets back, and hands them
  * to the wrap as an `image` layer through the **`supplied` seam the renderer
  * already has** (`lib/render/raster.ts` § `SuppliedBytes`, "bytes the caller
- * already holds, keyed by content hash"). So there is no compositor here and
- * no second drawing path: the wrap is a `PageTemplate` with three layers and
- * `renderPrintPng` draws it exactly as it draws every page of the book.
+ * already holds, keyed by content hash").
+ *
+ * Either way there is no compositor here and no second drawing path: a wrap is
+ * a `PageTemplate` and `renderPrintPng` draws it exactly as it draws every page
+ * of the book.
  *
  * The digest is computed from the bytes rather than declared, which is the
  * rule `lib/assets/resolve.ts` states for every `AssetRef` in the codebase —
@@ -263,9 +297,11 @@ export interface CoverWrapResult extends PrintResult {
  * taken from the thing it addresses.
  *
  * **It refuses rather than approximating.** A product whose template nobody
- * has opened raises `CoverWrapUnavailable` before anything is rendered —
- * `lib/book/cover-wrap.ts` § `COVER_PRODUCTS` says why a plausible wrong wrap
- * is the worst thing this function could produce.
+ * has opened raises `CoverWrapUnavailable` before anything is rendered, and
+ * that is still true when a wrap for it has been delivered: the file is right
+ * and where its front panel starts is not known, so there is nowhere honest to
+ * put the title. `lib/book/cover-wrap.ts` § `COVER_PRODUCTS` says why a
+ * plausible wrong wrap is the worst thing this function could produce.
  */
 export async function renderCoverWrapPng(
   book: BookTemplate,
@@ -284,18 +320,26 @@ export async function renderCoverWrapPng(
   const supplied: SuppliedBytes = new Map(options.supplied ?? []);
   supplied.set(digest, front.png);
 
-  const template = coverWrapTemplate(book, fill, product, {
-    sha256: digest,
-    mime: "image/png",
-    px: [front.pixels.width, front.pixels.height],
-    label: `${book.name} — front cover`,
-  });
-  const wrap = await renderPrintPng(template, coverWrapFill(book, product), supplied);
+  const delivered = deliveredWrapOf(book, fill.lookId, product);
+  const template = delivered
+    ? suppliedCoverWrapTemplate(book, fill, product, delivered)
+    : coverWrapTemplate(book, fill, product, {
+        sha256: digest,
+        mime: "image/png",
+        px: [front.pixels.width, front.pixels.height],
+        label: `${book.name} — front cover`,
+      });
+  const pageFill = delivered
+    ? suppliedCoverWrapFill(book, fill, product)
+    : coverWrapFill(book, product);
+
+  const wrap = await renderPrintPng(template, pageFill, supplied);
   const { width, height } = template.print.pixels;
   return {
     ...wrap,
     front,
     product,
+    source: delivered ? "supplied" : "composed",
     filename: `${orderFileStem(book, fill)}-cover-${product}-wrap-${width}x${height}.png`,
   };
 }

@@ -81,7 +81,8 @@ import path from "node:path";
 import { value } from "../env";
 import type { AssetAddresses } from "../assets/address";
 import type { AssetRef } from "../template/types";
-import type { BookTemplate } from "../book/types";
+import { isCoverProductId } from "../book/types";
+import type { BookTemplate, CoverProductId } from "../book/types";
 import type { PreviewAsset } from "../book/preview-art";
 import { bookWithReleaseArtwork } from "../book/release-art";
 import { isReleaseSet } from "./keys";
@@ -133,6 +134,47 @@ export function tilePageId(lookId: string): string {
 
 export function lookOfTilePageId(pageId: string): string | null {
   return pageId.startsWith("tile-") ? pageId.slice("tile-".length) : null;
+}
+
+/**
+ * **One look's cover: its own set, beside its pages and never inside them.**
+ *
+ * It holds three things — the two wraps the captain delivered and the display
+ * cover cut out of the softcover one — under the page ids below.
+ *
+ * **A set of its own and not part of `look-<id>`**, which was tried first and
+ * is wrong in a way that costs artwork. `ArtworkStore.put` writes a version
+ * holding exactly the pages it is given, so a folder of nothing but a corrected
+ * cover would write a version with no interior pages in it, and a folder of
+ * nothing but pages would write one with no cover. Both are ordinary states —
+ * re-delivering one corrected file is the commonest thing that happens here —
+ * and merging instead would mean reading sixty megabytes of a look's pages back
+ * out of a bucket to write them again unchanged. Two sets, two versions, two
+ * independent re-imports.
+ *
+ * The cost is one more concurrent read per look in `releaseArtworkFor`, which
+ * is a request and not a round trip: every set is asked for at once
+ * (§ The catalogue, held for a minute).
+ */
+export function coverSet(lookId: string): string {
+  return `covers-${lookId}`;
+}
+
+/**
+ * The page ids inside a cover set.
+ *
+ * The **display cover** is stored under the book's own cover page id, which is
+ * what lets `lib/book/release-art.ts` bind it exactly as it binds page nine and
+ * is why the picker, the preview and the basket learn nothing about any of
+ * this. The **wraps** are not pages of anything and say so in their keys.
+ */
+export function coverWrapPageId(id: CoverProductId): string {
+  return `cover-wrap-${id}`;
+}
+
+export function coverProductOfPageId(pageId: string): CoverProductId | null {
+  const rest = pageId.startsWith("cover-wrap-") ? pageId.slice("cover-wrap-".length) : null;
+  return isCoverProductId(rest) ? rest : null;
 }
 
 /**
@@ -239,6 +281,17 @@ export interface ReleaseArtwork {
   pages: Record<string, Record<string, AssetRef>>;
   /** Look id -> the chooser's portrait tile, flattened onto white at import. */
   tiles: Record<string, AssetRef>;
+  /**
+   * Look id -> the finished cover wraps, one per product the captain delivered.
+   *
+   * Read out of the **look's own set**, beside its pages, and separated here
+   * because a wrap is not a page: nothing downstream of `pages` could do
+   * anything with one. § `coverWrapPageId` is the key layout and why it is one
+   * set and not two. **Partial in both directions and empty is the ordinary
+   * state** — the shop composes a wrap from the square for every look that has
+   * none.
+   */
+  wraps: Record<string, Partial<Record<CoverProductId, AssetRef>>>;
   /** Page id -> the preview-only golden half. Never an `AssetRef`. */
   ghosts: Record<string, PreviewAsset>;
   /**
@@ -274,13 +327,23 @@ export interface ReleaseArtwork {
 }
 
 export function emptyReleaseArtwork(describe = "nothing"): ReleaseArtwork {
-  return { pages: {}, tiles: {}, ghosts: {}, urls: {}, screen: NO_SCREEN_ADDRESSES, describe, sets: [] };
+  return {
+    pages: {},
+    tiles: {},
+    wraps: {},
+    ghosts: {},
+    urls: {},
+    screen: NO_SCREEN_ADDRESSES,
+    describe,
+    sets: [],
+  };
 }
 
 export function anyReleaseArtwork(art: ReleaseArtwork): boolean {
   return (
     Object.keys(art.pages).length > 0 ||
     Object.keys(art.tiles).length > 0 ||
+    Object.keys(art.wraps).length > 0 ||
     Object.keys(art.ghosts).length > 0
   );
 }
@@ -327,8 +390,9 @@ export async function releaseArtworkFor(
   // said it holds those bytes at that URL.
   const urls: Record<string, string> = {};
 
-  const [lookVersions, tiles, ghosts, held] = await Promise.all([
+  const [lookVersions, coverVersions, tiles, ghosts, held] = await Promise.all([
     Promise.all(book.looks.map((look) => store.current(lookSet(look.id)))),
+    Promise.all(book.looks.map((look) => store.current(coverSet(look.id)))),
     store.current(TILES_SET),
     store.current(GHOSTS_SET),
     store.screens(),
@@ -336,19 +400,47 @@ export async function releaseArtworkFor(
 
   for (const [i, look] of book.looks.entries()) {
     const version = lookVersions[i];
-    if (!version || version.pages.length === 0) continue;
     const pages: Record<string, AssetRef> = {};
-    for (const page of version.pages) {
-      pages[page.pageId] = page.asset;
-      if (page.url) urls[page.asset.sha256] = page.url;
+    if (version && version.pages.length > 0) {
+      for (const page of version.pages) {
+        pages[page.pageId] = page.asset;
+        if (page.url) urls[page.asset.sha256] = page.url;
+      }
+      out.sets.push({
+        set: lookSet(look.id),
+        version: version.version,
+        at: version.at,
+        pages: version.pages.length,
+      });
     }
-    out.pages[look.id] = pages;
-    out.sets.push({
-      set: lookSet(look.id),
-      version: version.version,
-      at: version.at,
-      pages: version.pages.length,
-    });
+
+    /**
+     * **The cover set, read into two different places.**
+     *
+     * The display cover is a page of the book and joins `pages` under
+     * `book.cover.id`, which is how it reaches `byLook` and the preview with no
+     * component knowing a wrap exists. The wraps are not pages of anything and
+     * go to `wraps`, where only the print path looks.
+     */
+    const covers = coverVersions[i];
+    if (covers && covers.pages.length > 0) {
+      const wraps: Partial<Record<CoverProductId, AssetRef>> = {};
+      for (const page of covers.pages) {
+        const product = coverProductOfPageId(page.pageId);
+        if (product) wraps[product] = page.asset;
+        else pages[page.pageId] = page.asset;
+        if (page.url) urls[page.asset.sha256] = page.url;
+      }
+      if (Object.keys(wraps).length) out.wraps[look.id] = wraps;
+      out.sets.push({
+        set: coverSet(look.id),
+        version: covers.version,
+        at: covers.at,
+        pages: covers.pages.length,
+      });
+    }
+
+    if (Object.keys(pages).length > 0) out.pages[look.id] = pages;
   }
 
   if (tiles) {

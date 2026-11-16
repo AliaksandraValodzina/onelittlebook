@@ -13,9 +13,17 @@
  * that have artwork in `byLook` **and the page's own drawn scene kept as the
  * fallback**, because most of the looks are still being drawn and a
  * refusal there would mean no real artwork could be seen until the last one
- * landed. A look with a delivered portrait gets it as its chooser `tile`. A page
+ * landed. A look with a delivered portrait gets it as its chooser `tile`, and a
+ * look with delivered cover wraps gets them as its `wraps` — the two things the
+ * captain delivers about a *look* rather than about a page. A page
  * with a delivered golden ghost half gets it as its `ghost`, which only the
  * photo path's preview can draw and the type system will not let anybody print.
+ *
+ * **The cover binds through the page machinery and nothing special.** The
+ * display cover is cut out of the softcover wrap at intake
+ * (`lib/book/cover-upload.ts`) and stored under the book's own cover page id, so
+ * it arrives in `byLook` exactly as page nine does and the picker, the preview
+ * and the basket learn nothing new.
  *
  * ## Why the rev is carried through unchanged
  *
@@ -51,10 +59,11 @@ import type { BookPage, BookTemplate, Look } from "./types";
  */
 export function bookWithReleaseArtwork(book: BookTemplate, art: ReleaseArtwork): BookTemplate {
   const lookIds = book.looks.map((l) => l.id);
-  const delivered = lookIds.filter((id) => art.pages[id]);
+  const delivered = lookIds.filter((id) => art.pages[id] && Object.keys(art.pages[id]).length);
   const hasTiles = book.looks.some((l) => art.tiles[l.id]);
+  const hasWraps = book.looks.some((l) => art.wraps[l.id]);
   const hasGhosts = Object.keys(art.ghosts).length > 0;
-  if (delivered.length === 0 && !hasTiles && !hasGhosts) return book;
+  if (delivered.length === 0 && !hasTiles && !hasWraps && !hasGhosts) return book;
 
   const bind = (page: BookPage): BookPage => {
     const byLook: Record<string, AssetRef> = {};
@@ -65,10 +74,10 @@ export function bookWithReleaseArtwork(book: BookTemplate, art: ReleaseArtwork):
     const ghost = art.ghosts[page.id];
 
     // A page nobody has delivered keeps the artwork it had, which for a page of
-    // this book is its drawn scene. The cover is the page that is actually in
-    // that state today: there is no cover artwork at all yet, and a book whose
-    // interior is the captain's and whose cover is still the placeholder is
-    // visibly unfinished, which is the honest state to be in.
+    // this book is its drawn scene. Every look whose cover wraps have not landed
+    // is in that state for its cover, and a book whose interior is the captain's
+    // and whose cover is still the placeholder is visibly unfinished — which is
+    // the honest state to be in.
     if (Object.keys(byLook).length === 0) {
       return ghost ? { ...page, ghost } : page;
     }
@@ -89,14 +98,25 @@ export function bookWithReleaseArtwork(book: BookTemplate, art: ReleaseArtwork):
     };
   };
 
-  const tiled = (look: Look): Look => {
+  /**
+   * The look, with the two things the captain delivers *about a look* rather
+   * than about a page: its chooser portrait and its cover wraps.
+   *
+   * Both are absent for almost every look and both are read through one door
+   * (`lib/book/cover-wrap.ts` § `deliveredWrapOf` for the second), so a look
+   * with neither comes back as the same object and nothing downstream has to
+   * ask which state it is in.
+   */
+  const bound = (look: Look): Look => {
     const tile = art.tiles[look.id];
-    return tile ? { ...look, tile } : look;
+    const wraps = art.wraps[look.id];
+    if (!tile && !wraps) return look;
+    return { ...look, ...(tile ? { tile } : {}), ...(wraps ? { wraps } : {}) };
   };
 
   return {
     ...book,
-    looks: book.looks.map(tiled),
+    looks: book.looks.map(bound),
     cover: bind(book.cover),
     pages: book.pages.map(bind),
   };

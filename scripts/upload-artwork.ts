@@ -5,8 +5,14 @@
  *     npm run artwork:upload -- --screens      # derivatives only — the backfill
  *     npm run artwork:upload -- --dry-run
  *     npm run artwork:upload -- --only portraits
+ *     npm run artwork:upload -- --only covers   # the two wraps, out of the look's folder
  *     npm run artwork:upload -- --pages ~/art/pages --portraits ~/art/tiles --ghosts ~/art/gold
  *     npm run artwork:upload -- --look 05-boy --pages ~/art/the-fifth-boy
+ *
+ * **A look's folder holds its pages and its two cover wraps**, so `covers` is a
+ * set of its own that reads the `--pages` directory. The wraps go to the store
+ * as delivered and the **display cover is cut out of the softcover one** —
+ * `lib/book/cover-upload.ts` § Why the square is cut and never supplied.
  *
  * The three directories default to the folders the artwork was delivered into —
  * `~/Downloads/approved-pages-3600x3600`, `~/Downloads/baby-portraits-v2` and
@@ -83,6 +89,7 @@ import { FIRST_BOOK } from "../templates/first-book";
 import {
   GHOSTS_SET,
   TILES_SET,
+  coverSet,
   lookSet,
   releaseRoot,
 } from "../lib/artwork/release";
@@ -100,11 +107,13 @@ import { portraitName, type ImportFile } from "../lib/artwork/import";
 import {
   pagesForStore,
   pagesNotCovered,
+  prepareCoverWraps,
   prepareGhostHalves,
   prepareLookPages,
   preparePortraits,
   type Prepared,
 } from "../lib/artwork/prepare";
+import { coverWrapFileNames } from "../lib/book/cover-upload";
 import type { BookTemplate } from "../lib/book/types";
 
 /** Where the three sets were delivered. Overridable, and the reason they are. */
@@ -123,7 +132,16 @@ const DEFAULT_DIRS = {
  */
 const DEFAULT_LOOK = "02-girl";
 
-type SetName = "pages" | "portraits" | "ghosts";
+/**
+ * The four sets a run can touch.
+ *
+ * `covers` reads the **same folder** as `pages` — a look's folder holds its
+ * twenty-four pages and its two cover wraps, and `lib/artwork/prepare.ts`
+ * partitions them with one function so the two cannot claim the same file. They
+ * are separate sets here because they are separate sets in the store, for
+ * `lib/artwork/release.ts` § `coverSet`'s reason.
+ */
+type SetName = "pages" | "covers" | "portraits" | "ghosts";
 
 class Quit extends Error {}
 
@@ -136,7 +154,8 @@ function usage(): never {
       "  --portraits <dir>   the 12 portrait tiles        (default ~/Downloads/baby-portraits-v2)",
       "  --ghosts <dir>      the 12 golden spreads        (default ~/Downloads/golden-spreads)",
       "  --look <id|NN-sex>  which look the pages are for (default 02-girl)",
-      "  --only <set>        pages | portraits | ghosts, repeatable",
+      "  --only <set>        pages | covers | portraits | ghosts, repeatable",
+      `                      covers reads the same folder as pages: ${coverWrapFileNames().join(", ")}`,
       "  --screens           only the screen-sized derivatives, read from the store",
       "  --no-screens        upload masters and make no derivatives",
       "  --dry-run           prepare and compare, write nothing",
@@ -181,7 +200,7 @@ function parse(argv: string[]): Options {
     else if (arg === "--look") look = next();
     else if (arg === "--only") {
       const set = next();
-      if (set !== "pages" && set !== "portraits" && set !== "ghosts") usage();
+      if (set !== "pages" && set !== "covers" && set !== "portraits" && set !== "ghosts") usage();
       only.push(set);
     } else if (arg === "--screens") screensOnly = true;
     else if (arg === "--no-screens") screens = false;
@@ -192,7 +211,7 @@ function parse(argv: string[]): Options {
   return {
     dirs,
     look,
-    only: only.length ? only : ["pages", "portraits", "ghosts"],
+    only: only.length ? only : ["pages", "covers", "portraits", "ghosts"],
     dryRun,
     screens,
     screensOnly,
@@ -284,7 +303,9 @@ async function uploadSet(
     };
   }
   if (prepared.pages.length === 0) {
-    return { set, state: "absent", detail: `no usable PNGs in ${dir}` };
+    // "for this set", because a look's folder feeds two of them: a folder of
+    // nothing but a corrected cover has no pages, and that is not an error.
+    return { set, state: "absent", detail: `nothing for this set in ${dir}` };
   }
 
   const current = await store.current(set);
@@ -360,9 +381,19 @@ async function main() {
   const outcomes: Outcome[] = [];
 
   for (const which of options.screensOnly ? [] : options.only) {
-    const dir = options.dirs[which];
+    // `covers` is in the look's folder beside its pages, so it reads the same
+    // directory and is a different set in the store rather than a different
+    // argument to this command.
+    const dir = which === "covers" ? options.dirs.pages : options.dirs[which];
     const files = await pngsIn(dir);
-    const set = which === "pages" ? lookSet(lookId) : which === "portraits" ? TILES_SET : GHOSTS_SET;
+    const set =
+      which === "pages"
+        ? lookSet(lookId)
+        : which === "covers"
+          ? coverSet(lookId)
+          : which === "portraits"
+            ? TILES_SET
+            : GHOSTS_SET;
 
     if (!files) {
       // Not an error: the captain re-uploading two portraits has no reason to
@@ -374,23 +405,29 @@ async function main() {
     const prepared =
       which === "pages"
         ? prepareLookPages(FIRST_BOOK, files)
-        : which === "portraits"
-          ? preparePortraits(FIRST_BOOK, files)
-          : prepareGhostHalves(FIRST_BOOK, files);
+        : which === "covers"
+          ? prepareCoverWraps(FIRST_BOOK, lookId, files)
+          : which === "portraits"
+            ? preparePortraits(FIRST_BOOK, files)
+            : prepareGhostHalves(FIRST_BOOK, files);
 
     outcomes.push(await uploadSet(store, set, dir, prepared, options));
 
-    if (which === "pages" && prepared.problems.length === 0) {
-      const missing = pagesNotCovered(FIRST_BOOK, prepared);
+    if (which === "pages" && prepared.problems.length === 0 && prepared.pages.length) {
+      // The cover is the `covers` set's business and is reported there; this
+      // iteration knows nothing about it and must not claim it is missing.
+      const missing = pagesNotCovered(FIRST_BOOK, prepared).filter(
+        (id) => id !== FIRST_BOOK.cover.id,
+      );
       if (missing.length) {
-        console.log(
-          `  not delivered, still drawn from the placeholder: ${missing.join(", ")}` +
-            (missing.includes(FIRST_BOOK.cover.id)
-              ? "\n  — the cover is the one that matters: there is no cover artwork yet, so the " +
-                "book's cover is still the drawn placeholder and visibly is."
-              : ""),
-        );
+        console.log(`  not delivered, still drawn from the placeholder: ${missing.join(", ")}`);
       }
+    }
+    if (which === "covers" && prepared.problems.length === 0 && prepared.pages.length === 0) {
+      console.log(
+        `  no cover wraps in ${dir} — expected ${coverWrapFileNames().join(" and ")}; ` +
+          `this look's cover stays whatever ${set} already holds`,
+      );
     }
   }
 

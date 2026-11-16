@@ -200,19 +200,49 @@ page Printify prints is the settled record and carries the revisit trigger
 a page size from anywhere else**, and nothing derives an inch figure from
 anything but the book or that module.
 
-**The cover print area is a wrap and the shop composes it.**
-`lib/book/cover-wrap.ts` lays out back wash, bare spine and the square front at
-a product's measured dimensions, drawn by the one renderer as a three-layer
-`PageTemplate` with the square supplied as hashed bytes. The captain's decision
-of 15 November is **one square per look** — the back a wash from the look's
-palette (`Look.wash`, absent meaning the cover's own ground), the spine bare —
-because a hardcover spine is wider than a softcover's and no wrap can be
-stretched into another. The **hardcover is declared and unmeasured**:
-`COVER_PRODUCTS` is a union with the template on one arm only, so asking for
-one refuses with what to fetch, exactly as `lib/shop/shipping.ts` leaves
-`RATES` null. The square is unchanged and the shop never imports the module —
-`test/cover-wrap.test.ts` reads the import graph and measures where the
-title's ink lands on the wrap.
+**A cover does not arrive as a square: it is two wordless wraps per look, and
+the square is cut out of one of them.** The captain uploads spreads to Printify
+directly, so what they produce is a softcover wrap (4790 × 2400, Printify's
+supplied area) and a hardcover wrap (5370 × 2850, counted off their own
+exports). `lib/book/cover-upload.ts` is the intake contract and **a wrong size
+is refused with both numbers named**, because one has already arrived at the
+template's *finished* size instead of its *image* size. The display cover is
+`lib/print/printify.ts` § `frontPanelPxOf` **cut** out of the softcover wrap and
+never supplied beside it — the captain's separate square and their wrap are two
+hand compositions, and cutting is what stops a buyer previewing one cover and
+receiving another. It is stored under the book's own cover page id, so the
+picker, the preview and the basket bind it like any page, and a look's covers
+are **their own set** (`lib/artwork/release.ts` § `coverSet`) because one set
+would make importing a corrected cover delete twenty-four pages.
+
+**The title is drawn from one slot onto both.** `suppliedCoverWrapTemplate`
+expresses the wrap in a unit where the finished front panel is exactly
+`book.page.canvas.width`, so the cover page's layers are **translated and never
+scaled** — one type size, one frame, one slot, measured on both renders by
+`test/cover-source.test.ts`. A look with no delivered wrap still gets the
+composed wrap (`coverWrapTemplate`): square on the right, `Look.wash` on the
+left, bare spine. `validateBook` therefore measures the cover against a **floor**
+— the panel it is printed on — where every interior page is still the book's
+exact declaration.
+
+**The hardcover's wrap is in hand and its template is not, and that is a type.**
+`COVER_PRODUCTS` keeps the `MeasuredTemplate` on one arm only, so a hardcover
+wrap still refuses with what to fetch, exactly as `lib/shop/shipping.ts` leaves
+`RATES` null. The file is accepted, checked, stored and reported and **no title
+is drawn on it**: its panel origin is arithmetic nobody has checked, recorded as
+`HARDCOVER_COVER_WRAP_DERIVED` — a `DerivedWrap` with no `finished` and no
+`safety`, unassignable wherever a template goes
+(`test/no-title-on-an-unmeasured-wrap.ts`). Two things are open and both are the
+captain's: those four numbers, and the fact that a look with one wrap has no
+blush/sage/oat choice left on its cover (`docs/print.md`).
+
+**No check can tell whether the cover's baby is the book's baby.** A
+brown-haired cover was submitted for the ginger look once; measuring hair colour
+to catch it failed twice, because warm floors and blankets swamp hair and skin.
+What exists is a **reported comparison for the captain's eye** and the byte
+checks that are reliable. Do not build a gate on a measurement that does not
+work. The shop still reaches the wrap module by no chain of imports —
+`test/cover-wrap.test.ts` walks the whole graph.
 
 ## The shop around the book
 
@@ -463,13 +493,13 @@ as `/my-forever?guides=1` is.
 
 ## The artwork is not in the repository
 
-**Three sets were delivered on 10 November and none of them is committed:**
-the first look's 24 pages, the portrait tiles, twelve golden ghost spreads (one
-per spread).
-`docs/artwork.md` is the inventory, the id mapping and what is still owed;
-`npm run artwork` imports onto a machine, `npm run artwork:upload` pushes all
-three sets to the public Blob store, and `npm run artwork -- status` says what
-the store this environment points at actually has.
+**Four kinds of artwork arrive and none of them is committed:** a look's 24
+pages, its two cover wraps, the portrait tiles and twelve golden ghost spreads
+(one per spread). `docs/artwork.md` is the inventory, the id mapping and what is
+still owed; `npm run artwork` imports onto a machine, `npm run artwork:upload`
+pushes to the public R2 bucket, and `npm run artwork -- status` says what the
+store this environment points at actually has — including, per look, which of
+the two wraps it holds.
 
 **The binding is environment state, which is why nothing in `templates/` moves
 when artwork lands.** `lib/artwork/release.ts` § `bookAsDelivered` is the one

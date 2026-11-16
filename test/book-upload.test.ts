@@ -29,6 +29,9 @@ import {
   type UploadedFile,
 } from "../lib/book/upload";
 import { readPngHeader, hasAlphaChannel } from "../lib/render/png";
+import { coverWrapFileName } from "../lib/book/cover-upload";
+import { suppliedAreaOf } from "../lib/book/cover-wrap";
+import { COVER_PRODUCT_IDS, type CoverProductId } from "../lib/book/types";
 
 // ---------------------------------------------------------------------------
 // The smallest honest PNG, built to order
@@ -118,13 +121,28 @@ function png(options: {
   return out;
 }
 
-/** A complete, correct look: twenty-four pages and a cover. */
+/**
+ * A complete, correct look: twenty-four pages and the two cover wraps.
+ *
+ * The wraps' sizes come out of `suppliedAreaOf`, so the one place 4790 appears
+ * is still `lib/print/printify.ts` and the one place 5370 appears is still
+ * `HARDCOVER_COVER_WRAP_DERIVED`.
+ */
 function goodLook(id: string, tint: number): { look: string; files: UploadedFile[] } {
-  const files: UploadedFile[] = [{ name: "cover.png", bytes: png({ tint }) }];
+  const files: UploadedFile[] = COVER_PRODUCT_IDS.map((product, i) => ({
+    name: coverWrapFileName(product),
+    bytes: wrap(product, tint + 200 + i),
+  }));
   for (let n = 1; n <= FIRST_BOOK.pages.length; n++) {
     files.push({ name: `page-${String(n).padStart(3, "0")}.png`, bytes: png({ tint: tint + n }) });
   }
   return { look: id, files };
+}
+
+/** One cover wrap at a product's own supplied size. Never a typed number. */
+function wrap(product: CoverProductId, tint: number): Uint8Array {
+  const { width, height } = suppliedAreaOf(product);
+  return png({ width, height, tint });
 }
 
 function manifest(looks: Array<{ id: string; label?: string; gender?: string }>) {
@@ -165,7 +183,8 @@ describe("the fixture upload the rest of this file breaks", () => {
   it("really is the size and shape the book declares", () => {
     // The guard on the guard. If the fixture were not actually 3600 px the
     // "wrong size" test below would pass for the wrong reason.
-    const header = readPngHeader(good.looks[0].files[0].bytes);
+    const page = good.looks[0].files.find((f) => f.name === "page-001.png")!;
+    const header = readPngHeader(page.bytes);
     expect(header).toEqual({
       width: FIRST_BOOK.page.print.pixels.width,
       height: FIRST_BOOK.page.print.pixels.height,
@@ -174,7 +193,25 @@ describe("the fixture upload the rest of this file breaks", () => {
       interlaced: false,
     });
     expect(hasAlphaChannel(header.colourType)).toBe(false);
-    expect(good.looks[0].files).toHaveLength(FIRST_BOOK.pages.length + 1);
+    // Twenty-four pages and one wrap per product.
+    expect(good.looks[0].files).toHaveLength(
+      FIRST_BOOK.pages.length + COVER_PRODUCT_IDS.length,
+    );
+  });
+
+  it("really carries a wrap per product, at each product's own size", () => {
+    // The other guard on the guard: a wrap fixture that was square would make
+    // every cover assertion below pass for the wrong reason.
+    for (const product of COVER_PRODUCT_IDS) {
+      const file = good.looks[0].files.find((f) => f.name === coverWrapFileName(product))!;
+      expect(file).toBeTruthy();
+      expect(readPngHeader(file.bytes)).toMatchObject(suppliedAreaOf(product));
+      expect(readPngHeader(file.bytes).width).toBeGreaterThan(readPngHeader(file.bytes).height);
+    }
+    // And the two are not the same size, which is what makes a copied file
+    // detectable by size alone and `cover.wrapsIdentical` the check for the
+    // case where somebody has made them agree.
+    expect(suppliedAreaOf("softcover")).not.toEqual(suppliedAreaOf("hardcover"));
   });
 });
 
@@ -208,10 +245,68 @@ describe("the manifest, because gender is not a fact about pixels", () => {
 });
 
 describe("the files in a look", () => {
-  it("refuses a missing cover", () => {
-    expect(codes(edit(good, "mabel", (f) => f.filter((x) => x.name !== "cover.png")))).toContain(
-      "look.coverMissing",
+  it("refuses a missing cover wrap, naming the product and the file", () => {
+    const without = edit(good, "mabel", (f) =>
+      f.filter((x) => x.name !== coverWrapFileName("softcover")),
     );
+    const problems = checkUpload(FIRST_BOOK, without);
+    expect(problems.map((p) => p.code)).toContain("look.coverWrapMissing");
+    expect(problems.find((p) => p.code === "look.coverWrapMissing")?.where).toBe(
+      `mabel/${coverWrapFileName("softcover")}`,
+    );
+    // Both of them, independently: a look takes two wraps.
+    expect(
+      codes(edit(good, "mabel", (f) => f.filter((x) => x.name !== coverWrapFileName("hardcover")))),
+    ).toContain("look.coverWrapMissing");
+  });
+
+  it("refuses the old square cover and says what replaced it", () => {
+    const problems = checkUpload(
+      FIRST_BOOK,
+      edit(good, "mabel", (f) => [...f, { name: "cover.png", bytes: png() }]),
+    );
+    const said = problems.find((p) => p.code === "cover.productUnnamed");
+    expect(said?.where).toBe("mabel/cover.png");
+    // The message names the two files wanted, out of the product ids.
+    for (const product of COVER_PRODUCT_IDS) {
+      expect(said?.detail).toContain(coverWrapFileName(product));
+    }
+  });
+
+  it("refuses a wrap at the template's FINISHED size and names both numbers", () => {
+    // The failure that has actually happened: the template's FINISHED SIZE line
+    // instead of its IMAGE SIZE line, so no bleed at all.
+    const finished = { width: 4715, height: 2325 };
+    const problems = checkUpload(
+      FIRST_BOOK,
+      edit(good, "mabel", (f) =>
+        f.map((x) =>
+          x.name === coverWrapFileName("softcover") ? { ...x, bytes: png(finished) } : x,
+        ),
+      ),
+    );
+    const said = problems.find((p) => p.code === "cover.wrongSize");
+    expect(said).toBeTruthy();
+    // The number given…
+    expect(said?.detail).toContain(`${finished.width} × ${finished.height}`);
+    // …and the number wanted, read out of the configuration rather than typed.
+    const want = suppliedAreaOf("softcover");
+    expect(said?.detail).toContain(`${want.width} × ${want.height}`);
+    // …and which line of the template each of them is.
+    expect(said?.detail).toContain("IMAGE SIZE");
+    expect(said?.detail).toContain("FINISHED SIZE");
+  });
+
+  it("refuses two wraps that are the same file", () => {
+    const soft = good.looks[0].files.find((f) => f.name === coverWrapFileName("softcover"))!;
+    const twinned = edit(good, "mabel", (f) =>
+      f.map((x) => (x.name === coverWrapFileName("hardcover") ? { ...x, bytes: soft.bytes } : x)),
+    );
+    const found = codes(twinned);
+    expect(found).toContain("cover.wrapsIdentical");
+    // And the size check catches it too, which is the point of the pair: one
+    // file cannot be both supplied sizes.
+    expect(found).toContain("cover.wrongSize");
   });
 
   it("refuses a gap in the numbering, and says which page", () => {
@@ -233,12 +328,20 @@ describe("the files in a look", () => {
     ).toContain("look.fileUnexpected");
   });
 
-  it("refuses the reserved names rather than ignoring them", () => {
+  it("refuses a piece of a wrap rather than ignoring it", () => {
     // Ignoring is how somebody finds out months later that the back cover they
-    // made was never used.
-    expect(codes(edit(good, "mabel", (f) => [...f, { name: "spine.png", bytes: png() }]))).toContain(
-      "look.reservedName",
-    );
+    // made was never used. These used to be reserved names; they are refused
+    // now for a better reason, which is that a wrap is one file and the back
+    // cover and the spine are regions of it.
+    for (const name of ["spine.png", "cover-back.png"]) {
+      const problems = checkUpload(
+        FIRST_BOOK,
+        edit(good, "mabel", (f) => [...f, { name, bytes: png() }]),
+      );
+      const said = problems.find((p) => p.code === "cover.pieceOfAWrap");
+      expect(said?.where, name).toBe(`mabel/${name}`);
+      expect(said?.detail).toContain(coverWrapFileName("softcover"));
+    }
   });
 
   it("refuses a page count that disagrees with the book", () => {
@@ -339,13 +442,15 @@ describe("what the checker is measured against", () => {
       { ...good, manifest: null },
       "mabel",
       (f) => [
-        ...f.filter((x) => x.name !== "cover.png" && x.name !== "page-003.png"),
+        ...f.filter(
+          (x) => x.name !== coverWrapFileName("softcover") && x.name !== "page-003.png",
+        ),
         { name: "notes.txt", bytes: new TextEncoder().encode("hello") },
       ],
     );
     const found = new Set(codes(messy));
     expect(found.has("manifest.missing")).toBe(true);
-    expect(found.has("look.coverMissing")).toBe(true);
+    expect(found.has("look.coverWrapMissing")).toBe(true);
     expect(found.has("look.pageMissing")).toBe(true);
     expect(found.has("look.fileUnexpected")).toBe(true);
   });

@@ -117,6 +117,27 @@ export function bookWithOrderArtwork(
     };
   };
 
+  /**
+   * **The look's delivered cover wraps, dropped when this order repainted the
+   * cover.**
+   *
+   * A wrap is the stock look's *finished* cover — the captain's own child on
+   * the front panel, their own back cover, in one file. On the photo path the
+   * cover is one of the pages that comes back regenerated
+   * (`./artwork.ts` § Which pages a character swap has to touch), so keeping
+   * the wrap would print **this buyer's interior behind the stock look's
+   * child**, which is the same failure as the twelve regenerated right-hand
+   * pages that shipped facing twelve stock-look arms. With the wrap gone,
+   * `lib/book/cover-wrap.ts` composes the wrap from the regenerated square and
+   * the back is `Look.wash` — which is exactly the state that mechanism exists
+   * for.
+   *
+   * **Kept when the cover was not repainted**, because then the wrap is still
+   * this book's cover, byte for byte, and the captain's drawn back cover is
+   * better than a wash.
+   */
+  const wraps = byPage.has(book.cover.id) ? undefined : look.wraps;
+
   return {
     ...book,
     // One look, one cover, no gender question — see this file's docblock. The
@@ -124,7 +145,7 @@ export function bookWithOrderArtwork(
     // the book no longer offers is `look.genderUnknown`, and this book has no
     // grid because nobody is choosing anything on it.
     genders: undefined,
-    looks: [{ ...look, gender: undefined }],
+    looks: [{ ...look, gender: undefined, wraps }],
     covers: [cover],
     cover: repaint(book.cover),
     pages: book.pages.map(repaint),

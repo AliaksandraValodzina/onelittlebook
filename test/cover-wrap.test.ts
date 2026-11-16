@@ -512,13 +512,67 @@ describe("the square still serves the website", () => {
     expect(importers).toEqual([
       "app/admin/[ref]/page.tsx",
       "app/api/admin/cover/[ref]/route.ts",
+      // The intake, which reads this module for one thing only: how big a
+      // supplied wrap has to be, and where the front panel the display cover is
+      // cut from begins. Neither is on the shop path.
+      "lib/artwork/prepare.ts",
+      "lib/book/cover-upload.ts",
       "lib/book/print.ts",
+      "scripts/check-looks.ts",
       "scripts/render-book.ts",
     ]);
     // Nothing the buyer can reach: no picker, no preview, no basket.
     for (const file of importers) {
       expect(file.startsWith("app/_")).toBe(false);
     }
+  });
+
+  it("is not reachable from the shop by any chain of imports", () => {
+    /**
+     * The direct-importer list above is a statement about one edge of the
+     * graph, and the guarantee is about the whole of it. The intake now imports
+     * this module — for the supplied size and the front panel's origin — and
+     * the intake is imported by `lib/book/upload.ts`, which is two steps from
+     * an admin route. So the honest check walks every path.
+     */
+    const target = path.join(process.cwd(), "lib", "book", "cover-wrap.ts");
+    const files = sourceFiles();
+    const deps = new Map<string, string[]>();
+    for (const file of files) {
+      const out: string[] = [];
+      for (const statement of readFileSync(file, "utf8").match(/from\s+"(\.[^"]*)"/g) ?? []) {
+        const spec = /from\s+"(\.[^"]*)"/.exec(statement)?.[1] ?? "";
+        const base = path.resolve(path.dirname(file), spec);
+        for (const ext of [".ts", ".tsx", "/index.ts", "/index.tsx"]) {
+          if (files.includes(base + ext)) {
+            out.push(base + ext);
+            break;
+          }
+        }
+      }
+      deps.set(file, out);
+    }
+    const reaches = (from: string): boolean => {
+      const seen = new Set<string>([from]);
+      const stack = [from];
+      while (stack.length) {
+        for (const next of deps.get(stack.pop()!) ?? []) {
+          if (next === target) return true;
+          if (!seen.has(next)) {
+            seen.add(next);
+            stack.push(next);
+          }
+        }
+      }
+      return false;
+    };
+
+    const shop = files.filter((f) => f.startsWith(path.join(process.cwd(), "app", "_")));
+    // The control: the walk does find the module from somewhere, so an empty
+    // answer above is a fact about the shop and not a broken graph.
+    expect(shop.length).toBeGreaterThan(0);
+    expect(reaches(path.join(process.cwd(), "lib", "book", "print.ts"))).toBe(true);
+    expect(shop.filter(reaches).map((f) => path.relative(process.cwd(), f))).toEqual([]);
   });
 });
 

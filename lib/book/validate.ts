@@ -34,10 +34,12 @@ import type { Problem } from "../template/validate";
 import { validateFill, validateTemplate } from "../template/validate";
 import { maxCharsPerLineOf, maxLinesOf, measuredLength } from "../template/defaults";
 import { FACE_COVERAGE, unsettable } from "../render/coverage";
+import { SOFTCOVER_COVER_WRAP, frontPanelPxOf } from "../print/printify";
 import { BookArtMissing, pageFillFor, pageSequence, pageTemplateFor, storyTextFor } from "./derive";
 import { NAME_TOKEN, SLOT, TEXT_ROLES, isPhotoRole, isTextRole } from "./slots";
 import { checkPhoto } from "./photo";
 import { facesTheNameIsSetIn, nameLimit, slotsForRole } from "./name";
+import { isCoverProductId } from "./types";
 import type { BookFill, BookPage, BookTemplate } from "./types";
 
 /** A look id ends up in a folder name, a URL and a JSON key. */
@@ -79,6 +81,37 @@ export function validateBook(book: BookTemplate): Problem[] {
       const [w, h] = look.tile.px ?? [0, 0];
       if (w !== h) {
         say("tile.notSquare", look.id, `the portrait tile is ${w}×${h}; the chooser's box is square`);
+      }
+    }
+    /**
+     * **The delivered cover wraps, held to the one thing that is true of every
+     * wrap: it is wider than it is tall.**
+     *
+     * Deliberately not the supplied size, which is a per-product measurement
+     * `./cover-upload.ts` checks at intake and which would make the format's
+     * validator import the print path. What is checked here is what a
+     * hand-edited book or a newer publisher could get wrong and nothing
+     * downstream would notice: a **square** cover filed under a wrap's name.
+     * That is exactly the file this axis exists to stop being supplied, and a
+     * square stretched across a wrap's artboard prints the front of the book
+     * across the back of it.
+     */
+    for (const [id, wrap] of Object.entries(look.wraps ?? {})) {
+      const at = `${look.id}/${id}`;
+      if (!isCoverProductId(id)) {
+        say("cover.wrapProductUnknown", at, `"${id}" is not a cover product this book knows`);
+      }
+      const [w, h] = wrap.px ?? [0, 0];
+      if (w <= h) {
+        say(
+          "cover.wrapNotAWrap",
+          at,
+          `the wrap is ${w}×${h}; a wrap carries the back cover, the spine and the front, so ` +
+            "it is wider than it is tall. A square here is a square cover under a wrap's name",
+        );
+      }
+      if (wrap.mime !== "image/png") {
+        say("cover.wrapNotPng", at, `the wrap is ${wrap.mime}; the contract is PNG`);
       }
     }
   }
@@ -144,11 +177,30 @@ export function validateBook(book: BookTemplate): Problem[] {
     coverIds.add(cover.id);
   }
   const tintId = book.coverTint?.layerId;
-  // Two mechanisms, one for each state a cover page can be in: a drawn cover
-  // recolours its own ground, and an uploaded cover can only have a declared
-  // shape filled over it. Either satisfies this; neither does not.
-  const groundTakesCover =
-    book.cover.art.kind === "drawn" && book.cover.art.scene.groundFromCover === true;
+  /**
+   * Two mechanisms, one for each state a cover page can be in: a drawn cover
+   * recolours its own ground, and an uploaded cover can only have a declared
+   * shape filled over it. Either satisfies this; neither does not.
+   *
+   * **The scene is read whether it is the artwork or the fallback**, which it
+   * was not until cover artwork existed. A partial import leaves the page's own
+   * scene on as the fallback (`lib/book/release-art.ts`) and the page's kind
+   * becomes `asset`, so reading the kind alone refused **every** book the
+   * moment the first cover landed — a book whose colourway still recolours the
+   * cover of every look nobody has delivered artwork for.
+   *
+   * **The honest limit, written here because this is where it would be
+   * noticed:** a look *with* a delivered cover wrap gets the same wrap in all
+   * three colourways, because the captain delivers one wrap per look and not
+   * one per look per colourway. The choice is still wired and still does
+   * something for every undelivered look, and whether a delivered cover should
+   * take the colourway — three wraps per look, a declared `coverTint` shape, or
+   * the choice not being offered once artwork lands — is the captain's, and
+   * `templates/first-book.ts` § `coverTint` is where the three options are
+   * written down. It is not represented as a problem because none of the three
+   * is what this check could pick.
+   */
+  const groundTakesCover = book.cover.art.scene?.groundFromCover === true;
   if (book.covers.length > 1 && !tintId && !groundTakesCover) {
     say(
       "cover.choiceDoesNothing",
@@ -522,7 +574,36 @@ function artProblems(book: BookTemplate, page: BookPage, where: string): Problem
       }
       const [w, h] = asset.px;
       if (w !== h) say("art.notSquare", `look "${look.id}" artwork is ${w}×${h}, not square`);
-      else if (w !== want.width) {
+      else if (page.id === book.cover.id) {
+        /**
+         * **The cover is a different object and is measured against a
+         * different number.**
+         *
+         * Every interior page is the book's declared print size, exactly, and
+         * that stays exactly. The cover is not: it is **cut out of the
+         * softcover cover wrap's front panel** (`./cover-upload.ts` § Why the
+         * square is cut and never supplied), so its size is decided by
+         * Printify's cover template and not by this book's interior
+         * declaration — which the repository already knows overstates the page
+         * by 6.25% (`docs/print.md` § The page the book declares is not the
+         * page Printify prints).
+         *
+         * So the rule is a **floor** and not an equality, and the floor is
+         * derived from the panel the cover is actually printed on. The
+         * renderer cover-fits an `image` layer to its frame, so a cover with
+         * more pixels than the panel is a resolution question and never a
+         * geometry one; a cover with fewer is an upscale on paper, which is
+         * the thing worth refusing.
+         */
+        const floor = frontPanelPxOf(SOFTCOVER_COVER_WRAP).width;
+        if (w < floor) {
+          say(
+            "art.coverTooSmall",
+            `look "${look.id}" cover artwork is ${w}×${h}; the cover wrap's front panel is ` +
+              `${floor}×${floor}, so this would be upscaled onto the printed cover`,
+          );
+        }
+      } else if (w !== want.width) {
         say(
           "art.wrongSize",
           `look "${look.id}" artwork is ${w}×${h}; the book declares ${want.width}×${want.height}`,

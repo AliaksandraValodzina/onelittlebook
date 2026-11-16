@@ -28,14 +28,15 @@ export function isArtworkPageId(value: unknown): value is string {
 
 /**
  * A key of the captain's released artwork: one of the two sets that are not a
- * look, or a look's own id.
+ * look, or a look's own pages, or a look's cover
+ * (`./release.ts` § `coverSet`).
  *
  * Checked for the same reason an order reference is, even though every value
  * is a constant of this repository rather than anything from a request: the
  * check is what makes that still true after somebody wires a set name to
  * something a user typed.
  */
-const RELEASE_KEY = /^(tiles|ghosts|look-[a-z0-9]+(?:-[a-z0-9]+)*)$/;
+const RELEASE_KEY = /^(tiles|ghosts|(?:look|covers)-[a-z0-9]+(?:-[a-z0-9]+)*)$/;
 
 export function isReleaseSet(value: unknown): boolean {
   return typeof value === "string" && RELEASE_KEY.test(value);

@@ -208,56 +208,93 @@ the four numbers above are the whole of what this codebase needs from them.
 ## The cover wrap
 
 **Printify's cover print area is not the square the website shows.** It is one
-wide image carrying the **back cover, the spine and the front**, because a
-softcover is printed flat and wrapped round the block. The shop composes it.
+wide image carrying the **back cover, the spine and the front**, because a book
+is printed flat and wrapped round the block.
+
+### Who draws the back cover: the answer changed on 17 November
 
 Asked on 15 November whether to generate three files per look — a softcover
 wrap, a hardcover wrap and a square — the captain chose **one square front per
-look**, with:
+look**, with a plain wash for the back, a bare spine and the shop composing the
+wrap.
 
-- **the back cover a plain wash**, drawn from that look's own palette;
-- **the spine bare** — no title, no name, no text at all;
-- **the shop composing the wrap**, so one square serves the website, the
-  softcover and the hardcover.
+On **17 November** that was overtaken by how the artwork is actually produced.
+The captain uploads spreads to Printify directly, so what comes out per look is
+**two finished wordless wraps** — softcover 4790 × 2400 and hardcover
+5370 × 2850 — and not a square. So the wraps are the source, and the square the
+website shows is **cut out of the softcover wrap's front panel**.
 
-**The constraint that makes this the only workable shape is that a hardcover
-spine is wider than a softcover one.** A hardcover wrap can therefore never be
-produced by stretching a softcover one: the panels would land off the hinge and
-the back cover would be cut into. Composing from panels makes both products
-correct, and makes a future spine-width change a number in
-`lib/print/printify.ts` rather than thirteen regenerated images.
+**Cut and never supplied, which is the whole point.** The captain's separate
+square export and their wrap were composed by hand, twice, and on the looks in
+hand the two are not the same composition. Taking the square would mean a buyer
+previews one cover and receives another, with nothing noticing. Cutting makes
+the two the same file. The window is 2325 × 2325 at x = 2428, y = 38 —
+`lib/print/printify.ts` § `frontPanelPxOf`, derived from the measured bleed,
+panel and spine, which is exactly the size the captain's own square comes out
+at: the arithmetic confirmed from two directions.
+
+**The constraint that decided the first shape still decides this one: a
+hardcover spine is wider than a softcover one.** No wrap of either kind can be
+stretched into the other, which is why the captain delivers two.
 
 ### How it is made
 
+There are two paths and which one is used is decided by whether a wrap has been
+delivered for that look and product, not by an option.
+
+**The delivered wrap, with the title on it.** `lib/book/cover-wrap.ts`
+§ `suppliedCoverWrapTemplate` is two layers: the captain's whole file, and the
+cover page's own layers above its artwork, **translated** onto the front panel.
+No scaling — the wrap's artboard is expressed in a unit where the finished front
+panel is exactly `book.page.canvas.width` across, so every frame, type size,
+baseline and line height is the number the preview drew. That is what "the title
+is drawn from one slot" means mechanically, and
+`test/cover-source.test.ts` measures the title's ink on the display cover and on
+the press file — as a difference between two renders, so the box is the ink's
+and not a frame's — and asserts the two are the same box relative to the panel.
+
+**Composed from the square**, for a look with no delivered wrap, which is a
+fresh clone, the test suite and every look still being drawn.
 `lib/book/cover-wrap.ts` lays the wrap out as **bleed, back panel, spine, front
 panel, bleed**, which tiles the supplied area exactly — 37.5 + 2325 + 65 + 2325
-+ 37.5 = 4790. The front panel is the square cover's **own render**, hashed and
-handed to the renderer through the `supplied` seam `lib/render/raster.ts`
-already has, so the wrap is a `PageTemplate` of three layers drawn by the one
-renderer. There is no compositor in this repository and composing a cover did
-not add one.
++ 37.5 = 4790 — with the back a wash of the look's colour and the spine bare.
+The square is the cover page's own render, hashed and handed to the renderer
+through the `supplied` seam `lib/render/raster.ts` already has.
 
-The square is cover-fitted to the panel region, which means its own trim lands
-a little *inside* the panel's trim and what shows in the margin is the square's
-full-bleed artwork. That is the safe direction: nothing the buyer approved can
-fall off the cut. `test/cover-wrap.test.ts` measures where the title's ink
-actually lands — as a difference between two renders, so the box is the ink's
-and not a frame's — and asserts it is inside Printify's safety zone for that
-panel.
+Either way the wrap is a `PageTemplate` drawn by the one renderer. There is no
+compositor in this repository and neither path added one.
 
-The wash is the cover's own ground, which for this book is the colourway the
-buyer chose, so the back of the book is the colour of the front of it by
-construction. `Look.wash` is where a per-look wash goes when the captain
-delivers cover squares with their own palettes; absent means the cover's ground,
-which is what every look has today.
+`Look.wash` is read on the composed path only. A delivered wrap has the
+captain's own back cover in it, and painting a wash over one would paint out
+artwork somebody drew.
 
-### The hardcover is declared and unconfigured, deliberately
+### The hardcover's wrap is in hand and its template is not
 
-`COVER_PRODUCTS.hardcover` carries **no template**, in the same shape
+`COVER_PRODUCTS.hardcover` carries **no `MeasuredTemplate`**, in the same shape
 `lib/shop/shipping.ts` leaves `RATES` null and `lib/product.ts` keeps `value`
 off the unconfirmed arm: the template is on one arm of a union, so there is
-nowhere to put an estimate. Asking for one raises `CoverWrapUnavailable`, and
-the refusal names the file to fetch and the four numbers to read out of it.
+nowhere to put an estimate. Asking for a hardcover wrap raises
+`CoverWrapUnavailable`, and the refusal names the file to fetch and the four
+numbers to read out of it.
+
+**That did not change when the captain delivered hardcover wraps.** The file is
+accepted, checked against its size, stored and reported; nothing is cut from it
+and **no title is printed on it**. The bytes are right whatever anybody believes
+about the panel, so keeping them costs nothing and re-delivery would cost a day;
+the title is the one thing that cannot be placed without the measurement, and it
+is the one thing that waits.
+
+**The arithmetic, recorded and not used.** 2850 − 2400 = 450, so 225 px
+(0.75 in) of wrap allowance top and bottom; 5370 − 4800 − 450 = 120, so a 120 px
+(0.40 in) spine with the same allowance each side; panels 2400 square, which is
+8.00 in at 300 dpi and matches the interior area exactly. Every one of those
+numbers follows from assuming the panels are 2400 and the allowance is equal on
+all four edges, and **neither assumption has been checked against anything** — a
+hardcover's spine depends on its board and its hinge. It lives in
+`lib/print/printify.ts` as a **`DerivedWrap`**, which has no `file`, no
+`finished` and no `safety`, so TypeScript refuses it everywhere a template goes.
+`test/no-title-on-an-unmeasured-wrap.ts` is the file of calls that must not
+compile.
 
 **What has to happen to turn it on:** somebody signed in to the Printify
 account opens the Product Creator for blueprint **2737** (Hardcover Photo
@@ -265,7 +302,22 @@ Book), 8 × 8 in, downloads its **cover** template, and reads the supplied area,
 the finished size, the per-panel safety zone and the resolution out of the file
 header. Those four numbers become a `MeasuredTemplate` in
 `lib/print/printify.ts` and the entry flips to the measured arm. Nothing else
-changes — not the composition, not the renderer, not a single image.
+changes — not the composition, not the renderer, and **not a single delivered
+file**.
+
+### The colourway does not reach a delivered cover, and that is open
+
+The buyer picks blush, sage or oat, and on a **drawn** cover that recolours the
+whole ground (`SceneSpec.groundFromCover`). A look with a delivered wrap has one
+wrap, not three, so for that look the choice changes nothing on the cover. The
+choice is still wired and still works for every look nobody has delivered
+artwork for.
+
+Three ways out, none of them taken here because all three are the captain's:
+deliver three wraps per look; declare a `coverTint` shape on the cover page so
+the choice fills the title's panel instead (`templates/first-book.ts`
+§ `coverTint` argues against that and says why cream was chosen); or stop
+offering the choice once a look's artwork lands.
 
 <a id="the-page-the-book-declares-is-not-the-page-printify-prints"></a>
 
