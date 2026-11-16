@@ -88,9 +88,9 @@ const INK = "#3B2A20";
  * The first version of this file carried the coordinates by hand, and the day
  * the artboard changed from 12 inches to 8 every one of them pointed at empty
  * cream — the assertions still "passed" their control and failed their content,
- * which is the good direction to fail in but is a day of work to read. The trim
- * is still an open question (`docs/print.md`), so these have to survive the
- * next change to it as well.
+ * which is the good direction to fail in but is a day of work to read. The
+ * declared trim is left wrong on purpose and revisitable (`docs/print.md`), so
+ * these have to survive the next change to it as well.
  *
  * `grow` pads the box outwards in page units, for the one case that needs it:
  * a text slot's frame is the box the *first baseline* sits in and the

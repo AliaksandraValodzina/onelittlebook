@@ -25,8 +25,9 @@
  *
  * The numbers are derived throughout — the box out of the template's own slot,
  * the colour off the slot, the page count out of `spreads()` — because the
- * trim is still an open question (`docs/print.md`) and a suite of hand-typed
- * coordinates is a suite that has to be rewritten the day it is answered.
+ * declared trim is known to overstate the object and is revisitable on a
+ * printed proof (`docs/print.md`), and a suite of hand-typed coordinates is a
+ * suite that has to be rewritten the day it moves.
  */
 
 import { describe, expect, it } from "vitest";
@@ -365,7 +366,7 @@ describe("the archive the captain downloads", () => {
     // The paired negative: the size in the note is derived, so a book with a
     // different declared page size produces a different sentence. A hand-typed
     // "3600 x 3600" would pass the assertion above and keep passing the day
-    // `docs/print.md`'s open question is answered.
+    // `docs/print.md`'s declared trim is ever corrected.
     const other = await note(at(300));
     expect(other).toContain("300 x 300");
     expect(other).not.toContain("240 x 240");

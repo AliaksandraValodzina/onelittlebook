@@ -295,7 +295,7 @@ export async function renderCleanArtworkZip(
  * **Every number in it is derived from the book**, which is the only reason it
  * can be trusted: a hand-typed "3600 × 3600" in a text file is a claim that
  * goes on being made after the page size changes, and the page size is the one
- * number `docs/print.md` says is still open. The filenames it asks for are
+ * number `docs/print.md` leaves deliberately wrong and revisitable. The filenames it asks for are
  * generated from the same mapping `./order-upload.ts` reads, so what it asks
  * for and what is accepted cannot drift.
  */

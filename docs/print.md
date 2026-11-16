@@ -15,8 +15,9 @@ sections carry the consequences and both are worth reading before touching a
 canvas: [§ What Printify's templates actually
 say](#what-printifys-templates-actually-say), and [§ The page the book declares
 is not the page Printify prints](#the-page-the-book-declares-is-not-the-page-printify-prints),
-which is the discrepancy that remains and the reason it has not been corrected
-in place.
+which is the discrepancy that remains, the reason it has not been corrected
+in place, and — since 16 November — the captain's decision to leave it that
+way.
 
 ---
 
@@ -270,8 +271,9 @@ changes — not the composition, not the renderer, not a single image.
 
 ## The page the book declares is not the page Printify prints
 
-**This is the one thing on this page that is known to be wrong and has not been
-corrected, and this section exists so that nobody corrects it by accident.**
+**This is the one thing on this page that is known to be wrong and has
+deliberately not been corrected — the captain decided on 16 November to leave
+it — and this section exists so that nobody corrects it by accident.**
 
 `templates/first-book.ts` declares a **612 pt (8.5 in) artboard with 18 pt
 (0.25 in) of bleed**, which makes its declared trim 576 pt, 8.00 in. Printify's
@@ -315,12 +317,14 @@ The other half is a product decision and not an engineering one: the finished
 size the shop *states* would change from "8 inches square" to "7.75 inches
 square", on a product Printify itself calls 8 × 8.
 
-### What has to happen
+### What was decided: leave it
 
-**The captain decides**, and it is one of three:
+**The captain decided on 16 November: option 1, leave it.** The declaration
+stays conservative, the shop goes on saying 8 in, and this section is now the
+record of why rather than an open question. The three options were:
 
 1. **Leave it.** The declaration stays conservative, the shop goes on saying
-   8 in, and this section stays as the record of why.
+   8 in, and this section stays as the record of why. — **chosen.**
 2. **Correct the declaration and re-author the grid**, 16/17 across the whole
    template, with a restamped `rev` and a re-run of `npm run book`. The
    rendered pixels are unchanged in principle and every measured number in the
@@ -328,10 +332,60 @@ square", on a product Printify itself calls 8 × 8.
 3. **Correct the declaration and accept the shift**, which is a reflow of
    twelve spreads and needs the captain's eye on every one.
 
+**The reasoning, in the captain's own terms:**
+
+- **The error runs in the safe direction.** The book believes the cut line is
+  further in than it really is, so artwork sits further from the blade than it
+  needs to, never closer. Nothing printed is at risk. The arithmetic above is
+  the evidence for that and is what makes this decision re-checkable.
+- **"8 × 8" is Printify's own product name**, so the shop saying 8 inches
+  matches what a customer would recognise on the product they bought.
+- **Nothing has sold yet**, and the first physical proof will inform this
+  better than arithmetic can.
+
+**The revisit trigger**, which is the part a future reader needs: revisit when
+the captain holds a printed proof. If 7.75 in reads as meaningfully smaller
+than expected, decide again then, with the object rather than a spreadsheet.
+
 **Nothing about the cover wrap depends on this.** Its geometry comes from the
 measured template and the square is fitted to the panel, which is
 scale-invariant: the wrap is correct today whatever the book declares about
 inches.
+
+---
+
+<a id="the-12-12-is-the-hardcover-confirmed-and-not-built"></a>
+
+## The 12 × 12 is the hardcover, confirmed and not built
+
+**The 11 November reading of "12 × 12 in" was not an error.** It was withdrawn
+on 15 November as a reading rather than a measurement, and that withdrawal was
+itself wrong — it was relayed onward as fact before anybody checked. On
+16 November the captain confirmed the reading described a **real product from
+the same supplier**: a **12 × 12 in hardcover**. It was simply a *different*
+product from the one the measured templates describe.
+
+So, plainly:
+
+- the **softcover is 8 × 8**, and the templates measured on 15 November
+  (§ What Printify's templates actually say) are its;
+- a **12 × 12 hardcover** is available from the same supplier and the captain
+  has confirmed it;
+- the 11 November reading described that product, and was mistakenly read as
+  describing this one.
+
+**The strongest argument for the 12 × 12 ever being built is that the artwork
+already fits it exactly.** 3600 × 3600 px is **precisely 300 dpi across a 12 in
+page**. The library of artwork already generated is natively the right
+resolution for the larger book, and is **450 dpi — 2.25× more pixels than
+asked** — across the 8 in one. Nothing would need regenerating either way.
+
+**It is deferred, not planned.** The captain's decision of 16 November is to
+finish and sell the 8 × 8 first, so there is deliberately **no product, no
+price, no template entry and no configuration** for the 12 × 12 anywhere in
+this repository — in the same register `COVER_PRODUCTS.hardcover` already uses
+for a wrap nobody has measured: a confirmed option represented as not built
+rather than guessed at.
 
 ---
 
@@ -381,11 +435,13 @@ this file at all. No screen lays out 3150 pixels to be photographed. Keepnook's
 | The softcover cover wrap is 4790 × 2400 px, finished 4715 × 2325, safety 2220 × 2250 per panel, 300 dpi | **Measured** — read out of the header of `Template_Custom_SoftcoverBook_8x8_Cover.psd`, 15 November |
 | The book's finished page is 7.75 in square | **Derived from a measurement** — the cover template's own bleed of 0.125 in, off an 8.00 in interior area. The interior template's own guide layers were not read |
 | The hardcover's wrap dimensions | **Unknown, and represented as unknown** — `COVER_PRODUCTS.hardcover` carries no template and a wrap for it refuses |
+| A 12 × 12 in hardcover exists at the same supplier | **Captain-confirmed, 16 November** — and deliberately not built; § The 12 × 12 is the hardcover, confirmed and not built |
+| 3600 × 3600 px is exactly 300 dpi across a 12 in page | **Arithmetic** — 12 × 300 = 3600, which is why no artwork would need regenerating for the larger book |
 | Printify's stated print area already includes bleed | **Documented** — Printify's own knowledge-hub wording, quoted above; not confirmed in the Product Creator |
 | Printify wants sRGB | **Documented** — Printify help centre |
 | The trim line sits 0.25 in inside My Forever's artboard | **Assumed, conservatively** — not measured; see above |
 | The trim line sits 0.25 in inside the book's artboard | **No — measured at 0.125 in**, and the template still declares 0.25. Conservative in the safe direction; § The page the book declares is not the page Printify prints |
 | 3150 px is the right number for My Forever | **Captain-confirmed** — stated in the brief as checked against Printify |
-| 3600 px is the right number for the book | **Yes, and now for a measured reason**: Printify's interior print area is 2400 px, so 3600 is half again as many pixels as they ask for across the same 8.00 in. It downscales, which is free, where upscaling is the expensive mistake. The 11 November note that the book is 12 × 12 in was wrong and is withdrawn — it came from a reading rather than from a template |
+| 3600 px is the right number for the book | **Yes, and now for a measured reason**: Printify's interior print area is 2400 px, so 3600 is half again as many pixels as they ask for across the same 8.00 in. It downscales, which is free, where upscaling is the expensive mistake. The 11 November note of 12 × 12 in was **about the hardcover, not this product** — see § The 12 × 12 is the hardcover, confirmed and not built |
 | The cover wrap this repository produces is 4790 × 2400 | **Verified** — read out of the PNG header of a fresh render by `test/cover-wrap.test.ts`, against the configured measurement rather than a typed number |
 | The front panel's content lands inside Printify's safety zone | **Verified** — measured as a difference between two renders, so the box is where the ink went |

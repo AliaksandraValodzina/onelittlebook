@@ -43,8 +43,8 @@ const DAY = new Date("2026-11-07T04:00:00Z");
  * A photograph nothing in this repository has a copy of.
  *
  * Square and at the floor the book declares, read off `photoFloor` rather than
- * typed — the trim is an open question and a hand-typed pixel count is a test
- * that has to be rewritten the day it is answered.
+ * typed — the declared trim is revisitable (`docs/print.md`) and a hand-typed
+ * pixel count is a test that has to be rewritten the day it moves.
  */
 function mintPhoto(): { asset: AssetRef; bytes: Uint8Array } {
   const edge = Math.max(photoFloor(FIRST_BOOK).minEdge, 600);

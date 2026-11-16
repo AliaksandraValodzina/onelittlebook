@@ -149,11 +149,21 @@ and [`data/bk-spine-template-and-print/`](data/bk-spine-template-and-print/).
 
 **What those numbers really are was measured on 15 November out of Printify's
 own templates — [`docs/print.md`](docs/print.md) § What Printify's templates
-actually say — and the book's declaration has not caught up with them: the
-interior print area is 8.00 in with 0.125 in of bleed, where the template
-declares 8.5 in with 0.25. Read § The page the book declares is not the page
-Printify prints before changing a canvas**, because correcting it moves drawn
-content and that is the captain's call.
+actually say — and the book's declaration deliberately has not caught up with
+them: the interior print area is 8.00 in with 0.125 in of bleed, where the
+template declares 8.5 in with 0.25. The captain decided on 16 November to leave
+it** — the error runs in the safe direction and 8 × 8 is Printify's own product
+name — **so read § The page the book declares is not the page Printify prints
+before changing a canvas**, because correcting it moves drawn content.
+
+**The 12 × 12 is the hardcover, and it is not built.** A 12 × 12 in hardcover
+exists at the same supplier and the captain confirmed it on 16 November; the
+softcover this repository sells is 8 × 8. The 11 November note of "12 × 12" was
+about that other product, not an error. 3600 × 3600 px is exactly 300 dpi across
+12 in, so none of the artwork would need regenerating — but there is
+deliberately no product, price or configuration for it here. See
+[`docs/print.md`](docs/print.md) § The 12 × 12 is the hardcover, confirmed and
+not built.
 
 **The cover is a separate print area and is not square.** Printify takes the
 back cover, the spine and the front as one wide image; `lib/book/cover-wrap.ts`

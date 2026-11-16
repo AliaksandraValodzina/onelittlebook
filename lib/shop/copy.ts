@@ -318,8 +318,8 @@ export interface PageFact {
  *
  * The page count is the page list's own length and the size is the artboard
  * less its declared bleed — the same arithmetic `lib/book/product.ts` does, for
- * the same reason: the trim is an open question and a typed "8 inches" is a
- * claim that would survive being answered.
+ * the same reason: the declaration is known to overstate the object and a
+ * typed "8 inches" is a claim that would survive being corrected.
  */
 export function pageFactsFor(market: Market): readonly PageFact[] {
   return [

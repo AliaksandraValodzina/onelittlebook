@@ -32,14 +32,14 @@ in this document follows from.
 | **Cover** | **1**, separate from the interior |
 | **Page size** | **3600 × 3600 px**, every page, exactly |
 | **Trim** | **8 × 8 in.** The file is the trim plus 0.25 in of bleed on every edge |
-| **Target products** | Printify **softcover** and **hardcover** photo books, both 8 × 8 in, **24 pages fixed**, one raster per page |
+| **Target products** | Printify's **8 × 8 in softcover**, **24 pages fixed**, one raster per page. A **12 × 12 in hardcover** exists at the same supplier — captain-confirmed 16 November, deliberately not built — and 3600 px is exactly 300 dpi across it, so this same set would serve it: [`print.md`](print.md) § The 12 × 12 is the hardcover, confirmed and not built |
 | **Looks** | **12 — six per gender.** One folder each |
 
 Twenty-four is not a round number somebody liked. It is what twelve spreads
 is, and it is what both Printify photo books take without a page of slack. One
-artwork set therefore serves the softcover and the hardcover, which is what
-makes the hardcover an upgrade on an order rather than a second set of files to
-draw.
+artwork set therefore serves the softcover and any hardcover, which is what
+makes a hardcover an upgrade on an order rather than a second set of files to
+draw — at 8 × 8 and at 12 × 12 alike, since 3600 px covers both.
 
 **Fourteen looks is seven per gender**, the captain's count of 12 November,
 which replaced six per gender. **Nothing in the code counts them** — the grid
@@ -133,7 +133,8 @@ than any floor it has to clear:
 **Generate once at 3600 and downscaling is free. Upscaling later is not** —
 watercolour linework goes mushy under AI upscaling and it would be printed that
 way. This is the one number worth over-shooting, and it is the reason this
-contract can be settled today while the trim question is still open.
+contract can be settled today whatever the book declares about inches — and it
+is why the 12 × 12 hardcover, if it is ever built, needs no new files.
 
 **The file size Printify asks for is now measured, and this contract does not
 depend on it either way.** The interior print area is 2400 × 2400 px — 8.00 in
@@ -144,7 +145,8 @@ page size is a declared value in the book template (`templates/first-book.ts`,
 `page.canvas` and `page.print`), so changing it is a data edit and a re-render,
 not a code change. See [`print.md`](print.md) § What Printify's templates
 actually say for the measurements, and § The page the book declares is not the
-page Printify prints for the declaration that has not caught up with them.
+page Printify prints for the declaration that has not caught up with them and
+the captain's decision of 16 November to leave it there.
 
 ### Where the trim falls, and the safe area
 
