@@ -61,6 +61,16 @@ the placeholder baby for the rest. Every look the chooser offers renders.
 `npm run artwork -- status` counts what is outstanding off the book rather than
 stating a number — the count has already moved once.
 
+**Pages and covers are counted apart, and must be.** A look's display cover is
+a page of the book (it is bound under `book.cover.id`), so one count of
+"looks with artwork" says a look is finished when it has a cover and not one
+interior page. It said exactly that on 17 November, after `covers-boy-02`
+landed in a store with no `look-boy-02` in it: *"14 of 14 look(s) have pages"*,
+with that look holding nothing a buyer could be sold. The status line now says
+**interior pages** and names any look that has a cover and no book;
+`lib/artwork/release.ts` § `looksWithInteriorPages` is the counting and the
+cover table reads its other half, so the two cannot disagree.
+
 ---
 
 ## 2. The portrait tiles

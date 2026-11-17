@@ -25,13 +25,18 @@ import {
   GHOSTS_SET,
   RELEASE_ARTWORK_DIR_VAR,
   TILES_SET,
+  coverSet,
+  coverWrapPageId,
   deliveredBook,
   forgetReleaseArtwork,
   lookSet,
+  looksWithCoverArtwork,
+  looksWithInteriorPages,
   releaseArtworkFor,
   setCatalogueClock,
   tilePageId,
 } from "../lib/artwork/release";
+import { pageSequence } from "../lib/book/derive";
 import type { ArtworkVersion, PublicArtworkStore } from "../lib/artwork/store";
 import { NO_SCREEN_ADDRESSES } from "../lib/artwork/store";
 
@@ -184,6 +189,100 @@ describe("reading every set of one book", () => {
     const art = await releaseArtworkFor(FIRST_BOOK, store);
     expect(art.pages).toEqual({});
     expect(art.sets).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// A cover is not a book
+// ---------------------------------------------------------------------------
+
+/**
+ * **The count that said the roster was finished when a look had no book.**
+ *
+ * On 17 November `covers-boy-02` was imported into a store that held no
+ * `look-boy-02` at all, and `npm run artwork -- status` answered *"14 of 14
+ * look(s) have pages"*. That line is how the captain knows what is left to
+ * draw. Had they believed it and opened the shop, a buyer could have chosen the
+ * ginger boy and received a real cover wrapped around twenty-four pages of
+ * placeholder.
+ *
+ * The cause is a real feature doing its job: the display cover **is** a page of
+ * the book, stored under `book.cover.id` and read into `art.pages` so the
+ * picker and the preview bind it like page nine. So the keys of `art.pages`
+ * answer "has any picture at all", which is not the question that was asked of
+ * them.
+ *
+ * This is a counting bug, so these tests count — both ways, through
+ * `releaseArtworkFor` and a store holding exactly the sets that were in the
+ * real one that morning.
+ */
+describe("a look's pages and a look's cover, counted apart", () => {
+  const LOOKS = FIRST_BOOK.looks.map((l) => l.id);
+  const WITH_PAGES = LOOKS[0];
+  const COVER_ONLY = LOOKS[1];
+
+  /** The store as it stood: one look with a book, one with nothing but a cover. */
+  function asItStood() {
+    return slowStore({
+      [lookSet(WITH_PAGES)]: pageSequence(FIRST_BOOK)
+        .map((p) => p.id)
+        .filter((id) => id !== FIRST_BOOK.cover.id),
+      [coverSet(COVER_ONLY)]: [
+        coverWrapPageId("softcover"),
+        coverWrapPageId("hardcover"),
+        FIRST_BOOK.cover.id,
+      ],
+    });
+  }
+
+  it("does not count a look with covers and no pages as having pages", async () => {
+    const art = await releaseArtworkFor(FIRST_BOOK, asItStood());
+
+    // The shape that produced the wrong number is still exactly this: the
+    // cover-only look has an entry in `art.pages`, because its display cover is
+    // a page. Asserting it keeps this test honest about what it is counting.
+    expect(Object.keys(art.pages).sort()).toEqual([COVER_ONLY, WITH_PAGES].sort());
+
+    expect(looksWithInteriorPages(FIRST_BOOK, art)).toEqual([WITH_PAGES]);
+    expect(looksWithInteriorPages(FIRST_BOOK, art)).not.toContain(COVER_ONLY);
+    expect(looksWithInteriorPages(FIRST_BOOK, art).length).toBe(1);
+    expect(looksWithInteriorPages(FIRST_BOOK, art).length).toBeLessThan(FIRST_BOOK.looks.length);
+  });
+
+  it("counts a look with pages and no cover as having pages, and not a cover", async () => {
+    const art = await releaseArtworkFor(FIRST_BOOK, asItStood());
+
+    expect(looksWithCoverArtwork(FIRST_BOOK, art)).toEqual([COVER_ONLY]);
+    expect(looksWithCoverArtwork(FIRST_BOOK, art)).not.toContain(WITH_PAGES);
+    expect(looksWithCoverArtwork(FIRST_BOOK, art).length).toBe(1);
+  });
+
+  it("counts a wrap with no square cut from it as cover artwork all the same", async () => {
+    // The hardcover is delivered and nothing is cut from it, because nobody has
+    // measured its template. It is still a cover the captain does not have to
+    // send again, and still not a page.
+    const store = slowStore({ [coverSet(COVER_ONLY)]: [coverWrapPageId("hardcover")] });
+    const art = await releaseArtworkFor(FIRST_BOOK, store);
+
+    expect(art.pages).toEqual({});
+    expect(looksWithInteriorPages(FIRST_BOOK, art)).toEqual([]);
+    expect(looksWithCoverArtwork(FIRST_BOOK, art)).toEqual([COVER_ONLY]);
+  });
+
+  it("counts every look when every look has both, which is the state today", async () => {
+    const interior = pageSequence(FIRST_BOOK)
+      .map((p) => p.id)
+      .filter((id) => id !== FIRST_BOOK.cover.id);
+    const held: Record<string, string[]> = {};
+    for (const id of LOOKS) {
+      held[lookSet(id)] = interior;
+      held[coverSet(id)] = [coverWrapPageId("softcover"), FIRST_BOOK.cover.id];
+    }
+    const art = await releaseArtworkFor(FIRST_BOOK, slowStore(held));
+
+    expect(looksWithInteriorPages(FIRST_BOOK, art)).toEqual(LOOKS);
+    expect(looksWithCoverArtwork(FIRST_BOOK, art)).toEqual(LOOKS);
+    expect(looksWithInteriorPages(FIRST_BOOK, art).length).toBe(FIRST_BOOK.looks.length);
   });
 });
 

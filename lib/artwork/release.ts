@@ -348,6 +348,50 @@ export function anyReleaseArtwork(art: ReleaseArtwork): boolean {
   );
 }
 
+/**
+ * **Which looks have a book, and which have a cover. Two questions, two
+ * answers, and never one count doing for both.**
+ *
+ * `art.pages[lookId]` is *every picture bound to that look's pages*, and the
+ * display cover is one of them — it is a page of the book under
+ * `book.cover.id`, which is exactly how the picker and the preview reach it
+ * without knowing a wrap exists (§ `releaseArtworkFor`). So the keys of
+ * `art.pages` answer "has this look any picture at all", which is a different
+ * question from the one `npm run artwork -- status` was asking with them.
+ *
+ * **It said so out loud on 17 November.** Importing `covers-boy-02` into a
+ * store that held no `look-boy-02` at all flipped the status line to
+ * *"14 of 14 look(s) have pages"*, which is how the captain knows what is left
+ * to draw. Had they believed it and opened the shop, a buyer could have chosen
+ * the ginger boy and received a real cover wrapped around twenty-four pages of
+ * placeholder. A cover is not a book.
+ *
+ * Both answers are derived here, in the book's own look order, so the "N of
+ * fourteen" line and the cover table are reading **one** set of facts and
+ * cannot disagree about a look.
+ */
+export function looksWithInteriorPages(book: BookTemplate, art: ReleaseArtwork): string[] {
+  return book.looks
+    .map((look) => look.id)
+    .filter((id) => Object.keys(art.pages[id] ?? {}).some((pageId) => pageId !== book.cover.id));
+}
+
+/**
+ * Which looks have cover artwork: a delivered wrap, or the display cover cut
+ * out of one.
+ *
+ * Either is cover artwork and neither is an interior page, which is the whole
+ * of the distinction. A look with a hardcover wrap and nothing else has no
+ * display cover — `scripts/import-artwork.ts` § `coverState` is where that
+ * difference is spelled out per product, because it decides which file the
+ * captain has to send next.
+ */
+export function looksWithCoverArtwork(book: BookTemplate, art: ReleaseArtwork): string[] {
+  return book.looks
+    .map((look) => look.id)
+    .filter((id) => Boolean(art.pages[id]?.[book.cover.id]) || Boolean(art.wraps[id]));
+}
+
 /** An `AssetRef` out of the store, retyped as the preview-only thing it is. */
 export function asPreviewAsset(ref: AssetRef): PreviewAsset {
   return {

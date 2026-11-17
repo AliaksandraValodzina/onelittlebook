@@ -44,6 +44,8 @@ import {
   TILES_SET,
   coverSet,
   lookSet,
+  looksWithCoverArtwork,
+  looksWithInteriorPages,
   releaseArtworkFor,
   releaseStoreFromEnv,
 } from "../lib/artwork/release";
@@ -312,10 +314,29 @@ async function status(): Promise<void> {
   for (const set of art.sets) {
     console.log(`  ${set.set.padEnd(14)} v${set.version}  ${set.at.slice(0, 10)}  ${set.pages} page(s)`);
   }
-  const delivered = Object.keys(art.pages);
+  /**
+   * **The interior pages, which is what "has pages" has to mean.**
+   *
+   * `lib/artwork/release.ts` § `looksWithInteriorPages` is the counting and
+   * carries the day this line said fourteen of fourteen with one of those
+   * fourteen holding nothing but a cover. The cover table below reads the other
+   * half of the same module, so the two cannot disagree.
+   */
+  const delivered = looksWithInteriorPages(FIRST_BOOK, art);
+  const covered = looksWithCoverArtwork(FIRST_BOOK, art);
   console.log(
-    `\n${delivered.length} of ${FIRST_BOOK.looks.length} look(s) have pages: ` +
+    `\n${delivered.length} of ${FIRST_BOOK.looks.length} look(s) have interior pages: ` +
       `${delivered.join(", ") || "none"}`,
+  );
+  // Named separately and never added in: a look with a cover and no book is a
+  // look with nothing to sell, and the only way to see that is two numbers.
+  const coverOnly = covered.filter((id) => !delivered.includes(id));
+  console.log(
+    `${covered.length} of ${FIRST_BOOK.looks.length} look(s) have cover artwork` +
+      (coverOnly.length
+        ? ` — and ${coverOnly.join(", ")} ${coverOnly.length === 1 ? "has" : "have"} a cover and ` +
+          "no interior pages at all, which is not a sellable look"
+        : ""),
   );
   console.log(
     `${Object.keys(art.tiles).length} of ${FIRST_BOOK.looks.length} look(s) have a portrait tile`,
@@ -369,10 +390,14 @@ async function status(): Promise<void> {
  * this function.
  */
 function coverState(art: ReleaseArtwork): string {
+  // The same answer the "N of 14 look(s) have cover artwork" line above gives,
+  // out of the same function, so the count and the table cannot disagree about
+  // a look — which is the half of the 17 November bug that was not a count.
+  const covered = looksWithCoverArtwork(FIRST_BOOK, art);
   const rows = FIRST_BOOK.looks.map((look) => {
     const wraps = art.wraps[look.id] ?? {};
     const cut = Boolean(art.pages[look.id]?.[FIRST_BOOK.cover.id]);
-    return { look, wraps, cut, any: cut || COVER_PRODUCT_IDS.some((id) => wraps[id]) };
+    return { look, wraps, cut, any: covered.includes(look.id) };
   });
   const some = rows.filter((r) => r.any);
   if (some.length === 0) {
