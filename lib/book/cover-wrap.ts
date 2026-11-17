@@ -90,7 +90,7 @@ import {
   type MeasuredTemplate,
   type Px,
 } from "../print/printify";
-import { coverOf, lookOf, pageFillFor, pageTemplateFor } from "./derive";
+import { lookOf, pageFillFor, pageTemplateFor } from "./derive";
 import type { BookFill, BookTemplate, CoverProductId } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -384,25 +384,21 @@ export function uniformSafeOf(g: WrapGeometry): Pt {
  * sentence asks for, and it is where a per-look wash goes when the cover
  * squares are delivered with their own palettes.
  *
- * **Otherwise the cover's own ground**, which for this book is the colourway
- * the buyer picked — `SceneSpec.groundFromCover` on the cover page — so the
- * back of the book is the same colour as the front of it by construction, in
- * every one of the three colourways, with nothing typed here.
- *
- * **Otherwise the chosen colourway**, which is the state a delivered cover
- * image is in: there is no scene to read a ground off, and the one colour the
- * book states for this buyer's cover is the one they chose.
+ * **Otherwise `BookTemplate.coverColour`**, the one colour the book states its
+ * cover is, so the back of the book is the same colour as the front of it by
+ * construction with nothing typed here. It is the drawn cover's own `ground`
+ * as well — `templates/first-book.ts` § `COVER_COLOUR` reads it twice on
+ * purpose — so this answer holds whether the cover is the placeholder or the
+ * captain's delivered square, which is what the third branch here used to be
+ * for. That branch was the colourway the buyer picked, and it went with the
+ * chooser on 17 November.
  *
  * It is never a colour this module invents, which is the property worth
- * keeping: a back cover in a colour nobody picked is a printed object nobody
+ * keeping: a back cover in a colour nobody declared is a printed object nobody
  * approved.
  */
 export function wrapWash(book: BookTemplate, fill: BookFill): Colour {
-  const look = lookOf(book, fill.lookId);
-  if (look?.wash) return look.wash;
-  const scene = book.cover.art.kind === "drawn" ? book.cover.art.scene : null;
-  if (!scene || scene.groundFromCover) return coverOf(book, fill.coverId).colour;
-  return scene.ground;
+  return lookOf(book, fill.lookId)?.wash ?? book.coverColour;
 }
 
 // ---------------------------------------------------------------------------
@@ -613,8 +609,8 @@ export function suppliedWrapGeometry(
  * and then **the cover page's own layers above its artwork**, translated onto
  * the front panel. Those come out of `pageTemplateFor` — the one derivation —
  * with the reserved `"art"` layer dropped, because the artwork on a supplied
- * wrap is the supplied wrap. Everything else about them, including the
- * colourway `coverTint` applies, is whatever the cover page says today.
+ * wrap is the supplied wrap. Everything else about them is whatever the cover
+ * page says today.
  *
  * So there is no second title, no second type size and no second box. Change
  * `templates/first-book.ts` § `cover-title` and both the display cover and the
@@ -638,7 +634,7 @@ export function suppliedCoverWrapTemplate(
   // The cover page's furniture, exactly as the preview draws it, moved onto the
   // panel. `artLayer`'s id is reserved by `./validate.ts` precisely so that it
   // can be identified here rather than guessed at by position.
-  const furniture = pageTemplateFor(book, 0, { lookId: fill.lookId, coverId: fill.coverId })
+  const furniture = pageTemplateFor(book, 0, { lookId: fill.lookId })
     .layers.filter((layer) => layer.id !== "art")
     .map((layer): Layer => ({
       ...layer,

@@ -60,7 +60,7 @@ import { SPREAD_FOLD, foldBand, foldReachIn } from "../lib/book/fold";
 const ROOT = process.cwd();
 const read = (...parts: string[]) => readFileSync(path.join(ROOT, ...parts), "utf8");
 const CSS = read("app", "shop.css");
-const CHOSEN = { lookId: FIXTURE_BOOK_FILL.lookId, coverId: FIXTURE_BOOK_FILL.coverId };
+const CHOSEN = { lookId: FIXTURE_BOOK_FILL.lookId };
 
 /** The preview as a visitor arrives at it: two pages at a time, the default. */
 const preview = renderToStaticMarkup(

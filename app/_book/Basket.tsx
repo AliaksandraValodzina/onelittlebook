@@ -62,7 +62,6 @@ export default function Basket() {
   const edition = editionOf(order.editionId);
   const missing = outstanding(order, book);
   const look = book.looks.find((l) => l.id === fill.lookId);
-  const cover = book.covers.find((c) => c.id === fill.coverId);
   const gender = (book.genders ?? []).find((g) => g.id === order.genderId);
   const named = fill.name.length > 0 ? fill.name : "Your";
   const lookStep = STEPS.find((s) => s.id === "look")!;
@@ -107,12 +106,7 @@ export default function Basket() {
         <div className="grid">
           <div className="line">
             <div className="thumb">
-              <Cover
-                book={book}
-                name={fill.name}
-                lookId={fill.lookId}
-                coverId={fill.coverId}
-              />
+              <Cover book={book} name={fill.name} lookId={fill.lookId} />
             </div>
             <div className="of">
               <div className="top">
@@ -139,8 +133,6 @@ export default function Basket() {
                   <dd data-testid="chose-look">
                     {[gender?.label, look?.label].filter(Boolean).join(" · ") || "not yet"}
                   </dd>
-                  <dt>Cover</dt>
-                  <dd>{cover?.label ?? "not yet"}</dd>
                   <dt>Message</dt>
                   <dd data-testid="chose-message">
                     {fill.dedication.length > 0

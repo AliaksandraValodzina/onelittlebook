@@ -22,7 +22,7 @@
  * `orderFingerprint`, and the fingerprint is the order's reference and Stripe's
  * idempotency key. Repainting an order must not rename it.
  *
- * ## Why the derived book has one look and one cover
+ * ## Why the derived book has one look
  *
  * `validateBook` refuses a page with uploaded artwork that is missing for any
  * look the book offers (`art.lookMissing`) — correctly, because in a published
@@ -31,10 +31,12 @@
  * one, and the genders question goes with it: a gender whose grid is empty is
  * its own refusal (`gender.noLooks`) and this book has no grid.
  *
- * The same argument applies to the covers. A regenerated **cover** is an
- * uploaded image, which cannot have its ground recoloured, and a book offering
- * three cover choices that change nothing visible is `cover.choiceDoesNothing`.
- * The order chose one cover; the derived book offers that one.
+ * **The cover needs no such narrowing**, and did until 17 November. A book used
+ * to offer three colourways and a regenerated cover is an uploaded image with
+ * no ground to recolour, so the derived book had to drop two of them or report
+ * `cover.choiceDoesNothing`. There is one declared colour now and nothing to
+ * narrow: `BookTemplate.coverColour` is carried through with the rest of the
+ * book.
  *
  * **This is a print-time derivation and never a published book.** It is not
  * written to `templates/`, nothing restamps a `rev` for it, and it is built
@@ -46,7 +48,7 @@
  * artwork version, which goes in the download's own filename.
  */
 
-import { coverOf, lookOf, pageSequence } from "./derive";
+import { lookOf, pageSequence } from "./derive";
 import type { ArtworkVersion } from "../artwork/store";
 import type { AssetRef } from "../template/types";
 import type { BookFill, BookPage, BookTemplate } from "./types";
@@ -79,7 +81,6 @@ export function bookWithOrderArtwork(
   if (!artwork || artwork.pages.length === 0) return book;
 
   const look = lookOf(book, fill.lookId);
-  const cover = coverOf(book, fill.coverId);
   const byPage = new Map<string, AssetRef>(artwork.pages.map((p) => [p.pageId, p.asset]));
 
   /**
@@ -140,13 +141,12 @@ export function bookWithOrderArtwork(
 
   return {
     ...book,
-    // One look, one cover, no gender question — see this file's docblock. The
-    // look's own `gender` tag goes with the question: a look tagged for a grid
-    // the book no longer offers is `look.genderUnknown`, and this book has no
-    // grid because nobody is choosing anything on it.
+    // One look and no gender question — see this file's docblock. The look's
+    // own `gender` tag goes with the question: a look tagged for a grid the
+    // book no longer offers is `look.genderUnknown`, and this book has no grid
+    // because nobody is choosing anything on it.
     genders: undefined,
     looks: [{ ...look, gender: undefined, wraps }],
-    covers: [cover],
     cover: repaint(book.cover),
     pages: book.pages.map(repaint),
   };

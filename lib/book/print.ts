@@ -135,7 +135,7 @@ export function printFileName(
  */
 export function orderFileStem(book: BookTemplate, fill: BookFill): string {
   return (
-    `${book.id}-${book.rev}-${slug(fill.lookId, 16)}-${slug(fill.coverId, 16)}-` +
+    `${book.id}-${book.rev}-${slug(fill.lookId, 16)}-` +
     `${slug(fill.name)}-${orderFingerprint(fill)}`
   );
 }
@@ -196,7 +196,7 @@ export async function renderBookPdf(
   const pages: PdfPage[] = [];
   for (const index of indices) {
     options.onPage?.(index, sequence[index].id, indices.length);
-    const template = pageTemplateFor(book, index, { lookId: fill.lookId, coverId: fill.coverId });
+    const template = pageTemplateFor(book, index, { lookId: fill.lookId });
     const page = await renderPrintPixels(template, pageFillFor(book, index, fill), options.supplied);
     pages.push({ width: page.width, height: page.height, rgba: page.rgba });
   }
@@ -232,7 +232,7 @@ export async function renderBookPagePng(
   const problems = printProblems(book, fill);
   if (problems.length) throw new BookNotPrintable(problems);
 
-  const template = pageTemplateFor(book, index, { lookId: fill.lookId, coverId: fill.coverId });
+  const template = pageTemplateFor(book, index, { lookId: fill.lookId });
   const result = await renderPrintPng(template, pageFillFor(book, index, fill), supplied);
   return { ...result, filename: printFileName(book, fill, "png", index) };
 }
@@ -407,7 +407,7 @@ export async function renderBookPagesZip(
 
   for (let index = 0; index < total; index++) {
     options.onPage?.(index, sequence[index].id, total);
-    const template = pageTemplateFor(book, index, { lookId: fill.lookId, coverId: fill.coverId });
+    const template = pageTemplateFor(book, index, { lookId: fill.lookId });
     const page = await renderPrintPng(template, pageFillFor(book, index, fill), options.supplied);
     entries.push({
       name: `${prefix}${String(index).padStart(2, "0")}-${sequence[index].id}.png`,

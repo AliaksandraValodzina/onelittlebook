@@ -59,7 +59,6 @@ function finished(): Order {
     ...emptyOrder(FIRST_BOOK),
     genderId: "boy",
     lookId: "boy-01",
-    coverId: "sage",
     name: "Rosalind",
     // A buyer who wrote their own, which is what `dedicationWritten` means —
     // the book pre-fills the box, so "a dedication" and "the buyer's
@@ -127,7 +126,6 @@ describe("the from-line: optional, one line, its own role", () => {
       const broken: Record<string, Partial<Order>> = {
         name: { name: "" },
         look: { genderId: null },
-        cover: { coverId: "chartreuse" },
         // Cleared **by the buyer**, which is the only way the box is empty:
         // an untouched one holds the book's own verse.
         dedication: { dedication: "", dedicationWritten: true },

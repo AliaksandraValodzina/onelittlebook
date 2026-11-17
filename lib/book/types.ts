@@ -150,13 +150,13 @@ export interface Look {
    * whole argument, including why composing is the only way both products can
    * be right.
    *
-   * **Absent means the cover's own ground**, which for a book whose cover
-   * takes the buyer's colourway is that colourway: the back of the book is
-   * the colour of the front of it, with nothing declared anywhere. This field
-   * is for the state that arrives with delivered cover artwork — a square the
-   * captain drew in its own palette, whose back cannot be derived from a
-   * colour the book declares — and it is the only thing a look may say about
-   * the wrap, for the same reason a look may say nothing else about a page.
+   * **Absent means `BookTemplate.coverColour`**, the one colour the book
+   * states its cover is: the back of the book is the colour of the front of
+   * it, with nothing declared per look. This field is for the state that
+   * arrives with delivered cover artwork — a square the captain drew in its
+   * own palette, whose back cannot be derived from a colour the book declares
+   * — and it is the only thing a look may say about the wrap, for the same
+   * reason a look may say nothing else about a page.
    *
    * It is never read by the shop. The picker, the preview and the basket show
    * the square cover and know nothing about wraps.
@@ -229,21 +229,6 @@ export interface GenderChoice {
   label: string;
 }
 
-/**
- * A cover the buyer can pick.
- *
- * `colour` is applied to **one declared layer** of the cover page —
- * `BookTemplate.coverTint` names which — so a cover choice is a fill and not a
- * different page. That keeps the cover artwork one file per look rather than
- * one file per look *per cover*, which is the combinatorial explosion that
- * makes a second cover unaffordable.
- */
-export interface CoverChoice {
-  id: string;
-  label: string;
-  colour: Colour;
-}
-
 // ---------------------------------------------------------------------------
 // A page
 // ---------------------------------------------------------------------------
@@ -292,14 +277,6 @@ export interface SceneSpec {
    * character swap has to touch has the measurement.
    */
   babyless?: boolean;
-  /**
-   * When true, `ground` is replaced by the colour of the cover the buyer chose.
-   *
-   * Absent is false — the page uses its own `ground`. Only the cover page sets
-   * it, and `./validate.ts` says so: a tinted interior page would mean the
-   * cover choice silently recoloured the middle of the book.
-   */
-  groundFromCover?: boolean;
   seed: number;
 }
 
@@ -586,17 +563,26 @@ export interface BookTemplate {
    * impossible, and it is not one a reviewer would catch in a thumbnail.
    */
   tilePage?: string;
-  /** The covers the buyer picks between. At least one. */
-  covers: CoverChoice[];
   /**
-   * Which layer of the cover page takes the chosen cover's colour.
+   * **The one colour this book's cover is.**
    *
-   * A layer id on `cover`. Absent means the cover choice changes nothing
-   * visible, which `./validate.ts` reports — a choice with no consequence is
-   * worse than no choice, because the buyer ticks it and believes something
-   * happened.
+   * A single declared fact and not a choice. It was a list of three — Blush,
+   * Sage and Oat, picked in the persistent bar — until 17 November, when every
+   * look had a delivered cover wrap and the choice could no longer change a
+   * pixel: a delivered cover is an image, there is no ground under it to
+   * recolour, and one wrap per look is what the captain draws. A control that
+   * cannot visibly change anything is worse than no control, so the choice went
+   * and the colour stayed. `docs/print.md` § The cover is one colourway and the
+   * choice is gone is the record, including the two alternatives that were
+   * weighed and refused.
+   *
+   * Two readers, which is why it is here rather than written twice in
+   * `templates/first-book.ts`: the drawn placeholder cover's own `ground` — the
+   * fresh-clone and CI state, where there is no artwork at all — and
+   * `./cover-wrap.ts` § `wrapWash`, where it paints the back and the spine of a
+   * composed wrap for a look that declares no `wash` of its own.
    */
-  coverTint?: { layerId: string };
+  coverColour: Colour;
   /** The cover. Separate from the interior, and never one of `pages`. */
   cover: BookPage;
   /** The interior, in reading order. `pages[0]` is `page-001.png`. */
@@ -627,7 +613,6 @@ export interface BookFill {
   /** The exact book revision this fill was composed against. */
   bookRev: string;
   lookId: string;
-  coverId: string;
   /** The baby's name, as the buyer typed it. `./name.ts` decides what may be. */
   name: string;
   /** The buyer's one photograph. Absent is an empty window. */

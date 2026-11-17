@@ -40,8 +40,23 @@ import { maxCharsPerLineOf, trimBox } from "../lib/template/defaults";
 import type { BookPage, BookTemplate } from "../lib/book/types";
 import type { TextSlotLayer } from "../lib/template/types";
 
-const chosen = { lookId: FIRST_BOOK.looks[0].id, coverId: FIRST_BOOK.covers[0].id };
+const chosen = { lookId: FIRST_BOOK.looks[0].id };
 const PHOTO_PAGE = pageWithSlot(FIRST_BOOK, SLOT.photo);
+
+/**
+ * The book painted another colour, in both the places that state it.
+ *
+ * `BookTemplate.coverColour` and the drawn cover's own `SceneSpec.ground` are
+ * one constant in `templates/first-book.ts`; a test that moved only one of them
+ * would be testing `cover.colourDisagrees` rather than the colour.
+ */
+const recoloured = (colour: string): BookTemplate => ({
+  ...withPage(FIRST_BOOK, "cover", (p) => ({
+    ...p,
+    art: { kind: "drawn", scene: { ...p.art.scene!, ground: colour } },
+  })),
+  coverColour: colour,
+});
 const codes = (book: BookTemplate) => validateBook(book).map((p) => p.code);
 
 /** The book with one page replaced, for a mutation. */
@@ -150,16 +165,39 @@ describe("a page derives into a page template the one renderer already knows", (
     expect(artA.art.ground).toBe(artB.art.ground);
   });
 
-  it("takes the cover's ground from the cover the buyer chose", () => {
-    const blush = pageTemplateFor(FIRST_BOOK, 0, { ...chosen, coverId: "blush" });
-    const sage = pageTemplateFor(FIRST_BOOK, 0, { ...chosen, coverId: "sage" });
-    const groundOf = (t: typeof blush) => (t.layers[0] as { art: { ground: string } }).art.ground;
-    expect(groundOf(blush)).toBe("#E8A0A8");
-    expect(groundOf(sage)).toBe("#A9C2A0");
-    // And no interior page moves when the cover does.
-    expect(pageTemplateFor(FIRST_BOOK, 4, { ...chosen, coverId: "blush" })).toEqual(
-      pageTemplateFor(FIRST_BOOK, 4, { ...chosen, coverId: "sage" }),
-    );
+  it("draws the cover on the book's one declared colour, with no artwork anywhere", () => {
+    /**
+     * **The fresh-clone and CI state.** `FIRST_BOOK` as committed declares no
+     * delivered artwork at all, so every page of it — the cover included — is
+     * the drawn placeholder, and this is the path that must keep working after
+     * the colourway chooser went on 17 November.
+     *
+     * The ground is read off `book.coverColour` rather than typed, which is the
+     * property the removal turned on: the book states one colour and the drawn
+     * cover is painted it. `test/cover-wrap.test.ts` asserts the other reader —
+     * the back and the spine of a composed wrap — against the same field.
+     */
+    const cover = pageTemplateFor(FIRST_BOOK, 0, chosen);
+    const art = cover.layers[0] as { kind: string; art: { kind: string; ground: string } };
+    expect(art.kind).toBe("art");
+    expect(art.art.kind).toBe("scene");
+    expect(art.art.ground).toBe(FIRST_BOOK.coverColour);
+
+    // Paired: a book repainted a different colour draws a different cover, and
+    // nothing else in the book moves. Without this the assertion above would
+    // pass against a cover whose ground happened to equal the one colour the
+    // committed book declares.
+    const repainted = recoloured("#654321");
+    const groundOf = (t: BookTemplate) =>
+      (pageTemplateFor(t, 0, chosen).layers[0] as { art: { ground: string } }).art.ground;
+    expect(groundOf(repainted)).toBe("#654321");
+    expect(groundOf(repainted)).not.toBe(groundOf(FIRST_BOOK));
+    expect(codes(repainted)).toEqual([]);
+    for (let index = 1; index < pageSequence(FIRST_BOOK).length; index += 1) {
+      expect(pageTemplateFor(repainted, index, chosen)).toEqual(
+        pageTemplateFor(FIRST_BOOK, index, chosen),
+      );
+    }
   });
 
   it("refuses rather than draws a blank page when a look has no artwork", () => {
@@ -307,24 +345,32 @@ describe("the looks axis, and the question asked before it", () => {
     expect(codes(none)).toEqual([]);
   });
 
-  it("refuses a cover choice that changes nothing visible", () => {
-    const inert = withPage(FIRST_BOOK, "cover", (p) => ({
+  /**
+   * **There is no check here for a cover *choice*, because there is no choice.**
+   *
+   * `cover.choiceDoesNothing` and `art.interiorTintedByCover` were tested on
+   * this spot until 17 November. Both asked whether a colourway the buyer
+   * picked actually reached a pixel; `BookTemplate.coverColour` is one declared
+   * colour of a type that cannot be a list, and `SceneSpec` has no way left to
+   * take a ground from anywhere but itself, so both mistakes are now
+   * unrepresentable rather than reported.
+   */
+  it("refuses a book whose drawn cover is not the colour it says its cover is", () => {
+    // The colour is stated once and read twice — the drawn placeholder's own
+    // ground, and the wash on the back and spine of a composed wrap. A book
+    // that let the two disagree prints an object whose back does not match its
+    // front, which no thumbnail would show.
+    const split = withPage(FIRST_BOOK, "cover", (p) => ({
       ...p,
-      art: { kind: "drawn", scene: { ground: "#fff", floor: "#eee", prop: "#ddd", seed: 1 } },
+      art: { kind: "drawn", scene: { ...p.art.scene!, ground: "#123456" } },
     }));
-    expect(codes(inert)).toContain("cover.choiceDoesNothing");
+    expect(codes(split)).toContain("cover.colourDisagrees");
+    // Paired: the same edit with the book's own statement moved to match is a
+    // book with nothing wrong with it, so the code above is about the
+    // disagreement and not about having touched the cover at all.
+    expect(codes({ ...split, coverColour: "#123456" })).toEqual([]);
   });
 
-  it("refuses an interior page that takes its ground from the cover choice", () => {
-    const tinted = withPage(FIRST_BOOK, "page-005", (p) => ({
-      ...p,
-      art: {
-        kind: "drawn",
-        scene: { ground: "#fff", floor: "#eee", prop: "#ddd", seed: 1, groundFromCover: true },
-      },
-    }));
-    expect(codes(tinted)).toContain("art.interiorTintedByCover");
-  });
 });
 
 describe("the three kinds of text", () => {
@@ -483,11 +529,10 @@ describe("the buyer's own fields become a fill per page", () => {
     expect(validateBookFill(FIRST_BOOK, FIXTURE_BOOK_FILL).map((p) => p.code)).toEqual([]);
   });
 
-  it("refuses a look or a cover the book does not offer", () => {
+  it("refuses a look the book does not offer", () => {
     const codesOf = (f: Partial<typeof FIXTURE_BOOK_FILL>) =>
       validateBookFill(FIRST_BOOK, { ...FIXTURE_BOOK_FILL, ...f }).map((p) => p.code);
     expect(codesOf({ lookId: "nobody" })).toContain("fill.unknownLook");
-    expect(codesOf({ coverId: "chartreuse" })).toContain("fill.unknownCover");
     expect(codesOf({ bookRev: "deadbeef" })).toContain("fill.staleRevision");
   });
 

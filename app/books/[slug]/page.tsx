@@ -96,7 +96,7 @@ function Rail({ book, href }: { book: BookTemplate; href: (ref: AssetRef) => str
   // `showcaseLook` — so the strip is the finished book rather than the
   // placeholder sitting in front of it. With nothing imported it is the first
   // look, exactly as before.
-  const chose = { lookId: showcaseLook(book).id, coverId: book.covers[0].id };
+  const chose = { lookId: showcaseLook(book).id };
 
   return (
     <ul className="rail" aria-label={`Pages of ${book.name}`}>
@@ -113,7 +113,6 @@ function Rail({ book, href }: { book: BookTemplate; href: (ref: AssetRef) => str
                 bookId: book.id,
                 bookRev: book.rev,
                 lookId: chose.lookId,
-                coverId: chose.coverId,
                 name: SAMPLE_NAME,
                 dedication: "",
               }),

@@ -467,7 +467,7 @@ describe("one page, two uses", () => {
 
     const index = pageSequence(book).findIndex((p) => p.id === PAGE);
     const fill = { ...FIXTURE_BOOK_FILL, lookId: DELIVERED };
-    const template = pageTemplateFor(book, index, { lookId: DELIVERED, coverId: fill.coverId });
+    const template = pageTemplateFor(book, index, { lookId: DELIVERED });
     const pageFill = pageFillFor(book, index, fill);
 
     // --- The screen. One renderer, one template, one fill, and an href that

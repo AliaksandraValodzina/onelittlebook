@@ -189,12 +189,12 @@ function rightPageOfSpread(spread: number): string {
  * a ghost on a page no figure stands on — `lib/book/ghost.ts` is where the two
  * questions are told apart.
  *
- * **The cover is excluded, and that is a fact about the book rather than a
- * convenience here**: a delivered cover is `{ kind: "asset" }`, which stops the
- * cover's ground taking the buyer's cover choice, so `validateBook` reports
- * `cover.choiceDoesNothing` until a `coverTint` layer exists. There is no cover
- * artwork yet — `npm run artwork` says so every time it runs — and a test that
- * pretended otherwise would be asserting a state the shop cannot be in.
+ * **The cover is excluded**, because a ghost half is a figure standing on an
+ * interior page and the cover is not one of those. It was excluded for a second
+ * reason until 17 November — a delivered cover is `{ kind: "asset" }`, which
+ * stopped the cover's ground taking the buyer's colourway and made
+ * `validateBook` report `cover.choiceDoesNothing` — and that reason went with
+ * the chooser.
  */
 function babyPages(count: number) {
   return pageSequence(FIRST_BOOK)

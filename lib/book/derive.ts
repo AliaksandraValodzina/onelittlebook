@@ -48,13 +48,20 @@ import type {
   PhotoSlotLayer,
   TextSlotLayer,
 } from "../template/types";
-import type { BookFill, BookPage, BookTemplate, CoverChoice, Look } from "./types";
+import type { BookFill, BookPage, BookTemplate, Look } from "./types";
 import { NAME_TOKEN, SLOT } from "./slots";
 
-/** The buyer's two choices, which is everything that changes what is *drawn*. */
+/**
+ * The buyer's one choice, which is everything that changes what is *drawn*.
+ *
+ * It was two until 17 November, when the cover colourway went: the cover is one
+ * colour the book declares (`BookTemplate.coverColour`) and no longer a thing
+ * anybody picks. An object rather than a bare string because the shape is the
+ * contract every derivation takes, and a second axis — if one is ever earned —
+ * must not be a second positional argument.
+ */
 export interface Chosen {
   lookId: string;
-  coverId: string;
 }
 
 /** A book that cannot be drawn as asked, named so a caller can tell why. */
@@ -81,10 +88,6 @@ export class BookArtMissing extends Error {
  */
 export function lookOf(book: BookTemplate, lookId: string): Look {
   return book.looks.find((l) => l.id === lookId) ?? book.looks[0];
-}
-
-export function coverOf(book: BookTemplate, coverId: string): CoverChoice {
-  return book.covers.find((c) => c.id === coverId) ?? book.covers[0];
 }
 
 /**
@@ -336,10 +339,7 @@ function artLayer(book: BookTemplate, page: BookPage, chosen: Chosen): Layer {
     frame,
     art: {
       kind: "scene",
-      // The cover's ground is the colour the buyer picked; every other page
-      // uses its own. `SceneSpec.groundFromCover` carries the decision as data
-      // so this is a field lookup rather than a question about which page it is.
-      ground: scene.groundFromCover ? coverOf(book, chosen.coverId).colour : scene.ground,
+      ground: scene.ground,
       floor: scene.floor,
       prop: scene.prop,
       babyAt: scene.babyAt,
@@ -351,25 +351,6 @@ function artLayer(book: BookTemplate, page: BookPage, chosen: Chosen): Layer {
       seed: scene.seed,
     },
   };
-}
-
-/**
- * The declared cover-tint layer, recoloured.
- *
- * Only on the cover, and only the layer `coverTint` names. A book with no
- * `coverTint` passes its layers through untouched — and `./validate.ts` reports
- * that, because a cover choice the buyer ticks and that changes nothing is
- * worse than not offering one.
- */
-function tinted(book: BookTemplate, page: BookPage, layers: Layer[], chosen: Chosen): Layer[] {
-  const id = book.coverTint?.layerId;
-  if (!id || page.id !== book.cover.id) return layers;
-  const colour = coverOf(book, chosen.coverId).colour;
-  return layers.map((layer) =>
-    layer.id === id && layer.kind === "shape"
-      ? { ...layer, shape: { ...layer.shape, fill: colour } }
-      : layer,
-  );
 }
 
 /**
@@ -396,7 +377,7 @@ export function pageTemplateFor(
     name: `${book.name} — ${page.id}`,
     canvas: book.page.canvas,
     print: book.page.print,
-    layers: [artLayer(book, page, chosen), ...tinted(book, page, page.layers ?? [], chosen)],
+    layers: [artLayer(book, page, chosen), ...(page.layers ?? [])],
   };
 }
 
@@ -508,5 +489,5 @@ export function pageFillFor(book: BookTemplate, index: number, fill: BookFill): 
 
 /** The buyer's choices, out of their fill. One place, so nothing re-derives it. */
 export function chosenIn(fill: BookFill): Chosen {
-  return { lookId: fill.lookId, coverId: fill.coverId };
+  return { lookId: fill.lookId };
 }

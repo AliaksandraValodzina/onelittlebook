@@ -34,7 +34,7 @@ import type { BookTemplate } from "../lib/book/types";
 import type { Box, TextSlotLayer } from "../lib/template/types";
 
 const REF = "BK-7QX4K2P";
-const CHOSEN = { lookId: FIXTURE_BOOK_FILL.lookId, coverId: FIXTURE_BOOK_FILL.coverId };
+const CHOSEN = { lookId: FIXTURE_BOOK_FILL.lookId };
 
 /** The same book at a size a test can afford twenty-five of. */
 const SMALL: BookTemplate = {

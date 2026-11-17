@@ -63,7 +63,7 @@ import { raster, shareOf } from "./pixels";
 import type { BookTemplate } from "../lib/book/types";
 import type { Box, TextSlotLayer } from "../lib/template/types";
 
-const CHOSEN = { lookId: FIXTURE_BOOK_FILL.lookId, coverId: FIXTURE_BOOK_FILL.coverId };
+const CHOSEN = { lookId: FIXTURE_BOOK_FILL.lookId };
 
 /** The same book at a size a test can afford to render several of. */
 function at(pixels: number): BookTemplate {

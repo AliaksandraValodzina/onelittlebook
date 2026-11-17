@@ -120,7 +120,7 @@ describe("the shelf is the bit that grows", () => {
     // set in the cover's own face — neither of which a picture file would have.
     expect(testIds(landing)).toContain("cover");
     expect(landing).toContain(`aria-label="${book.name} — cover"`);
-    expect(landing).toContain(book.covers[0].colour);
+    expect(landing).toContain(book.coverColour);
     expect(landing).toContain("Rosalind");
 
     // The control, so none of the above could pass against an empty block: the

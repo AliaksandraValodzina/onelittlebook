@@ -89,7 +89,6 @@ export function isPhotoRole(name: string): name is typeof SLOT.photo {
 export const ASKS = [
   { id: "name", label: "Name", required: true },
   { id: "look", label: "Baby", required: true },
-  { id: "cover", label: "Cover", required: true },
   { id: "dedication", label: "Dedication", required: true },
   /**
    * Both **optional**, and the bar says so rather than ticking them silently.

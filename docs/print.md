@@ -305,19 +305,35 @@ header. Those four numbers become a `MeasuredTemplate` in
 changes — not the composition, not the renderer, and **not a single delivered
 file**.
 
-### The colourway does not reach a delivered cover, and that is open
+### The cover is one colourway and the choice is gone, settled 17 November
 
-The buyer picks blush, sage or oat, and on a **drawn** cover that recolours the
-whole ground (`SceneSpec.groundFromCover`). A look with a delivered wrap has one
-wrap, not three, so for that look the choice changes nothing on the cover. The
-choice is still wired and still works for every look nobody has delivered
-artwork for.
+**The buyer used to pick blush, sage or oat.** On a *drawn* cover that
+recoloured the whole ground, which is a real choice; on a *delivered* cover
+there is no ground to recolour, and the captain delivers one wrap per look, not
+three. The day the fourteenth look's cover landed the buttons could not change a
+pixel. A control that cannot visibly change anything is worse than no control —
+the buyer presses it, nothing happens, and they start wondering what else on the
+page is pretend — so the captain removed it.
 
-Three ways out, none of them taken here because all three are the captain's:
-deliver three wraps per look; declare a `coverTint` shape on the cover page so
-the choice fills the title's panel instead (`templates/first-book.ts`
-§ `coverTint` argues against that and says why cream was chosen); or stop
-offering the choice once a look's artwork lands.
+Three ways out were weighed. **Three wraps per look** is 14 × 3 × 2 = 84 files,
+and the interior pages do not change colour either, so a blush cover would open
+onto the same rooms. **Tinting a declared shape** — `coverTint`, which existed
+and was never used — had only one shape of the right size to fill, the title's
+cream panel, which `templates/first-book.ts` argues specifically against.
+**Removing the choice** is the one taken.
+
+What is left is `BookTemplate.coverColour`: one declared colour, read by the
+drawn placeholder cover's own ground and by `lib/book/cover-wrap.ts`
+§ `wrapWash` for the back and the spine of a composed wrap. `validateBook`
+refuses a book whose two statements of it disagree
+(`cover.colourDisagrees`). `coverTint`, `SceneSpec.groundFromCover`,
+`BookTemplate.covers` and `BookFill.coverId` all went with the chooser; a stored
+draft carrying a `coverId` is read past in silence
+(`lib/book/order.ts` § `readOrder`).
+
+**Still open and still the captain's:** a look whose cover wrap is delivered has
+one back cover for both products, and `Look.wash` is where a per-look colour
+goes if the captain wants one that is not `coverColour`.
 
 <a id="the-page-the-book-declares-is-not-the-page-printify-prints"></a>
 

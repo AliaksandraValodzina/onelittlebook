@@ -85,7 +85,6 @@ export interface Order {
    */
   genderId: string | null;
   lookId: string;
-  coverId: string;
   /**
    * Which edition — softcover, or the one hardcover upgrade.
    *
@@ -144,7 +143,6 @@ export function emptyOrder(book: BookTemplate): Order {
     // decision of 6 November: the question comes before the tiles.
     genderId: null,
     lookId: book.looks[0]?.id ?? "",
-    coverId: book.covers[0]?.id ?? "",
     // The listed edition, not the upgrade. An upgrade nobody has been offered
     // yet must never already be selected.
     editionId: DEFAULT_EDITION,
@@ -216,7 +214,6 @@ export function toBookFill(order: Order, book: BookTemplate): BookFill {
     bookId: book.id,
     bookRev: book.rev,
     lookId: order.lookId,
-    coverId: order.coverId,
     name: verdict.ok ? verdict.name : "",
     dedication: slot ? acceptLines(slot, dedicationOf(order, book)).text : "",
     // The same acceptor as the dedication, against a one-line slot — so the
@@ -293,7 +290,6 @@ export function done(order: Order, book: BookTemplate): Record<AskId, boolean> {
     // answered: a tile selected by default under a question nobody answered is
     // not a choice the buyer made.
     look: Boolean(look) && (!(book.genders ?? []).length || order.genderId !== null),
-    cover: book.covers.some((c) => c.id === order.coverId),
     photo: Boolean(order.photo?.asset),
     dedication: fill.dedication.length > 0,
     from: (fill.from ?? "").length > 0,
@@ -387,9 +383,11 @@ export function readOrder(value: unknown, book: BookTemplate): Order {
   if (out.genderId === null && typeof v.genderId === "string") {
     if ((book.genders ?? []).some((g) => g.id === v.genderId)) out.genderId = v.genderId;
   }
-  if (typeof v.coverId === "string" && book.covers.some((c) => c.id === v.coverId)) {
-    out.coverId = v.coverId;
-  }
+  // A stored `coverId` is read past in silence. The cover colourway was
+  // offered until 17 November and a draft written before then carries one; it
+  // names a choice the book no longer has, so it is neither kept nor reported
+  // — the same treatment every other unknown key gets here, which is what stops
+  // a draft from a newer or older publisher exploding on the way in.
   // A retired edition falls back to the listed one rather than being kept. An
   // unknown id here would price the order at whatever `editionOf` guesses, and
   // guessing a price is the one thing this codebase refuses to do.

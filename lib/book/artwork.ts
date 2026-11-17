@@ -169,10 +169,7 @@ export function cleanArtworkTemplate(
   index: number,
   fill: BookFill,
 ): PageTemplate {
-  const template = pageTemplateFor(book, index, {
-    lookId: fill.lookId,
-    coverId: fill.coverId,
-  });
+  const template = pageTemplateFor(book, index, { lookId: fill.lookId });
   return { ...template, layers: template.layers.filter(isNotASlot) };
 }
 
@@ -358,7 +355,7 @@ function instructions(
     "A re-upload replaces the previous one and the previous one is kept, so a bad",
     "swap found later can be rolled back.",
     "",
-    `Drawn against ${book.id} revision ${book.rev}, look "${fill.lookId}", cover "${fill.coverId}".`,
+    `Drawn against ${book.id} revision ${book.rev}, look "${fill.lookId}".`,
     "",
   );
   return lines.join("\n");

@@ -306,7 +306,6 @@ describe("the filename an order is matched by", () => {
     expect(name).toContain(FIRST_BOOK.id);
     expect(name).toContain(FIRST_BOOK.rev);
     expect(name).toContain(FIXTURE_BOOK_FILL.lookId);
-    expect(name).toContain(FIXTURE_BOOK_FILL.coverId);
     expect(name).toContain("rosalind");
     expect(name).toContain(orderFingerprint(FIXTURE_BOOK_FILL));
     expect(name).toMatch(/3600x3600\.pdf$/);

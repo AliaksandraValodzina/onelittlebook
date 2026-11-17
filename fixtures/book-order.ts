@@ -27,7 +27,6 @@ export const FIXTURE_BOOK_FILL: BookFill = {
   bookId: FIRST_BOOK.id,
   bookRev: FIRST_BOOK.rev,
   lookId: "boy-01",
-  coverId: "sage",
   name: "Rosalind",
   // No crop: the buyer did not move it, so `placePhoto` cover-fits and centres
   // it, and `toBookFill` omits the field entirely rather than writing the full
