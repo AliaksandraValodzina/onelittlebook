@@ -201,12 +201,24 @@ supplied size.
 | `cover-softcover.png` | **4790 × 2400 px** | Printify's own supplied area for the 8 × 8 softcover cover, bleed included. Measured out of their PSD — [`print.md`](print.md) § What Printify's templates actually say. |
 | `cover-hardcover.png` | **5370 × 2850 px** | The captain's own export, counted off three files. Stored and reported; see § The hardcover below. |
 
-Everything else about the bytes is § 2: PNG, 8 bits, sRGB, no alpha, no
-interlacing, full bleed to all four edges. The **3600 × 3600 rule does not
-apply to a wrap and is not loosened to let one through** — a page is square and
-a wrap is wide, and the way to keep the page rule strict is to not ask it this
-question. `lib/book/cover-upload.ts` is the contract and
+Everything else about the bytes is § 2: PNG, 8 bits, sRGB, nothing
+transparent, no interlacing, full bleed to all four edges. The **3600 × 3600
+rule does not apply to a wrap and is not loosened to let one through** — a page
+is square and a wrap is wide, and the way to keep the page rule strict is to
+not ask it this question. `lib/book/cover-upload.ts` is the contract and
 `lib/book/upload.ts` § `pageAgainstContract` is still the pages'.
+
+**On a wrap, "no alpha" is measured and not inferred.** Transparency on a print
+file comes off the press as bare paper, so a wrap carrying any is refused
+loudly — but a file that *has* an alpha channel is not a file that *uses* one.
+Four softcover wraps were refused on 17 November for colour type 6 and all four
+were then measured at alpha 255 on every one of 11,496,000 pixels; the channel
+was an artefact of how they were saved, and dropping it left the colour data
+byte-identical. A **fully-opaque channel is accepted and stored exactly as
+delivered** — flattening it would change the digest, which is the store's key,
+and change nothing on paper — and the refusal names the counts either way.
+`lib/render/png-alpha.ts` is the reading. The page rule in § 2 is unchanged: an
+interior page is still colour type 2 or 0.
 
 **Both wraps are wordless.** The title *"When {name} Turned One"* carries the
 buyer's name and is drawn by the renderer onto the front panel, exactly as the
@@ -454,7 +466,8 @@ stable code:
 | `cover.pieceOfAWrap` | `cover-back.png`, `spine.png`: regions of a wrap, not files |
 | `cover.duplicateProduct` | two files claim to be the same product's wrap |
 | `cover.wrongSize` | not the product's supplied size — the message names both numbers and which template line each is |
-| `cover.notPng` / `cover.hasAlpha` / `cover.notEightBit` / `cover.interlaced` / `cover.notSrgb` | § 2's rules about the bytes, applied to a wrap |
+| `cover.notPng` / `cover.notEightBit` / `cover.interlaced` / `cover.notSrgb` | § 2's rules about the bytes, applied to a wrap |
+| `cover.hasAlpha` | measured transparency in the alpha channel, or a channel that could not be read — the message names how many pixels were looked at and how many are transparent. A fully-opaque channel passes; § 2b. |
 | `cover.wrapsIdentical` | the two wraps of one look are the same file |
 | `page.notPng` | the bytes are not a PNG, whatever the extension says |
 | `page.notSquare` | width and height differ |

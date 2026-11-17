@@ -52,6 +52,27 @@
  * that said only "wrong size" would send somebody back to the same line of the
  * same file.
  *
+ * ## The alpha refusal measures, because the channel is usually empty
+ *
+ * Transparency on a print file comes off the press as bare paper, so a wrap
+ * that carries any is refused loudly. But **having an alpha channel is not
+ * being transparent.** Four of the captain's softcover wraps were refused on
+ * 17 November for colour type 6, and all four were then measured at alpha 255
+ * on every one of 11,496,000 pixels — the channel was an artefact of how they
+ * were saved, and dropping it left the colour data byte-identical. Five round
+ * trips were spent on that difference. `lib/render/png-alpha.ts` is the reading
+ * and the refusal now names the counts either way; a fully-opaque channel is
+ * accepted.
+ *
+ * **Accepted and stored exactly as delivered, never flattened.** A wrap is what
+ * goes to Printify and `lib/artwork/prepare.ts` § `prepareCoverWraps` stores
+ * every wrap byte for byte for that reason. An alpha channel that is 255
+ * everywhere composites to the same colour on every RIP there is —
+ * `c · 1 + bg · 0` — so re-encoding it would change the digest, which is the
+ * store's key and what makes a re-upload visible, and would change nothing on
+ * paper. The one artefact derived from a wrap drops the channel already:
+ * `lib/artwork/import.ts` § `cutOut` writes the display cover at colour type 2.
+ *
  * ## What cannot be checked, said plainly
  *
  * The other failure that has happened is **a cover showing a different baby
@@ -75,6 +96,12 @@
 
 import type { Problem } from "../template/validate";
 import { NotAPng, hasAlphaChannel, pngChunkTypes, readPngHeader } from "../render/png";
+import {
+  AlphaUnreadable,
+  describeAlpha,
+  readAlphaChannel,
+  type AlphaReading,
+} from "../render/png-alpha";
 import { suppliedAreaOf } from "./cover-wrap";
 import { COVER_PRODUCT_IDS, type CoverProductId } from "./types";
 import type { UploadedFile } from "./upload";
@@ -138,6 +165,36 @@ export interface ResolvedCoverWrap {
   file: UploadedFile;
   /** The size it was held to, so a command can print it without knowing it. */
   want: Px;
+  /**
+   * What its alpha channel was measured to carry, or `null` for a file that has
+   * no channel to read.
+   *
+   * Present so the import command can say what it found on a file it
+   * **accepted** — see this module's docblock for why saying so matters, and
+   * `scripts/import-artwork.ts` for where the sentence lands. A wrap that was
+   * refused still has its reading here; the refusal is in `problems`.
+   */
+  alpha: AlphaReading | null;
+}
+
+/**
+ * **What one wrap's bytes came to: what is wrong with it, and what its alpha
+ * channel was measured to hold.**
+ *
+ * Two outputs from one reading rather than two functions that each inflate an
+ * eleven-megapixel file, and — more to the point — rather than two places that
+ * could reach different answers about the same channel. A caller that only
+ * wants the refusals reads `problems` and ignores the rest.
+ */
+export interface CoverWrapReading {
+  problems: Problem[];
+  /**
+   * The channel as measured, or `null` for a file that has no channel at all —
+   * which is the ordinary and wanted state, and is **not** the same fact as
+   * "nothing in it is transparent". A channel that exists and could not be read
+   * is a refusal in `problems` and still `null` here, never a silent pass.
+   */
+  alpha: AlphaReading | null;
 }
 
 export interface CoverWrapCheck {
@@ -207,8 +264,9 @@ export function checkCoverWraps(files: UploadedFile[], where = ""): CoverWrapChe
     claimed.set(kind.product, file.name);
 
     const want = suppliedAreaOf(kind.product);
-    problems.push(...coverWrapAgainstContract(file, at, want, kind.product));
-    wraps.push({ product: kind.product, file, want });
+    const read = coverWrapAgainstContract(file, at, want, kind.product);
+    problems.push(...read.problems);
+    wraps.push({ product: kind.product, file, want, alpha: read.alpha });
   }
 
   problems.push(...coverWrapsDiffer(wraps, prefix));
@@ -221,9 +279,11 @@ export function checkCoverWraps(files: UploadedFile[], where = ""): CoverWrapChe
  * **The size is refused outright and the refusal names both numbers**, with the
  * line of Printify's template each of them is — see this module's docblock for
  * the 4715 × 2325 that got here. Everything else is what any printable file in
- * this repository has to be, and is the same reading `./upload.ts`
- * § `pageAgainstContract` does of an interior page: PNG, 8 bits, no alpha, no
- * embedded profile that is not sRGB, not interlaced.
+ * this repository has to be: PNG, 8 bits, no embedded profile that is not sRGB,
+ * not interlaced, and **nothing transparent** — which, unlike `./upload.ts`
+ * § `pageAgainstContract`'s reading of an interior page, is measured here
+ * rather than inferred from the colour type. This module's docblock § The alpha
+ * refusal measures is the four files that argument cost.
  *
  * **Not square and not 3600.** That is the point of a separate function: the
  * page rule is right for a page and a wrap is wide, and the way to keep the
@@ -234,8 +294,9 @@ export function coverWrapAgainstContract(
   where: string,
   want: Px,
   product?: CoverProductId,
-): Problem[] {
+): CoverWrapReading {
   const out: Problem[] = [];
+  let alpha: AlphaReading | null = null;
   const say = (code: string, detail: string) => out.push({ code, where, detail });
 
   let header;
@@ -243,7 +304,7 @@ export function coverWrapAgainstContract(
     header = readPngHeader(file.bytes);
   } catch (error) {
     say("cover.notPng", error instanceof NotAPng ? error.message : "could not be read as a PNG");
-    return out;
+    return { problems: out, alpha };
   }
 
   if (header.width !== want.width || header.height !== want.height) {
@@ -257,18 +318,37 @@ export function coverWrapAgainstContract(
         "prints a white hairline down the edge of the cover.",
     );
   }
+  /**
+   * **The channel is read, and only what it holds is refused.**
+   *
+   * A channel that cannot be read is refused under the same code, saying so:
+   * the one answer this must never give is a quiet pass on a file whose pixels
+   * nobody reached.
+   */
   if (hasAlphaChannel(header.colourType)) {
-    say(
-      "cover.hasAlpha",
-      `colour type ${header.colourType} carries an alpha channel; paper would show through`,
-    );
+    try {
+      alpha = readAlphaChannel(file.bytes);
+      if (alpha.transparent > 0) {
+        say(
+          "cover.hasAlpha",
+          `colour type ${header.colourType} and ${describeAlpha(alpha)}; paper would show ` +
+            "through wherever it is not opaque",
+        );
+      }
+    } catch (error) {
+      say(
+        "cover.hasAlpha",
+        `colour type ${header.colourType} carries an alpha channel and it could not be ` +
+          `measured: ${error instanceof AlphaUnreadable ? error.message : "the pixels would not read"}`,
+      );
+    }
   }
   if (header.bitDepth !== 8) say("cover.notEightBit", `bit depth ${header.bitDepth}`);
   if (header.interlaced) say("cover.interlaced", "Adam7 interlacing; some RIPs mishandle it");
   if (pngChunkTypes(file.bytes).includes("iCCP")) {
     say("cover.notSrgb", "an embedded ICC profile; supply sRGB with no profile, or an sRGB one");
   }
-  return out;
+  return { problems: out, alpha };
 }
 
 /**

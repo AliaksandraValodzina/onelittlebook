@@ -44,6 +44,7 @@ import { frontPanelPxOf } from "../print/printify";
 import { ghostBelongsOn } from "../book/ghost";
 import { pageSequence, spreadSideOf } from "../book/derive";
 import { readPngHeader } from "../render/png";
+import { describeAlpha } from "../render/png-alpha";
 import type { Problem } from "../template/validate";
 import type { BookTemplate, CoverProductId } from "../book/types";
 
@@ -326,7 +327,13 @@ export function prepareCoverWraps(
       pageId: coverWrapPageId(wrap.product),
       bytes: wrap.file.bytes,
       from: wrap.file.name,
-      did: `${wrap.want.width}×${wrap.want.height} ${wrap.product} wrap, as delivered`,
+      // "as delivered" is the whole of what happens to a wrap, and when the
+      // file carried an alpha channel the line says what was measured in it —
+      // `lib/book/cover-upload.ts` § The alpha refusal measures is why an
+      // accepted channel is worth a sentence rather than a silence.
+      did:
+        `${wrap.want.width}×${wrap.want.height} ${wrap.product} wrap, as delivered` +
+        (wrap.alpha ? ` — ${describeAlpha(wrap.alpha)}, kept rather than flattened` : ""),
       product: wrap.product,
     });
   }

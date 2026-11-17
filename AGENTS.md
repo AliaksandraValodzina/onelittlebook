@@ -206,7 +206,12 @@ directly, so what they produce is a softcover wrap (4790 × 2400, Printify's
 supplied area) and a hardcover wrap (5370 × 2850, counted off their own
 exports). `lib/book/cover-upload.ts` is the intake contract and **a wrong size
 is refused with both numbers named**, because one has already arrived at the
-template's *finished* size instead of its *image* size. The display cover is
+template's *finished* size instead of its *image* size. Its alpha refusal
+**measures** (`lib/render/png-alpha.ts`): a fully-opaque channel is accepted and
+stored as delivered, because four good wraps were refused for carrying a channel
+that held nothing. A look's **pages and its cover are two counts** — the display
+cover is a page of the book, so one count said a cover-only look was finished;
+`lib/artwork/release.ts` § `looksWithInteriorPages` is the pair. The display cover is
 `lib/print/printify.ts` § `frontPanelPxOf` **cut** out of the softcover wrap and
 never supplied beside it — the captain's separate square and their wrap are two
 hand compositions, and cutting is what stops a buyer previewing one cover and

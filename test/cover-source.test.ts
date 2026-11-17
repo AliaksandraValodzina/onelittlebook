@@ -61,6 +61,7 @@ import {
 import {
   checkCoverWraps,
   coverFileKindOf,
+  coverWrapAgainstContract,
   coverWrapFileName,
   coverWrapFileNames,
 } from "../lib/book/cover-upload";
@@ -78,7 +79,8 @@ import { validateTemplate } from "../lib/template/validate";
 import { contains } from "../lib/template/geometry";
 import { renderPrintPng, type SuppliedBytes } from "../lib/render/raster";
 import { sha256 } from "../lib/assets/digest";
-import { readPngHeader } from "../lib/render/png";
+import { hasAlphaChannel, readPngHeader } from "../lib/render/png";
+import { AlphaUnreadable, readAlphaChannel } from "../lib/render/png-alpha";
 import { COVER_PRODUCT_IDS, type CoverProductId } from "../lib/book/types";
 import { SLOT } from "../lib/book/slots";
 import { changedBox, hexAt, isColour, raster } from "./pixels";
@@ -763,5 +765,173 @@ describe("the hardcover, whose wrap is in hand and whose template is not", () =>
     // thing the derivation is allowed to decide.
     expect(suppliedAreaOf("hardcover")).toEqual(HARDCOVER_COVER_WRAP_DERIVED.area);
     expect(suppliedAreaOf("softcover")).toEqual(SOFTCOVER_COVER_WRAP.area);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The alpha channel is measured, not inferred
+// ---------------------------------------------------------------------------
+
+/**
+ * **Four good wraps were refused for carrying a channel that held nothing.**
+ *
+ * On 17 November `girl-01/cover-softcover.png` and three others came back with
+ * *"colour type 6 carries an alpha channel; paper would show through"*. All
+ * four were then measured at alpha 255 on every one of 11,496,000 pixels, and
+ * dropping the channel left the colour data byte-identical. The reasoning was
+ * right — transparency on a print file is bare paper off the press — and the
+ * test was wrong, because having a channel is not being transparent. It had
+ * cost five round trips by the time it was measured.
+ *
+ * So both halves are held here, each against the other: an opaque channel is
+ * accepted and a transparent one is refused loudly, with the counts in the
+ * message either way. The refusal is the paired negative for the acceptance —
+ * a check that accepted everything would pass the first of these and fail the
+ * second.
+ */
+
+/** The same three-region wrap, written RGBA, with one alpha everywhere. */
+function wrapWithAlpha(product: CoverProductId, alpha: number): Uint8Array {
+  const area = suppliedAreaOf(product);
+  const png = PNG.sync.read(Buffer.from(syntheticWrap(product)));
+  for (let i = 0; i < area.width * area.height; i++) png.data[i * 4 + 3] = alpha;
+  return new Uint8Array(PNG.sync.write(png, { colorType: 6, inputHasAlpha: true, bitDepth: 8 }));
+}
+
+/** The same again, with exactly one pixel let through. One is enough. */
+function wrapWithOneHole(product: CoverProductId): Uint8Array {
+  const area = suppliedAreaOf(product);
+  const png = PNG.sync.read(Buffer.from(syntheticWrap(product)));
+  for (let i = 0; i < area.width * area.height; i++) png.data[i * 4 + 3] = 255;
+  // In the middle of the front panel, which is the part a buyer sees.
+  const cut = frontPanelPxOf(SOFT);
+  const at = ((cut.y + 10) * area.width + cut.x + 10) * 4 + 3;
+  png.data[at] = 0;
+  return new Uint8Array(PNG.sync.write(png, { colorType: 6, inputHasAlpha: true, bitDepth: 8 }));
+}
+
+const codesOf = (bytes: Uint8Array) =>
+  coverWrapAgainstContract(
+    { name: coverWrapFileName("softcover"), bytes },
+    "girl-01/cover-softcover.png",
+    suppliedAreaOf("softcover"),
+    "softcover",
+  );
+
+describe("a wrap's alpha channel", () => {
+  const area = suppliedAreaOf("softcover");
+  const pixels = area.width * area.height;
+
+  it("is read pixel by pixel rather than guessed from the colour type", () => {
+    const opaque = readAlphaChannel(wrapWithAlpha("softcover", 255));
+    expect(opaque.pixels).toBe(pixels);
+    expect(opaque.transparent).toBe(0);
+    expect(opaque.lowest).toBe(255);
+
+    // The paired negative, through the same reader: one pixel changed and the
+    // count moves by exactly one, so the reading is of the pixels and not of
+    // the header.
+    const holed = readAlphaChannel(wrapWithOneHole("softcover"));
+    expect(holed.pixels).toBe(pixels);
+    expect(holed.transparent).toBe(1);
+    expect(holed.lowest).toBe(0);
+
+    // And a file with no channel is not read as an opaque one: a failure to
+    // measure may never come back as a measurement of nothing.
+    expect(() => readAlphaChannel(syntheticWrap("softcover"))).toThrow(AlphaUnreadable);
+  });
+
+  it("is accepted when it carries nothing, and the reading says what was looked at", () => {
+    const bytes = wrapWithAlpha("softcover", 255);
+    expect(hasAlphaChannel(readPngHeader(bytes).colourType)).toBe(true);
+
+    const read = codesOf(bytes);
+    expect(read.problems).toEqual([]);
+    expect(read.alpha).toEqual({ pixels, transparent: 0, lowest: 255, opaque: 255 });
+
+    // The whole folder, which is the door the import command actually uses.
+    const check = checkCoverWraps(
+      [{ name: coverWrapFileName("softcover"), bytes }],
+      "girl-01",
+    );
+    expect(check.problems).toEqual([]);
+    expect(check.wraps[0].alpha?.transparent).toBe(0);
+  });
+
+  it("is refused when it carries transparency, naming what was measured", () => {
+    const read = codesOf(wrapWithOneHole("softcover"));
+    expect(read.problems.map((p) => p.code)).toEqual(["cover.hasAlpha"]);
+
+    const detail = read.problems[0].detail;
+    // The numbers, not an adjective: how many pixels were read, how many are
+    // transparent, and how transparent the worst of them is.
+    expect(detail).toContain(pixels.toLocaleString("en-US"));
+    expect(detail).toContain("1 of them are transparent");
+    expect(detail).toContain("the lowest at 0 of 255");
+    expect(detail).toContain("paper would show through");
+
+    // Half transparent all over is the same refusal, with a different reading.
+    const half = codesOf(wrapWithAlpha("softcover", 128));
+    expect(half.problems.map((p) => p.code)).toEqual(["cover.hasAlpha"]);
+    expect(half.problems[0].detail).toContain(
+      `${pixels.toLocaleString("en-US")} of them are transparent`,
+    );
+  });
+
+  it("leaves the size refusal exactly where it was", () => {
+    // The dimension checks have caught two real mistakes and are untouched by
+    // the alpha reading: a wrap at the template's FINISHED SIZE is still
+    // refused, whether or not it carries a channel.
+    const finished = suppliedAreaOf("hardcover");
+    const wrong = {
+      name: coverWrapFileName("softcover"),
+      bytes: wrapWithAlpha("hardcover", 255),
+    };
+    const read = coverWrapAgainstContract(wrong, "girl-01", area, "softcover");
+    expect(read.problems.map((p) => p.code)).toEqual(["cover.wrongSize"]);
+    expect(read.problems[0].detail).toContain(`${finished.width} × ${finished.height}`);
+    expect(read.problems[0].detail).toContain(`${area.width} × ${area.height}`);
+    // And the opaque channel on that same file is still not a refusal.
+    expect(read.alpha?.transparent).toBe(0);
+  });
+
+  it("stores an accepted wrap exactly as delivered, and cuts a square with no channel", () => {
+    const bytes = wrapWithAlpha("softcover", 255);
+    const prepared = prepareCoverWraps(FIRST_BOOK, LOOK, [
+      { name: coverWrapFileName("softcover"), bytes },
+    ]);
+    expect(prepared.problems).toEqual([]);
+
+    // **Stored as supplied.** A channel that is 255 everywhere composites to
+    // the same colour on every RIP, so flattening would change the digest —
+    // the store's key — and change nothing on paper.
+    const wrap = prepared.pages.find((p) => p.product === "softcover")!;
+    expect(Array.from(wrap.bytes)).toEqual(Array.from(bytes));
+    expect(hasAlphaChannel(readPngHeader(wrap.bytes).colourType)).toBe(true);
+    expect(wrap.did).toContain("kept rather than flattened");
+    expect(wrap.did).toContain(pixels.toLocaleString("en-US"));
+
+    // The one artefact derived from a wrap drops the channel already, which is
+    // the other half of why there is nothing to gain by flattening the wrap.
+    const cut = prepared.pages.find((p) => p.pageId === FIRST_BOOK.cover.id)!;
+    expect(hasAlphaChannel(readPngHeader(cut.bytes).colourType)).toBe(false);
+    const panel = frontPanelPxOf(SOFT);
+    expect(coloursIn(cut.bytes, { x: 0, y: 0, width: panel.width, height: panel.height })).toEqual(
+      new Set([FRONT.hex]),
+    );
+  });
+
+  it("refuses a channel it could not measure rather than passing it", () => {
+    // Interlaced: the pixels are not in one pass and this reader does not
+    // reassemble them. The file is refused under the same code, saying so — a
+    // quiet pass on a file nobody read is the failure this whole section exists
+    // to prevent.
+    const bytes = wrapWithAlpha("softcover", 255);
+    const interlaced = Uint8Array.from(bytes);
+    interlaced[28] = 1;
+    const read = codesOf(interlaced);
+    expect(read.problems.map((p) => p.code)).toEqual(["cover.hasAlpha", "cover.interlaced"]);
+    expect(read.problems[0].detail).toContain("could not be measured");
+    expect(read.alpha).toBeNull();
   });
 });
