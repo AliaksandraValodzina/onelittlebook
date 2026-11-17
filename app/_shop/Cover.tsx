@@ -35,7 +35,6 @@ export interface CoverProps {
   /** What is printed on it. An empty string draws the cover with no name. */
   name: string;
   lookId?: string;
-  coverId?: string;
   href?: (ref: AssetRef) => string;
   /** Extra classes on the `.bk` block — the shelf and the basket size it down. */
   className?: string;
@@ -52,13 +51,9 @@ export function coverSvg({
   book,
   name,
   lookId,
-  coverId,
   href = apiAssetUrl,
 }: Omit<CoverProps, "className">): string {
-  const chose = {
-    lookId: lookId ?? book.looks[0].id,
-    coverId: coverId ?? book.covers[0].id,
-  };
+  const chose = { lookId: lookId ?? book.looks[0].id };
   return renderPageSvg(
     pageTemplateFor(book, 0, chose),
     pageFillFor(book, 0, {
@@ -66,7 +61,6 @@ export function coverSvg({
       bookId: book.id,
       bookRev: book.rev,
       lookId: chose.lookId,
-      coverId: chose.coverId,
       name,
       dedication: "",
     }),

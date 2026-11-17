@@ -182,10 +182,7 @@ describe("with no artwork on the machine", () => {
       height: FIRST_BOOK.page.canvas.height,
     };
     const share = async (lookId: string, of: string) => {
-      const template = pageTemplateFor(FIRST_BOOK, index, {
-        lookId,
-        coverId: FIXTURE_BOOK_FILL.coverId,
-      });
+      const template = pageTemplateFor(FIRST_BOOK, index, { lookId });
       expect(template.layers[0].kind).toBe("art");
       const png = await renderPrintPng(template, pageFillFor(FIRST_BOOK, index, FIXTURE_BOOK_FILL));
       return shareOf(raster(png.png, template), whole, lookOf(FIRST_BOOK, of).baby!.skin);
@@ -228,21 +225,19 @@ describe("with the first look imported", () => {
   it("puts the real page under the look that has it and leaves the rest drawn", async () => {
     const { book, digest } = await delivered();
     const index = pageSequence(book).findIndex((p) => p.id === PAGE);
-    const chosen = { coverId: FIXTURE_BOOK_FILL.coverId };
-
-    const real = pageTemplateFor(book, index, { ...chosen, lookId: DELIVERED });
+    const real = pageTemplateFor(book, index, { lookId: DELIVERED });
     expect(real.layers[0].kind).toBe("image");
     expect(real.layers[0].kind === "image" ? real.layers[0].asset.sha256 : "").toBe(digest);
 
     // **The partial state, which is the whole point**: eleven looks are still
     // being drawn, so the same page for one of them is the placeholder rather
     // than a refusal or a blank.
-    const other = pageTemplateFor(book, index, { ...chosen, lookId: UNDELIVERED });
+    const other = pageTemplateFor(book, index, { lookId: UNDELIVERED });
     expect(other.layers[0].kind).toBe("art");
 
     // A page nobody delivered — the cover, which has no artwork at all yet — is
     // untouched for every look.
-    expect(pageTemplateFor(book, 0, { ...chosen, lookId: DELIVERED }).layers[0].kind).toBe("art");
+    expect(pageTemplateFor(book, 0, { lookId: DELIVERED }).layers[0].kind).toBe("art");
 
     expect(validateBook(book)).toEqual([]);
     expect(showcaseLook(book).id).toBe(DELIVERED);
@@ -252,7 +247,7 @@ describe("with the first look imported", () => {
     const { book } = await delivered();
     const index = pageSequence(book).findIndex((p) => p.id === PAGE);
     const fill = { ...FIXTURE_BOOK_FILL, lookId: DELIVERED };
-    const template = pageTemplateFor(book, index, { lookId: DELIVERED, coverId: fill.coverId });
+    const template = pageTemplateFor(book, index, { lookId: DELIVERED });
 
     // No `supplied` map: the bytes are found by `loadAsset`, which means the
     // artwork store is reachable from the real print path and not only from a
@@ -265,7 +260,7 @@ describe("with the first look imported", () => {
 
     // Paired: the same page for a look with no artwork is **not** that colour,
     // so the assertion above is about the import and not about blue.
-    const drawn = pageTemplateFor(book, index, { lookId: UNDELIVERED, coverId: fill.coverId });
+    const drawn = pageTemplateFor(book, index, { lookId: UNDELIVERED });
     const other = raster(
       (await renderPrintPng(drawn, pageFillFor(book, index, { ...fill, lookId: UNDELIVERED }))).png,
       drawn,
@@ -498,10 +493,7 @@ describe("the golden ghost spreads", () => {
     const book = await bookAsDelivered(FIRST_BOOK, art);
     expect(validateBook(book)).toEqual([]);
 
-    const preview = ghostPreviewOf(book, index, {
-      lookId: DELIVERED,
-      coverId: FIXTURE_BOOK_FILL.coverId,
-    });
+    const preview = ghostPreviewOf(book, index, { lookId: DELIVERED });
     // The golden half is the page's bottom layer, **under** the words — not
     // painted over them, which is what the drawn silhouette does.
     expect(preview.template.layers[0].kind).toBe("image");
@@ -521,10 +513,7 @@ describe("the golden ghost spreads", () => {
     // Paired: a page with no delivered half still gets the drawn silhouette, so
     // the absence above is a choice rather than a broken ghost.
     const other = pageSequence(FIRST_BOOK).findIndex((p) => p.id === "page-006");
-    const drawn = ghostPreviewOf(book, other, {
-      lookId: DELIVERED,
-      coverId: FIXTURE_BOOK_FILL.coverId,
-    });
+    const drawn = ghostPreviewOf(book, other, { lookId: DELIVERED });
     expect(drawn.ghost?.figure).toBeUndefined();
     const drawnSvg = renderPageSvg(drawn.template, pageFillFor(book, other, FIXTURE_BOOK_FILL), {
       href: (ref) => `/api/assets/${ref.sha256}.png`,
@@ -581,10 +570,7 @@ describe("the golden ghost spreads", () => {
     // cannot be. `test/ghost.test.ts` asserts the structural half — no module
     // on the print path so much as imports a ghost module — and this is the
     // observable half: the bytes are not in the file.
-    const template = pageTemplateFor(book, index, {
-      lookId: DELIVERED,
-      coverId: FIXTURE_BOOK_FILL.coverId,
-    });
+    const template = pageTemplateFor(book, index, { lookId: DELIVERED });
     const print = await renderPrintSvg(template, pageFillFor(book, index, FIXTURE_BOOK_FILL));
     expect(print).not.toContain(sha256(half));
     expect(print).not.toContain(GHOST_CAPTION);
@@ -669,10 +655,7 @@ describe("an order's own artwork on top of a released look", () => {
 
     const at = (id: string) => {
       const index = pageSequence(order).findIndex((p) => p.id === id);
-      const layer = pageTemplateFor(order, index, {
-        lookId: DELIVERED,
-        coverId: FIXTURE_BOOK_FILL.coverId,
-      }).layers[0];
+      const layer = pageTemplateFor(order, index, { lookId: DELIVERED }).layers[0];
       return layer.kind === "image" ? layer.asset.sha256 : "drawn";
     };
     expect(at(repainted)).toBe(sha256(own));
@@ -687,7 +670,7 @@ describe("an order's own artwork on top of a released look", () => {
     expect(validateBook(order)).toEqual([]);
     const index = pageSequence(order).findIndex((p) => p.id === "page-004");
     expect(
-      pageTemplateFor(order, index, { lookId: UNDELIVERED, coverId: FIXTURE_BOOK_FILL.coverId })
+      pageTemplateFor(order, index, { lookId: UNDELIVERED })
         .layers[0].kind,
     ).toBe("art");
   });

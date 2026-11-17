@@ -25,10 +25,9 @@
  * template already holds, and the day they disagreed the buyer would be offered
  * a photograph on a page with nowhere to put one.
  *
- * The **cover** is not here: the captain put the colourway in the persistent
- * bar, because it is a property of the object rather than of a page, and the
- * cover spread is the one spread where a panel would cover the thing being
- * chosen. See `./Bar.tsx`.
+ * The **cover** is not here and has nothing to put here: the colourway it once
+ * offered went on 17 November, because a delivered cover wrap cannot be
+ * recoloured. See `./Bar.tsx`, which is where the control used to be.
  */
 
 import { useMemo, useRef, useState } from "react";

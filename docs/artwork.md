@@ -242,10 +242,12 @@ number beside the look id in the order's record, now that the bytes have a home.
   arithmetic nobody has checked — `print.md` § The hardcover's wrap is in hand
   and its template is not. Reading those four numbers turns the title on with
   **no file re-delivered**.
-- **A decision about the colourway on a delivered cover.** A look with a
-  delivered wrap has one wrap and not three, so blush/sage/oat changes nothing
-  on its cover. Same section of `print.md` lists the three ways out; all three
-  are the captain's.
+- **A per-look back cover, if the captain wants one.** A look with a delivered
+  wrap has one wrap and the shop composes the other product's from the square,
+  painting the back and the spine `BookTemplate.coverColour`. `Look.wash` is
+  where a colour drawn from that look's own palette goes instead. The cover
+  colourway chooser this bullet used to be about went on 17 November —
+  `print.md` § The cover is one colourway and the choice is gone.
 
 ---
 

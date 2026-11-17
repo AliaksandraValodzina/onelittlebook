@@ -115,7 +115,6 @@ export interface BookContext {
   setName: (raw: string) => void;
   setGender: (id: string) => void;
   setLook: (id: string) => void;
-  setCover: (id: string) => void;
   setDedication: (raw: string) => void;
   setFrom: (raw: string) => void;
   setEdition: (id: string) => void;
@@ -235,7 +234,6 @@ export default function BookProvider({
     [book],
   );
   const setLook = useCallback((id: string) => setOrder((o) => ({ ...o, lookId: id })), []);
-  const setCover = useCallback((id: string) => setOrder((o) => ({ ...o, coverId: id })), []);
   const setDedication = useCallback(
     // Stored raw and clamped on the way out by `toBookFill`, so the textarea
     // does not fight the buyer's cursor. `DedicationControl` shows the clamped
@@ -318,7 +316,6 @@ export default function BookProvider({
       setName,
       setGender,
       setLook,
-      setCover,
       setDedication,
       setFrom,
       setEdition,
@@ -345,7 +342,6 @@ export default function BookProvider({
       setName,
       setGender,
       setLook,
-      setCover,
       setDedication,
       setFrom,
       setEdition,

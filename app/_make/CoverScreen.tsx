@@ -48,7 +48,7 @@ export default function CoverScreen({ closeTo }: { closeTo: string }) {
   return (
     <Screen step={step} closeTo={closeTo} width={600}>
       <div className="coverbox">
-        <Cover book={book} name={fill.name} lookId={fill.lookId} coverId={fill.coverId} />
+        <Cover book={book} name={fill.name} lookId={fill.lookId} />
         {upgrade ? (
           <div className="pricetag" data-testid="upgrade-difference">
             <span>

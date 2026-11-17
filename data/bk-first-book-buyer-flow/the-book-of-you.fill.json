@@ -1,9 +1,8 @@
 {
   "schema": 1,
   "bookId": "the-book-of-you",
-  "bookRev": "138d9d97",
+  "bookRev": "f193676f",
   "lookId": "boy-01",
-  "coverId": "sage",
   "name": "Rosalind",
   "photo": {
     "asset": {

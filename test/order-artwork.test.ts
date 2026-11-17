@@ -359,11 +359,13 @@ describe("the book an order prints from once its artwork is uploaded", () => {
     return { store, version };
   }
 
-  it("is a book of one look and one cover, and it validates", async () => {
+  it("is a book of one look, and it validates", async () => {
     const { version } = await uploaded();
     const book = bookWithOrderArtwork(SMALL, FIXTURE_BOOK_FILL, version);
     expect(book.looks.map((l) => l.id)).toEqual([FIXTURE_BOOK_FILL.lookId]);
-    expect(book.covers.map((c) => c.id)).toEqual([FIXTURE_BOOK_FILL.coverId]);
+    // The cover needs no narrowing: `coverColour` is one declared colour and
+    // is carried through with the rest of the book.
+    expect(book.coverColour).toBe(SMALL.coverColour);
     expect(book.genders).toBeUndefined();
     expect(validateBook(book)).toEqual([]);
     expect(printProblems(book, FIXTURE_BOOK_FILL)).toEqual([]);
@@ -392,7 +394,7 @@ describe("the book an order prints from once its artwork is uploaded", () => {
   it("draws the uploaded artwork, read back out of the print file's pixels", async () => {
     const { store, version } = await uploaded();
     const book = bookWithOrderArtwork(SMALL, FIXTURE_BOOK_FILL, version);
-    const chosen = { lookId: FIXTURE_BOOK_FILL.lookId, coverId: FIXTURE_BOOK_FILL.coverId };
+    const chosen = { lookId: FIXTURE_BOOK_FILL.lookId };
     const supplied = await artworkBytesFor(store, REF, version);
 
     const template = pageTemplateFor(book, index, chosen);

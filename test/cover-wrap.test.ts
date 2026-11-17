@@ -58,12 +58,13 @@ import {
 } from "../lib/print/printify";
 import { renderBookPagePng, renderCoverWrapPng } from "../lib/book/print";
 import { renderPrintPng } from "../lib/render/raster";
+import { pageFillFor, pageTemplateFor } from "../lib/book/derive";
 import { renderPageSvg } from "../lib/render/svg";
 import { sha256 } from "../lib/assets/digest";
 import { validateTemplate } from "../lib/template/validate";
 import { contains } from "../lib/template/geometry";
 import { pngChunkTypes, readPngHeader } from "../lib/render/png";
-import { changedBox, distinctColours, hexAt, isColour, raster } from "./pixels";
+import { changedBox, distinctColours, hexAt, isColour, raster, shareOf } from "./pixels";
 import { SLOT } from "../lib/book/slots";
 import type { BookTemplate } from "../lib/book/types";
 import type { AssetRef, Box, PageTemplate } from "../lib/template/types";
@@ -220,14 +221,14 @@ describe("the wrap, as a page template the one renderer can draw", () => {
     expect(svg).not.toContain("<text");
   });
 
-  it("paints the back and the spine the colour the buyer's cover already is", () => {
-    // A look declares no palette, so the wash is the cover's own ground — the
-    // colourway the buyer picked. Derived, so picking another changes it.
-    const other = FIRST_BOOK.covers.find((c) => c.id !== FILL.coverId)!;
-    expect(wrapWash(FIRST_BOOK, FILL)).toBe(
-      FIRST_BOOK.covers.find((c) => c.id === FILL.coverId)!.colour,
-    );
-    expect(wrapWash(FIRST_BOOK, { ...FILL, coverId: other.id })).toBe(other.colour);
+  it("paints the back and the spine the colour the book says its cover is", () => {
+    // A look declares no palette, so the wash is `BookTemplate.coverColour` —
+    // the one colour the book states, which is also the drawn cover's own
+    // ground. Read off the book rather than typed, so the day the captain
+    // changes it the back of the object follows the front.
+    expect(wrapWash(FIRST_BOOK, FILL)).toBe(FIRST_BOOK.coverColour);
+    const repainted: BookTemplate = { ...FIRST_BOOK, coverColour: "#654321" };
+    expect(wrapWash(repainted, FILL)).toBe("#654321");
   });
 
   it("lets a look declare its own wash, and prefers it", () => {
@@ -593,3 +594,91 @@ function sourceFiles(): string[] {
   }
   return out;
 }
+
+// ---------------------------------------------------------------------------
+// The cover with no artwork at all
+// ---------------------------------------------------------------------------
+
+/**
+ * **The fresh-clone and CI path, read out of the pixels.**
+ *
+ * `FIRST_BOOK` as committed declares no delivered artwork anywhere — none of it
+ * is in this repository — so the cover it draws is the placeholder scene, on
+ * the one colour the book says its cover is. That is the state every clone of
+ * this repository and every CI run is in, and it is the state the cover
+ * colourway chooser's removal on 17 November had to leave untouched: the
+ * buttons went, the colour stayed where it always was.
+ *
+ * The whole assertion is **paired against the same book painted another
+ * colour**, which is the standard this suite holds pixel tests to: a test that
+ * only looked for blush would pass against a renderer that had hard-coded it,
+ * and a test that only counted changed pixels would pass against a renderer
+ * that drew noise. Neither number is typed — both are shares of whatever the
+ * book declares.
+ */
+describe("the cover a clone with no artwork draws", () => {
+  const WHOLE: Box = {
+    x: 0,
+    y: 0,
+    width: FIRST_BOOK.page.canvas.width,
+    height: FIRST_BOOK.page.canvas.height,
+  };
+
+  /** The book repainted, in both the places that state its cover's colour. */
+  const recoloured = (colour: string): BookTemplate => ({
+    ...FIRST_BOOK,
+    coverColour: colour,
+    cover: {
+      ...FIRST_BOOK.cover,
+      art: { kind: "drawn", scene: { ...FIRST_BOOK.cover.art.scene!, ground: colour } },
+    },
+  });
+
+  const drawnCover = async (book: BookTemplate) => {
+    const template = pageTemplateFor(book, 0, { lookId: book.looks[0].id });
+    // The bottom layer is a drawn scene and not an image, which is what "no
+    // artwork" means here — the rest of this test would be measuring a picture.
+    expect(template.layers[0].kind).toBe("art");
+    const png = await renderPrintPng(template, pageFillFor(book, 0, FILL));
+    return raster(png.png, template);
+  };
+
+  it(
+    "paints it the colour the book declares, and another book another colour",
+    { timeout: 120_000 },
+    async () => {
+      const OTHER = "#5A7D8C";
+      const asCommitted = await drawnCover(FIRST_BOOK);
+      const repainted = await drawnCover(recoloured(OTHER));
+
+      // The declared colour is most of what is on the page in its own render
+      // and next to none of what is on the page in the other — in both
+      // directions, so neither render can be the one the renderer hard-coded.
+      const share = (r: typeof asCommitted, colour: string) => shareOf(r, WHOLE, colour, 30);
+      expect(share(asCommitted, FIRST_BOOK.coverColour)).toBeGreaterThan(
+        share(repainted, FIRST_BOOK.coverColour),
+      );
+      expect(share(repainted, OTHER)).toBeGreaterThan(share(asCommitted, OTHER));
+      expect(share(repainted, FIRST_BOOK.coverColour)).toBeLessThan(0.01);
+      expect(share(asCommitted, OTHER)).toBeLessThan(0.01);
+
+      // And the recolouring reaches the page rather than a corner of it. A
+      // renderer that drew nothing would leave the two renders identical and
+      // `changedBox` would be null.
+      const moved = changedBox(asCommitted, repainted);
+      expect(moved).not.toBeNull();
+      expect(moved!.width).toBeGreaterThan(WHOLE.width / 2);
+      expect(moved!.height).toBeGreaterThan(WHOLE.height / 2);
+    },
+  );
+
+  it("is the colour the back and the spine of its own wrap are painted", () => {
+    // One statement, two readers. The wrap composed for a look with no
+    // delivered one paints the back and spine `wrapWash`, and with no look
+    // declaring a `wash` that is the book's cover colour — so the object a
+    // clone would print is one colour all the way round.
+    expect(FIRST_BOOK.looks.every((look) => look.wash === undefined)).toBe(true);
+    expect(wrapWash(FIRST_BOOK, FILL)).toBe(FIRST_BOOK.coverColour);
+    expect(FIRST_BOOK.cover.art.scene?.ground).toBe(FIRST_BOOK.coverColour);
+  });
+});

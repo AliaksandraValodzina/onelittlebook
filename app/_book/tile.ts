@@ -78,7 +78,6 @@ export type LookTile =
 export function lookTile(
   book: BookTemplate,
   lookId: string,
-  coverId: string,
   assets?: AssetAddresses,
   screen?: ScreenAddresses,
 ): LookTile {
@@ -88,25 +87,23 @@ export function lookTile(
     const [width, height] = look.tile.px ?? [0, 0];
     return { kind: "portrait", src: href(look.tile), width, height };
   }
-  return { kind: "page", svg: lookTileSvg(book, lookId, coverId, href) };
+  return { kind: "page", svg: lookTileSvg(book, lookId, href) };
 }
 
 /** The page-drawn tile. Not exported: `lookTile` above is the one way in. */
 function lookTileSvg(
   book: BookTemplate,
   lookId: string,
-  coverId: string,
   href: (ref: AssetRef) => string,
 ): string {
   const index = tileIndexOf(book);
   return renderPageSvg(
-    pageTemplateFor(book, index, { lookId, coverId }),
+    pageTemplateFor(book, index, { lookId }),
     pageFillFor(book, index, {
       schema: 1,
       bookId: book.id,
       bookRev: book.rev,
       lookId,
-      coverId,
       name: "",
       dedication: "",
     }),

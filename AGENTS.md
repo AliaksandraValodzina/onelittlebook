@@ -232,9 +232,20 @@ wrap still refuses with what to fetch, exactly as `lib/shop/shipping.ts` leaves
 is drawn on it**: its panel origin is arithmetic nobody has checked, recorded as
 `HARDCOVER_COVER_WRAP_DERIVED` — a `DerivedWrap` with no `finished` and no
 `safety`, unassignable wherever a template goes
-(`test/no-title-on-an-unmeasured-wrap.ts`). Two things are open and both are the
-captain's: those four numbers, and the fact that a look with one wrap has no
-blush/sage/oat choice left on its cover (`docs/print.md`).
+(`test/no-title-on-an-unmeasured-wrap.ts`). What is open is those four numbers,
+and it is the captain's.
+
+**The cover is one colour and nobody picks it.** `BookTemplate.coverColour` is
+one declared colour with two readers — the drawn placeholder cover's own ground
+and `cover-wrap.ts` § `wrapWash`, the back and spine of a composed wrap — and
+`validateBook` refuses a book whose two statements of it disagree
+(`cover.colourDisagrees`). It was three colourways picked in the preview bar
+until 17 November, when every look had a delivered wrap — one per look, not
+three — and the buttons could no longer change a pixel. `covers`, `CoverChoice`,
+`coverTint`, `SceneSpec.groundFromCover` and `BookFill.coverId` all went with the
+chooser, so **`Chosen` is one axis**: a look. A stored draft carrying a
+`coverId` is read past in silence. `docs/print.md` § The cover is one colourway
+and the choice is gone has the two alternatives that were weighed and refused.
 
 **No check can tell whether the cover's baby is the book's baby.** A
 brown-haired cover was submitted for the ginger look once; measuring hair colour

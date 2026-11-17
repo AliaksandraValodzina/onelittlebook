@@ -515,10 +515,7 @@ async function inkOf(template: PageTemplate, fill: Parameters<typeof renderPrint
 }
 
 describe("the title, drawn from one slot onto two different files", () => {
-  const display = pageTemplateFor(DELIVERED.book, 0, {
-    lookId: FILL.lookId,
-    coverId: FILL.coverId,
-  });
+  const display = pageTemplateFor(DELIVERED.book, 0, { lookId: FILL.lookId });
   const wrap = suppliedCoverWrapTemplate(DELIVERED.book, FILL, "softcover", {
     ...deliveredWrapOf(DELIVERED.book, LOOK, "softcover")!,
   });

@@ -47,7 +47,7 @@ import { FACE_COVERAGE } from "../lib/render/coverage";
 import type { BookTemplate } from "../lib/book/types";
 
 const slot = dedicationSlot(FIRST_BOOK)!;
-const chosen = { lookId: FIRST_BOOK.looks[0].id, coverId: FIRST_BOOK.covers[0].id };
+const chosen = { lookId: FIRST_BOOK.looks[0].id };
 
 /** The problem codes this book reports, which is how every refusal is asserted. */
 const codesOf = (book: BookTemplate) => validateBook(book).map((p) => p.code);

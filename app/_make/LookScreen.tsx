@@ -75,17 +75,15 @@ const step = stepFor("look")!;
 function LookTileImage({
   book,
   lookId,
-  coverId,
   assets,
   screen,
 }: {
   book: BookTemplate;
   lookId: string;
-  coverId: string;
   assets: AssetAddresses;
   screen: ScreenAddresses;
 }) {
-  const tile = lookTile(book, lookId, coverId, assets, screen);
+  const tile = lookTile(book, lookId, assets, screen);
   if (tile.kind === "portrait") {
     return (
       <img
@@ -195,7 +193,6 @@ export default function LookScreen({ closeTo }: { closeTo: string }) {
                       <LookTileImage
                         book={book}
                         lookId={look.id}
-                        coverId={order.coverId}
                         assets={assets}
                         screen={screen}
                       />

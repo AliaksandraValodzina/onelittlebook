@@ -41,7 +41,7 @@ import { changedBox, raster } from "./pixels";
 import type { BookPage, BookTemplate } from "../lib/book/types";
 import type { Box, TextSlotLayer } from "../lib/template/types";
 
-const CHOSEN = { lookId: FIXTURE_BOOK_FILL.lookId, coverId: FIXTURE_BOOK_FILL.coverId };
+const CHOSEN = { lookId: FIXTURE_BOOK_FILL.lookId };
 
 /**
  * The longest name the form will accept, as the worst case.

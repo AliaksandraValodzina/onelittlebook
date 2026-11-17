@@ -96,7 +96,7 @@ export default function BookPage({
 
   const svg = useMemo(() => {
     if (!drawn) return null;
-    const chosen = { lookId: fill.lookId, coverId: fill.coverId };
+    const chosen = { lookId: fill.lookId };
     // One call for both paths. On the look path `ghost` is null and the
     // template is `pageTemplateFor`'s own, character for character.
     const page = photoPath

@@ -49,7 +49,7 @@ import { renderPageSvg } from "../lib/render/svg";
 import { renderPrintSvg } from "../lib/render/raster";
 import { assetUrl } from "../lib/assets/resolve";
 
-const CHOSEN = { lookId: FIXTURE_BOOK_FILL.lookId, coverId: FIXTURE_BOOK_FILL.coverId };
+const CHOSEN = { lookId: FIXTURE_BOOK_FILL.lookId };
 
 /** The ghost's own marks in the output. One string each, so a test is specific. */
 const PEARL = 'id="ghost-pearl"';

@@ -105,7 +105,6 @@ export default async function AdminOrder(props: {
 
   const edition = editionOf(record.editionId);
   const look = lookOf(FIRST_BOOK, record.fill.lookId);
-  const cover = FIRST_BOOK.covers.find((c) => c.id === record.fill.coverId);
   const address = addressLines(record.address);
 
   return (
@@ -127,7 +126,6 @@ export default async function AdminOrder(props: {
       <dl className="mt-2 grid grid-cols-[11rem_1fr] border-t border-current/15 text-sm">
         <Row label="Name on the book">{record.fill.name}</Row>
         <Row label="Look">{`${look.label} (${look.id})`}</Row>
-        <Row label="Cover">{cover ? `${cover.label} (${cover.id})` : record.fill.coverId}</Row>
         <Row label="Dedication">{record.fill.dedication}</Row>
         <Row label="From">{record.fill.from || "—"}</Row>
         <Row label="Edition">
@@ -235,7 +233,7 @@ export default async function AdminOrder(props: {
         {WRAP.pixels.width} × {WRAP.pixels.height} — the size Printify&apos;s own template states
         for this product. Where this look&apos;s wrap has been delivered it is the captain&apos;s
         own file with the title drawn on its front panel; where it has not, the back cover and the
-        spine are a wash of this order&apos;s own colourway and the front is the square the buyer
+        spine are a wash of the look&apos;s own colour and the front is the square the buyer
         approved. The page files above still carry the square cover, which is what the interior
         print area takes.
       </p>

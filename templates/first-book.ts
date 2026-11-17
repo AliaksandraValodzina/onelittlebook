@@ -163,6 +163,16 @@ const SCENES: readonly SceneSpec[] = [
 const INK = "#3B2A20";
 
 /**
+ * **The colour of this book's cover**, read by the drawn placeholder's ground
+ * and by `BookTemplate.coverColour` so the two cannot drift.
+ *
+ * It is the Blush of the three colourways the preview bar used to offer, which
+ * was the default and therefore the cover almost every buyer would have seen.
+ * See the note beside `coverColour` below for why the other two went.
+ */
+const COVER_COLOUR: Colour = "#E8A0A8";
+
+/**
  * The name's limit, in characters, and the number the whole name design turns
  * on.
  *
@@ -933,7 +943,7 @@ const LOOKS: Look[] = GENDERS.flatMap(({ id: gender }, column) =>
 export const FIRST_BOOK: BookTemplate = {
   schema: 1,
   id: "the-book-of-you",
-  rev: "138d9d97",
+  rev: "f193676f",
   /**
    * **"When They Were Small".**
    *
@@ -1072,29 +1082,23 @@ export const FIRST_BOOK: BookTemplate = {
   tilePage: "page-004",
 
   /**
-   * **One cover scene in three colourways**, the captain's settled shape —
-   * not three cover scenes, which would be three more artwork sets.
+   * **One cover in one colourway**, which since 17 November is a declared
+   * colour rather than a question.
    *
-   * The colourway is chosen in the persistent bar during the preview rather
-   * than as a step of its own, which is the other half of the same decision:
-   * see `app/_book/Bar.tsx`.
-   */
-  covers: [
-    { id: "blush", label: "Blush", colour: "#E8A0A8" },
-    { id: "sage", label: "Sage", colour: "#A9C2A0" },
-    { id: "oat", label: "Oat", colour: "#E3CDB8" },
-  ],
-
-  /**
-   * **No `coverTint` here, on purpose.**
+   * It was three — Blush, Sage and Oat, picked in the persistent bar during
+   * the preview. The captain's cover artwork is one wrap per look, so the day
+   * every look had one the choice stopped being able to change a pixel: a
+   * delivered cover is an image and there is no ground under it to recolour.
+   * Three wraps per look is eighty-four files and would still open onto the
+   * same rooms, and tinting the title's cream panel is argued against two
+   * screens below. So the choice went. `BookTemplate.coverColour` carries the
+   * whole note and `docs/print.md` carries the decision.
    *
-   * The cover choice recolours the cover's whole ground, which is
-   * `SceneSpec.groundFromCover` on the page below — a buyer picking "Sage"
-   * wants a sage book, not a sage rectangle on a cream one. `coverTint` is the
-   * mechanism for the *other* state: when the cover is an uploaded image there
-   * is no ground to recolour, and the only way to apply a choice is to fill a
-   * declared shape. `validateBook` accepts either and refuses neither.
+   * `COVER_COLOUR` is read twice — here and by the drawn cover's own `ground`
+   * — because the back of the book and the front of it are one colour by
+   * construction, not by two people typing the same hex.
    */
+  coverColour: COVER_COLOUR,
 
   cover: {
     id: "cover",
@@ -1125,10 +1129,10 @@ export const FIRST_BOOK: BookTemplate = {
      */
     story: "When\n{name}\nTurned One",
     art: artFor({
-      // Replaced by the chosen cover's colour. The only page that does this,
-      // and `validateBook` refuses any interior page that tries.
-      ground: "#E8A0A8",
-      groundFromCover: true,
+      // The book's own declared cover colour, so the drawn placeholder and the
+      // back of a composed wrap cannot disagree. This is the fresh-clone and CI
+      // state: no artwork anywhere, and the cover still renders.
+      ground: COVER_COLOUR,
       floor: "#D9BFA6",
       prop: "#CBAE87",
       babyAt: { x: 0.5, y: 0.84 },

@@ -163,59 +163,48 @@ export function validateBook(book: BookTemplate): Problem[] {
         "the grid's tiles would be identical for every look, under the question which baby",
       );
     } else if (page.id === book.cover.id) {
-      // The cover carries the name and the buyer's cover colour, so a grid of
-      // covers would be a grid of the same baby in three colours.
+      // The cover carries the title and the baby's name, so a grid of covers
+      // would be a grid of the same name in fourteen hands.
       say("tile.pageIsCover", book.tilePage, "the tiles would show the cover, not the book");
     }
   }
 
-  // --- the covers --------------------------------------------------------
-  if (book.covers.length === 0) say("covers.empty", book.id, "a book needs at least one cover");
-  const coverIds = new Set<string>();
-  for (const cover of book.covers) {
-    if (coverIds.has(cover.id)) say("cover.duplicateId", cover.id, "two covers share an id");
-    coverIds.add(cover.id);
-  }
-  const tintId = book.coverTint?.layerId;
+  // --- the cover's colour --------------------------------------------------
   /**
-   * Two mechanisms, one for each state a cover page can be in: a drawn cover
-   * recolours its own ground, and an uploaded cover can only have a declared
-   * shape filled over it. Either satisfies this; neither does not.
+   * **Five checks went on 17 November and one arrived.**
    *
-   * **The scene is read whether it is the artwork or the fallback**, which it
-   * was not until cover artwork existed. A partial import leaves the page's own
-   * scene on as the fallback (`lib/book/release-art.ts`) and the page's kind
-   * becomes `asset`, so reading the kind alone refused **every** book the
-   * moment the first cover landed — a book whose colourway still recolours the
-   * cover of every look nobody has delivered artwork for.
+   * The five — an empty cover list, duplicate cover ids, a `coverTint` layer
+   * that is missing or is not a shape, and `cover.choiceDoesNothing` — all
+   * asked whether a colourway the buyer *picked* actually reached a pixel.
+   * There is no choice now: `BookTemplate.coverColour` is one declared colour
+   * of a type that cannot be a list, so four of the five are unrepresentable
+   * rather than reported, which is this codebase's preferred form of the same
+   * guarantee (`lib/product.ts` and `lib/book/editions.ts` make it about
+   * money).
    *
-   * **The honest limit, written here because this is where it would be
-   * noticed:** a look *with* a delivered cover wrap gets the same wrap in all
-   * three colourways, because the captain delivers one wrap per look and not
-   * one per look per colourway. The choice is still wired and still does
-   * something for every undelivered look, and whether a delivered cover should
-   * take the colourway — three wraps per look, a declared `coverTint` shape, or
-   * the choice not being offered once artwork lands — is the captain's, and
-   * `templates/first-book.ts` § `coverTint` is where the three options are
-   * written down. It is not represented as a problem because none of the three
-   * is what this check could pick.
+   * **The one that arrived is the price of the colour being stated once and
+   * read twice.** `coverColour` paints the back and the spine of a composed
+   * wrap (`./cover-wrap.ts` § `wrapWash`); the drawn placeholder cover paints
+   * its own `SceneSpec.ground`. They are one constant in
+   * `templates/first-book.ts` and so cannot disagree there — but a book that
+   * let them is a printed object whose back is a different colour from its
+   * front, which is not a thing a reviewer catches in a thumbnail. So it is
+   * asked here.
+   *
+   * Asked of the drawn scene **whether it is the artwork or a partial import's
+   * fallback**, for `artProblems`' reason: the fallback is what a look with no
+   * cover artwork is drawn from and the mistake would be exactly as visible. A
+   * cover with no scene left at all — every look delivered — declares no ground
+   * to disagree with, and `coverColour` is then the only statement there is.
    */
-  const groundTakesCover = book.cover.art.scene?.groundFromCover === true;
-  if (book.covers.length > 1 && !tintId && !groundTakesCover) {
+  const coverGround = book.cover.art.scene?.ground;
+  if (coverGround !== undefined && coverGround !== book.coverColour) {
     say(
-      "cover.choiceDoesNothing",
+      "cover.colourDisagrees",
       book.id,
-      "more than one cover is offered, no coverTint layer is declared and the cover's ground " +
-        "does not take the choice, so picking one changes nothing the buyer can see",
+      `the drawn cover's ground is ${coverGround} and the book says its cover is ` +
+        `${book.coverColour}, so the back of the object would not match the front`,
     );
-  }
-  if (tintId) {
-    const target = (book.cover.layers ?? []).find((l) => l.id === tintId);
-    if (!target) {
-      say("cover.tintLayerMissing", tintId, "coverTint names a layer the cover does not have");
-    } else if (target.kind !== "shape") {
-      say("cover.tintLayerNotShape", tintId, `coverTint names a ${target.kind} layer; only a shape takes a fill`);
-    }
   }
 
   // --- the pages ---------------------------------------------------------
@@ -298,13 +287,10 @@ export function validateBook(book: BookTemplate): Problem[] {
     problems.push(...artProblems(book, page, where));
 
     // --- the page, as the page template it derives into -----------------
-    // Run against the first look and cover: what differs between looks is the
-    // bottom layer's address, and nothing `validateTemplate` asks about.
+    // Run against the first look: what differs between looks is the bottom
+    // layer's address, and nothing `validateTemplate` asks about.
     try {
-      const derived = pageTemplateFor(book, index, {
-        lookId: book.looks[0]?.id ?? "",
-        coverId: book.covers[0]?.id ?? "",
-      });
+      const derived = pageTemplateFor(book, index, { lookId: book.looks[0]?.id ?? "" });
       problems.push(...validateTemplate(derived));
     } catch (error) {
       if (!(error instanceof BookArtMissing)) throw error;
@@ -624,16 +610,6 @@ function artProblems(book: BookTemplate, page: BookPage, where: string): Problem
     }
   }
 
-  // Asked of a drawn page **and** of a partial import's fallback scene, because
-  // the fallback is what a look with no artwork is drawn from and the mistake
-  // would be exactly as visible.
-  if (page.art.scene?.groundFromCover && page.id !== book.cover.id) {
-    say(
-      "art.interiorTintedByCover",
-      "an interior page takes its ground from the cover choice, so picking a cover would " +
-        "recolour the middle of the book",
-    );
-  }
   return out;
 }
 
@@ -663,9 +639,6 @@ export function validateBookFill(book: BookTemplate, fill: BookFill): Problem[] 
   if (!book.looks.some((l) => l.id === fill.lookId)) {
     say("fill.unknownLook", fill.lookId, "the book does not offer that look");
   }
-  if (!book.covers.some((c) => c.id === fill.coverId)) {
-    say("fill.unknownCover", fill.coverId, "the book does not offer that cover");
-  }
   if (fill.photo?.asset?.px) {
     // Refused rather than printed soft. `./photo.ts` carries the argument and
     // the derived floor; this is the gate in front of the money.
@@ -683,7 +656,7 @@ export function validateBookFill(book: BookTemplate, fill: BookFill): Problem[] 
   for (const [index, page] of sequence.entries()) {
     const derived = (() => {
       try {
-        return pageTemplateFor(book, index, { lookId: fill.lookId, coverId: fill.coverId });
+        return pageTemplateFor(book, index, { lookId: fill.lookId });
       } catch {
         return null;
       }

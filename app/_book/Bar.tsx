@@ -14,13 +14,14 @@
  * show as done when they are done and never stop `Continue`. A nice-to-have
  * that blocks the button is a reason to leave.
  *
- * **The cover colourway lives here**, which is the captain's decision and the
- * one place the "extras live on the page they affect" rule is deliberately not
- * applied. Two reasons, and the second is the real one: a cover is a property
- * of the *object* rather than of a page, and the cover spread is the one spread
- * where a panel below the page would sit under the thing being chosen while the
- * buyer is trying to compare three of them. In the bar it is visible from
- * anywhere in the book, which is where they actually make up their mind.
+ * **The cover colourway used to live here** and was removed on 17 November.
+ * Blush, Sage and Oat were a real choice while the cover was a drawn ground;
+ * once every look had a delivered cover wrap — one per look, not three — the
+ * buttons could not change a pixel. A control that cannot visibly change
+ * anything is worse than no control: the buyer presses it, nothing happens, and
+ * they start wondering what else on the page is pretend. So the bar is the
+ * checklist and the way on, and nothing else. `BookTemplate.coverColour` is
+ * where the colour went.
  *
  * **It says what is missing rather than failing silently.** `BuyButton` on the
  * single page already records why: a disabled button with no explanation is the
@@ -41,7 +42,7 @@ import { stepFor } from "../../lib/shop/steps";
 import { useBook } from "./BookProvider";
 
 export default function Bar() {
-  const { book, market, order, setCover, done, ready, persistence, flush } = useBook();
+  const { book, market, order, done, ready, persistence, flush } = useBook();
   const missing = outstanding(order, book);
   const edition = editionOf(order.editionId);
   const basket = stepFor("basket")!;
@@ -71,31 +72,6 @@ export default function Bar() {
           </li>
         ))}
       </ul>
-
-      {/* ---- the cover colourway, chosen from anywhere in the book ---- */}
-      <fieldset className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-        <legend className="sr-only">The cover colour</legend>
-        <span className="text-sm opacity-70">Cover</span>
-        {book.covers.map((cover) => (
-          <button
-            key={cover.id}
-            type="button"
-            onClick={() => setCover(cover.id)}
-            aria-pressed={order.coverId === cover.id}
-            data-testid={`cover-${cover.id}`}
-            className={`flex items-center gap-1.5 rounded-full border-2 py-1 pl-1 pr-3 text-sm font-medium transition ${
-              order.coverId === cover.id ? "border-[var(--rose)]" : "border-current/20"
-            }`}
-          >
-            <span
-              aria-hidden="true"
-              className="h-5 w-5 rounded-full border border-black/10"
-              style={{ background: cover.colour }}
-            />
-            {cover.label}
-          </button>
-        ))}
-      </fieldset>
 
       {/*
         **The way on is a link when it goes somewhere and a dead button when it

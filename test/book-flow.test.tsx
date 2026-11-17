@@ -459,15 +459,27 @@ describe("the persistent bar", () => {
     expect(preview).toContain("Finish the book first");
   });
 
-  it("carries the cover colourways, because a cover is a property of the object", () => {
-    for (const cover of book.covers) {
-      expect(testIds(preview)).toContain(`cover-${cover.id}`);
-      expect(preview).toContain(cover.colour);
-    }
-    // And the colourways are in the bar rather than in a panel under the cover
-    // spread, which is the captain's decision.
+  it("offers no cover colourway, because there is nothing a press could do with one", () => {
+    /**
+     * The bar carried Blush, Sage and Oat until 17 November. Every look has a
+     * delivered cover wrap now — one per look — so the buttons could not change
+     * a pixel, and a control that cannot visibly change anything is worse than
+     * no control.
+     *
+     * Asserted as an **absence**, for `test/shop-no-theatre.test.tsx`'s reason:
+     * the way a removed control comes back is somebody re-adding it, and the
+     * only thing that catches that is a test that reads the markup. Paired with
+     * the asks above, which is the render proving the bar is still drawn at all
+     * — without that this would pass against a blank page.
+     */
     const ids = testIds(preview);
-    expect(ids.indexOf(`cover-${book.covers[0].id}`)).toBeGreaterThan(ids.indexOf("ask-name"));
+    expect(ids).toContain("ask-name");
+    expect(ids.some((id) => id.startsWith("cover-"))).toBe(false);
+    expect(preview).not.toContain("Blush");
+    expect(preview).not.toContain("Sage");
+    expect(preview).not.toContain("Oat");
+    // Nor is there an ask to tick for a choice nobody is offered.
+    expect(ids).not.toContain("ask-cover");
   });
 });
 
