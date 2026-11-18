@@ -136,14 +136,37 @@ puts part of what the customer framed outside the window.
 
 ## Text can only be what the font can write
 
-`resvg` runs with `loadSystemFonts: false`, so a codepoint the two vendored
-TTFs lack prints as nothing while the browser substitutes a face and shows it
-correctly. Neither covers Cyrillic or emoji — measured, not assumed.
-`lib/render/coverage.ts` declares each face's codepoints and
-`test/coverage.test.ts` regenerates them from the files, printing the
+`resvg` runs with `loadSystemFonts: false`, so a codepoint the vendored TTFs
+lack prints as nothing while the browser substitutes a face and shows it
+correctly. Neither face the book **sets type in** covers Cyrillic or emoji —
+measured, not assumed. `lib/render/coverage.ts` declares each face's codepoints
+and `test/coverage.test.ts` regenerates them from the files, printing the
 replacement string when they disagree. Everything a customer types goes through
 `lib/editor/text.ts`, whose one contract is that no input produces a fill
-`validateFill` would refuse.
+`validateFill` would refuse. **`Face.family` is also measured** — a wrong family
+renders perfectly in a browser and prints blank, so `lib/render/family.ts`
+reads it back out of each file's `name` table and `test/fonts.test.ts` compares.
+
+**`FACES` holds nine faces nothing sets type in, and `Face.candidate` is why.**
+The captain is choosing a new cover title by looking at it, so the lineup has
+to be loaded on exactly the terms the real faces are — the picture they choose
+from must be the picture the press would make. The cover is **still Indie
+Flower** (`cover.layers` § `cover-title`, `font: "hand"` — *not* the typewriter,
+which is the verses) and `test/fonts.test.ts` fails if a slot moves to a
+candidate. `npm run cover-faces` renders the real cover in every face over
+every delivered look and writes to gitignored `.artwork/cover-faces/`;
+`docs/cover-face.md` is the decision, the measurements and the recommendation,
+and the losers come out of `FACES` and `public/fonts/` the day it is made.
+
+**A character count is not a width, and the cover's fit was never measured
+until now.** `lib/book/title-fit.ts` renders the cover twice — once with the
+title, once with the slot gone — and reads the ink's box out of the difference,
+which is `test/book-verses.test.ts`'s method. What it found: only Indie Flower
+holds the *guaranteed* worst case (fourteen `M`s) at 44 pt, Special Elite
+included, because the box was drawn around Indie Flower's narrow capitals.
+Every face holds every **realistic** fourteen-character name. So changing the
+cover's face is also choosing a type size, and `test/cover-face.test.ts` is
+where that cost arrives.
 
 **The name is checked against every face it lands in, which is not the list of
 name slots.** `lib/book/name.ts` § `facesTheNameIsSetIn` adds the face of any
