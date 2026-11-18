@@ -8,17 +8,24 @@
  *
  * `lib/render/raster.ts` loads `resvg` with `loadSystemFonts: false` — on
  * purpose, because a machine's own fonts are a difference between machines — and
- * hands it the two TTFs in `public/fonts/`. So the rasteriser has **no
- * fallback**: a codepoint those two files do not carry prints as nothing at all.
- * A browser does the opposite. Give it `font-family: "Indie Flower"` and a
- * Cyrillic letter and it quietly substitutes whatever face the device has, and
- * the word looks *fine on screen*.
+ * hands it every TTF in `public/fonts/`. So the rasteriser has **no fallback**:
+ * a codepoint none of those files carries prints as nothing at all. A browser
+ * does the opposite. Give it `font-family: "Indie Flower"` and a Cyrillic letter
+ * and it quietly substitutes whatever face the device has, and the word looks
+ * *fine on screen*.
  *
  * That is the exact failure this product cannot afford: the customer approves a
- * page they can read and a book arrives with a hole in the word. Neither
- * vendored face covers Cyrillic or any emoji — measured, not assumed; see
- * `test/coverage.test.ts` — so the editor has to refuse those characters while
- * the customer is still looking at the page, and say why.
+ * page they can read and a book arrives with a hole in the word. Neither face
+ * the product **sets type in** covers Cyrillic or any emoji — measured, not
+ * assumed; see `test/coverage.test.ts` — so the editor has to refuse those
+ * characters while the customer is still looking at the page, and say why.
+ *
+ * **What a slot names is what gets asked**, which is why the candidate faces
+ * below do not widen or narrow anything on their own: `covers` is per face, and
+ * `lib/book/name.ts` asks the faces the name actually lands in. Comfortaa
+ * carries Cyrillic and Fredoka carries Hebrew, and both are refused today
+ * because no slot is set in either — the day a slot is, that slot's coverage is
+ * the answer and the editor's refusal moves with it.
  *
  * It is declared as data rather than read from the TTFs because the editor runs
  * in a browser and must not fetch and parse a megabyte of font to find out
@@ -51,6 +58,87 @@ export const FACE_COVERAGE: Record<string, string> = {
     "20-7e a0-17e 1fc-1ff 237 2c6-2c7 2d8-2dd 312 315 326 3bc 1e80-1e85 1ef2-1ef3 " +
     "2013-2014 2018-201a 201c-201e 2020-2022 2026 2030 2039-203a 2044 20ac 2122 " +
     "2202 220f 2212 2248 2260 fb01-fb02",
+
+  // -------------------------------------------------------------------------
+  // The cover title's candidates
+  // -------------------------------------------------------------------------
+  //
+  // Declared on the same terms as the two above, and for a reason that is the
+  // point of the whole comparison: **the face the title is set in decides which
+  // names the shop may accept.** `lib/book/name.ts` § `facesTheNameIsSetIn`
+  // asks every face the name lands in and `checkName` refuses a character any
+  // of them cannot write, so a candidate with a narrower `cmap` than Indie
+  // Flower's is a candidate that *refuses buyers*. Three of the nine write
+  // Vietnamese and six do not; `docs/cover-face.md` is the table and
+  // `npm run cover-faces` re-measures it.
+  //
+  // Several of them carry scripts this product will never set — Devanagari in
+  // Baloo 2, Hebrew in Fredoka, Cyrillic and Greek in Comfortaa. The runs say
+  // so because they are generated from the files and this declaration is not
+  // allowed to be tidier than the bytes.
+
+  baloo:
+    "d 20-7f a0-17e 18f 192 1a0-1a1 1af-1b0 1c4-1dc 1e6-1e7 1ea-1eb 1fa-21b " +
+    "22a-22d 230-233 237 251 259 261 2bb-2bc 2be-2bf 2c6-2cc 2d8-2dd 300-304 " +
+    "306-30c 30f 311-312 31b 323-324 326-328 32e 331 3c0 900-97f 1e08-1e09 " +
+    "1e0c-1e0f 1e14-1e17 1e1c-1e1d 1e20-1e21 1e24-1e25 1e2a-1e2b 1e2e-1e2f " +
+    "1e36-1e3b 1e42-1e49 1e4c-1e53 1e5a-1e69 1e6c-1e6f 1e78-1e7b 1e80-1e85 " +
+    "1e8e-1e8f 1e92-1e93 1e97 1e9e 1ea0-1ef9 2007-200d 2010 2012-2015 2018-201a " +
+    "201c-201e 2020-2022 2026 2030 2032-2033 2039-203a 2044 2070 2074-2079 " +
+    "207d-2089 208d-208e 20a1 20a3-20a4 20a6-20a7 20a9-20ae 20b1-20b2 20b5 " +
+    "20b9-20ba 20bc-20bd 2113 2116-2117 2120 2122 2126 212e 2153-2154 215b-215e " +
+    "2190-2193 2202 2205-2206 220f 2211-2212 2215 2219-221a 221e 222b 2248 2260 " +
+    "2264-2265 25a0 25b2-25b3 25b6-25b7 25bc-25bd 25c0-25c1 25c6 25ca 25cc a8fb " +
+    "fb00-fb04",
+  sniglet:
+    "20-7e a0-ff 131 141-142 152-153 160-161 178 17d-17e 192 237 2c6-2c7 2c9 " +
+    "2d8-2dd 3bc 2013-2014 2018-201a 201c-201e 2020-2022 2026 2030 2039-203a 2044 " +
+    "2074 2081-2084 20ac 2122 2212 2215 2219 fb01-fb02",
+  grandstander:
+    "0 d 20-7e a0-131 134-148 14a-17e 18f 192 1a0-1a1 1af-1b0 1c4-1dc 1e6-1e7 " +
+    "1ea-1eb 1fa-21b 22a-22d 230-233 237 259 2bc 2c6-2c7 2c9 2d8-2dd 300-304 " +
+    "306-30c 30f 311-312 31b 323-324 326-328 32e 331 335-338 1e08-1e09 1e0c-1e0f " +
+    "1e14-1e17 1e1c-1e1d 1e20-1e21 1e24-1e25 1e2a-1e2b 1e2e-1e2f 1e36-1e37 " +
+    "1e3a-1e3b 1e42-1e49 1e4c-1e53 1e5a-1e5b 1e5e-1e69 1e6c-1e6f 1e78-1e7b " +
+    "1e80-1e85 1e8e-1e8f 1e92-1e93 1e97 1e9e 1ea0-1ef9 2000-2002 2009-200a " +
+    "2013-2014 2018-201a 201c-201e 2020-2022 2026 202f-2030 2039-203a 2044 2070 " +
+    "2074-2079 20a1 20a3-20a4 20a6-20a7 20a9 20ab-20ad 20b1-20b2 20b5 20b9-20ba " +
+    "20bc-20bd 2116 2122 215b-215e 2205 2212 2215 2219 2248 2260 2264-2265 25ca " +
+    "fb01-fb02",
+  fredoka:
+    "20-7e a0-ac ae-ff 131 141-142 152-153 160-161 178 17d-17e 192 2c6-2c7 " +
+    "2d8-2dd 300-304 306-308 30a-30c 327-328 5b0-5bc 5be-5bf 5c1-5c2 5c7 5d0-5ea " +
+    "5f3-5f4 2013-2014 2018-201a 201c-201e 2020-2022 2026 2030 2039-203a 2044 " +
+    "20aa 20ac 2122 2212 fb01-fb02 fb2a-fb36 fb38-fb3c fb3e fb40-fb41 fb43-fb44 " +
+    "fb46-fb4b",
+  bubblegum:
+    "20-7e a0-ac ae-ff 131 141-142 152-153 160-161 178 17d-17e 2c6-2c7 2d8-2dd " +
+    "3c0 2013-2014 2018-201a 201c-201e 2020-2022 2026 2030 2039-203a 2044 2074 " +
+    "20ac 2122 2212 2260 2264-2265 f8ff fb01-fb02",
+  chewy:
+    "20-7e a0-ff 131 141-142 152-153 160-161 178 17d-17e 2c6-2c7 2d8-2dd " +
+    "2013-2014 2018-201a 201c-201e 2022 2026 2030 2039-203a 2044 20ac 2122 2212 " +
+    "fb01-fb02",
+  comfortaa:
+    "0 d 20-7e a0-148 14a-17f 18f 192 1a0-1a1 1af-1b0 1ce 1d4 1e6-1e7 1ea-1eb " +
+    "1fa-21b 22a-22d 230-233 237 259 2bb-2bc 2c6-2c7 2c9 2d8-2dd 300-304 306-30c " +
+    "30f 311-312 31b 323-324 326-328 32e 331 335-336 344 374-375 37e 384-38a 38c " +
+    "38e-3a1 3a3-3cf 3d7 400-45f 462-463 46a-46b 472-475 490-49d 4a0-4a5 4aa-4ab " +
+    "4ae-4b1 4b6-4bb 4c0-4c2 4cb-4cc 4cf-4d9 4dc-4df 4e2-4e9 4ee-4f9 51a-51d " +
+    "1e80-1e85 1e9e 1ea0-1ef9 2010 2013-2015 2017-201e 2020-2022 2026 2030 " +
+    "2032-2033 2039-203a 203c 203e 2044 2052 2074 20a1 20a3-20a4 20a6-20a7 20a9 " +
+    "20ab-20ae 20b1-20b2 20b4-20b5 20b8-20ba 20bc-20bd 2105 2113 2116 2122 2126 " +
+    "212e 215b-215e 2190-2195 21a8 2202 2206 220f 2211-2212 2215 2219-221a " +
+    "221e-221f 2229 222b 2248 2260-2261 2264-2265 27e8-27e9 fb01-fb02",
+  breeserif:
+    "0 d 20-7e a0-a3 a5-17f 192 1fa-1ff 218-21b 237 2bc 2c6-2c7 2c9 2d8-2dd 394 " +
+    "3a9 3bc 3c0 1e80-1e85 1ef2-1ef3 2013-2014 2018-201a 201c-201e 2020-2022 2026 " +
+    "2030 2039-203a 2044 2074 20ac 2122 2126 2202 2206 220f 2211-2212 2215 " +
+    "2219-221a 221e 222b 2248 2260 2264-2265 25ca fb00-fb04",
+  gochi:
+    "20-7e a0-ac ae-ff 127-129 131 133-135 137-138 140-144 152-154 156-159 " +
+    "160-161 178 17d-17e 2c6-2c7 2d8-2da 2dc 326 2013-2014 2018-201a 201c-201e " +
+    "2022 2026 2039-203a 2044 2074 20ac fb01-fb02",
 };
 
 export function parseRuns(spec: string): Array<[number, number]> {

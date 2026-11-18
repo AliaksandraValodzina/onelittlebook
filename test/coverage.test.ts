@@ -12,6 +12,14 @@
  * really do carry Latin and really do not carry Cyrillic or emoji — because a
  * range comparison that happened to pass against two empty sets would prove
  * nothing at all.
+ *
+ * **The Cyrillic and emoji half is asked of the faces the product sets type
+ * in, and not of the candidates**, because that is the scope of the claim it is
+ * making. `covers` answers per face and `lib/book/name.ts` asks the faces the
+ * name actually lands in, so a vendored face no slot names cannot widen a
+ * refusal — and two of the candidates do carry scripts the product will never
+ * set. What every face, candidate or not, still has to do is write the words
+ * this shop's own pages use; that is asserted of all of them below.
  */
 
 import { readFile } from "node:fs/promises";
@@ -19,7 +27,10 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { codepointsOf, runsOf } from "../lib/render/cmap";
 import { FACE_COVERAGE, covers, parseRuns, unsettable } from "../lib/render/coverage";
-import { FACES } from "../lib/render/fonts";
+import { FACES, isCandidate } from "../lib/render/fonts";
+
+/** The faces a template sets type in — the scope of the editor's refusal. */
+const SET_IN = Object.keys(FACES).filter((key) => !isCandidate(key));
 
 const asSpec = (runs: Array<[number, number]>) =>
   runs.map(([a, b]) => (a === b ? a.toString(16) : `${a.toString(16)}-${b.toString(16)}`)).join(" ");
@@ -47,7 +58,10 @@ describe("the declared coverage", () => {
       const cps = await measured(key);
       // The comparison above would pass if the parser returned nothing and the
       // declaration were blank. It must not be possible for that to be green.
-      expect(cps.size).toBeGreaterThan(300);
+      // A floor and not a measurement: the narrowest face here is a Latin-1
+      // display face of about 230 codepoints, and what each face actually
+      // covers is asserted below rather than guessed at from a count.
+      expect(cps.size).toBeGreaterThan(200);
       expect(parseRuns(FACE_COVERAGE[key]).length).toBeGreaterThan(10);
     });
   }
@@ -63,20 +77,37 @@ describe("what the faces on this page can and cannot write", () => {
       expect(unsettable(key, "FOREVER")).toEqual([]);
     });
 
-    it(`${key} cannot write Cyrillic, and the editor is told so`, () => {
-      // Measured, not assumed. Both vendored faces are Latin-only, which is
-      // why a Cyrillic word would look right on screen and print as a gap.
-      expect(unsettable(key, "моя")).toEqual(["м", "о", "я"]);
-      expect(covers(key, "я".codePointAt(0)!)).toBe(false);
-    });
-
     it(`${key} cannot write an emoji, and reports it as one character`, () => {
       // An astral codepoint must come back as itself. Reporting two unpaired
-      // surrogates to a customer is worse than reporting nothing.
+      // surrogates to a customer is worse than reporting nothing. True of
+      // every face here, candidates included — no display face has emoji.
       expect(unsettable(key, "😍")).toEqual(["😍"]);
       expect(unsettable(key, "❤")).toEqual(["❤"]);
     });
   }
+
+  for (const key of SET_IN) {
+    it(`${key} cannot write Cyrillic, and the editor is told so`, () => {
+      // Measured, not assumed. Both faces this product sets type in are
+      // Latin-only, which is why a Cyrillic word would look right on screen
+      // and print as a gap.
+      expect(unsettable(key, "моя")).toEqual(["м", "о", "я"]);
+      expect(covers(key, "я".codePointAt(0)!)).toBe(false);
+    });
+  }
+
+  it("has candidates whose coverage genuinely differs, which is the point of measuring", () => {
+    // The paired control for the loop above: if every candidate happened to be
+    // Latin-only, scoping the Cyrillic claim to `SET_IN` would be a
+    // distinction with nothing behind it. Comfortaa carries Cyrillic and
+    // Bubblegum Sans does not, and that is read out of the declaration rather
+    // than asserted about a name.
+    const cyrillic = "я".codePointAt(0)!;
+    const candidates = Object.keys(FACES).filter(isCandidate);
+    expect(candidates.length).toBeGreaterThan(0);
+    expect(candidates.filter((k) => covers(k, cyrillic)).length).toBeGreaterThan(0);
+    expect(candidates.filter((k) => !covers(k, cyrillic)).length).toBeGreaterThan(0);
+  });
 
   it("asks the face the slot actually names", async () => {
     // The two faces are not the same set, so "which face" is a question with
@@ -115,7 +146,10 @@ describe("what the faces on this page can and cannot write", () => {
       );
     }
     expect(unsettable("no-such-face", "моя")).toEqual(unsettable(first, "моя"));
-    // And it is not a blanket yes: nothing in the registry writes Cyrillic.
+    // And it is not a blanket yes. The first registered face is one the
+    // product sets type in, which is what makes the fallback safe: it lands on
+    // a Latin-only face and not on a candidate that happens to carry more.
+    expect(isCandidate(first)).toBe(false);
     expect(covers("no-such-face", "я".codePointAt(0)!)).toBe(false);
   });
 });
