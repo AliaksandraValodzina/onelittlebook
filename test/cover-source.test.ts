@@ -494,13 +494,11 @@ function atScale(template: PageTemplate): PageTemplate {
   };
 }
 
-/** The template with the cover's title and its panel taken off. */
+/** The template with the cover's title taken off. */
 function withoutTheTitle(template: PageTemplate): PageTemplate {
   return {
     ...template,
-    layers: template.layers.filter(
-      (l) => !("slot" in l && l.slot === SLOT.story) && l.id !== "cover-panel",
-    ),
+    layers: template.layers.filter((l) => !("slot" in l && l.slot === SLOT.story)),
   };
 }
 

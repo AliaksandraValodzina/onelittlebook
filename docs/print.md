@@ -319,7 +319,9 @@ Three ways out were weighed. **Three wraps per look** is 14 × 3 × 2 = 84 files
 and the interior pages do not change colour either, so a blush cover would open
 onto the same rooms. **Tinting a declared shape** — `coverTint`, which existed
 and was never used — had only one shape of the right size to fill, the title's
-cream panel, which `templates/first-book.ts` argues specifically against.
+cream panel, which `templates/first-book.ts` argued specifically against. (That
+panel has since gone altogether, on 19 November — § `TITLE_CORNER` — so the
+option is not merely refused now but unbuildable: there is no shape left.)
 **Removing the choice** is the one taken.
 
 What is left is `BookTemplate.coverColour`: one declared colour, read by the

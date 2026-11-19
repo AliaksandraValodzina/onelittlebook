@@ -162,11 +162,25 @@ and the losers come out of `FACES` and `public/fonts/` the day it is made.
 until now.** `lib/book/title-fit.ts` renders the cover twice — once with the
 title, once with the slot gone — and reads the ink's box out of the difference,
 which is `test/book-verses.test.ts`'s method. What it found: only Indie Flower
-holds the *guaranteed* worst case (fourteen `M`s) at 44 pt, Special Elite
-included, because the box was drawn around Indie Flower's narrow capitals.
-Every face holds every **realistic** fourteen-character name. So changing the
-cover's face is also choosing a type size, and `test/cover-face.test.ts` is
-where that cost arrives.
+holds the *guaranteed* worst case (fourteen `M`s), Special Elite included,
+because the box has twice been sized to Indie Flower's narrow capitals. Every
+face holds every **realistic** fourteen-character name. So changing the cover's
+face is also choosing a type size, and `test/cover-face.test.ts` is where that
+cost arrives.
+
+**The title is in the captain's corner and there is no panel under it.** It was
+three lines of 44 pt centred on a cream panel until 19 November, when the
+captain marked a rectangle in the upper right. `templates/first-book.ts`
+§ `TITLE_CORNER` is the whole decision and every number in it is measured: the
+mark's own edges, the 343 pt corridor the corner actually has (the child's head
+closes it at x 233, `canvas.safe` at 576), and why **38 pt** is the only answer
+— more lines move nothing, because the widest line is always the unbreakable
+name. **The removed panel was the guarantee of a known ground under the words
+and nothing replaces it**: the type sits on illustration, the corner was quiet
+on all three delivered covers (7.09:1 at its worst, so the ink did not change)
+and **eleven of the fourteen looks have no cover artwork, so their corner is
+unmeasured**. `docs/cover-face.md` § The corner carries the title is the record
+and names the per-cover check — a human, looking at `npm run cover-faces`.
 
 **The name is checked against every face it lands in, which is not the list of
 name slots.** `lib/book/name.ts` § `facesTheNameIsSetIn` adds the face of any
@@ -189,7 +203,10 @@ title. `validateBook` asks whether the name reaches the book at all
 (`book.nameGoesNowhere`) rather than whether a slot exists. **What holds
 fourteen is the cover title's `maxCharsPerLine` of sixteen** — two characters of
 headroom, measured by `test/book-text.test.ts` rather than asserted, and if that
-goes to zero the cover is the thing to re-size.
+goes to zero the cover is the thing to re-size. **The width's own headroom is
+already zero**: the corner's narrower box holds exactly fourteen `M`s and not a
+fifteenth, so the count is the only margin left and `test/cover-face.test.ts`
+reads it back out of the pixels.
 
 ## Facts the repository does not have
 
@@ -250,8 +267,9 @@ scaled** — one type size, one frame, one slot, measured on both renders by
 `test/cover-source.test.ts`. A look with no delivered wrap still gets the
 composed wrap (`coverWrapTemplate`): square on the right, `Look.wash` on the
 left, bare spine. `validateBook` therefore measures the cover against a **floor**
-— the panel it is printed on — where every interior page is still the book's
-exact declaration.
+— the printed panel it is cut from — where every interior page is still the
+book's exact declaration. (That panel is Printify's front panel and not the
+title's old cream one, which is gone.)
 
 **The hardcover's wrap is in hand and its template is not, and that is a type.**
 `COVER_PRODUCTS` keeps the `MeasuredTemplate` on one arm only, so a hardcover

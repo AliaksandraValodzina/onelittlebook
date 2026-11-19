@@ -192,6 +192,85 @@ const COVER_COLOUR: Colour = "#E8A0A8";
  */
 const NAME_CHARS = 14;
 
+/**
+ * **Where the cover's title sits, and the measurement that sized it.**
+ *
+ * Until 19 November the title was three lines of 44 pt centred across the
+ * middle of the cover, on an opaque cream panel with a white keyline and a
+ * drop shadow. The captain marked a rectangle in the **upper right** of the
+ * girl-01 cover and asked for three things: the panel gone, the title in that
+ * corner, and the ink changed if it needed changing.
+ *
+ * **The mark, measured off their file rather than read off the brief.** The
+ * red rectangle in `captain-marked-corner.png` is `#EA4025`, 10 px of stroke,
+ * on a 533 px render of the 612 pt page. Its outer edge is **x 278 → 549,
+ * y 61 → 257**; its centre is **x 413**. Those are the four numbers every
+ * other number here is derived from, and the only ones taken from the drawing.
+ *
+ * **The title could not simply move, and that is arithmetic.** The frame it
+ * left was 402 pt across. The guaranteed worst case — fourteen `M`s, the
+ * widest name `NAME_CHARS` admits — sets at **369 pt** in 44 pt Indie Flower,
+ * measured out of the pixels by `lib/book/title-fit.ts`. The captain's
+ * rectangle is **271 pt**. Three ways out were weighed:
+ *
+ *  - **More lines.** Worth nothing: the widest line is the name, a name
+ *    cannot be broken, and *"Turned One"* sets at 208 pt. Splitting it moves
+ *    no constraint.
+ *  - **A wider box.** The corner is open sky on every delivered cover, so the
+ *    box can grow leftwards — but not far enough. Column by column, across
+ *    the captain's whole vertical band, the sky clears 4.5:1 against this
+ *    book's `INK` only from **x 233** rightwards; left of that is the child's
+ *    head. With `canvas.safe` closing the other side at 576, the widest
+ *    corridor the corner actually has is **343 pt**, and 44 pt needs 369. So
+ *    widening alone cannot hold the guarantee at any position.
+ *  - **A smaller size**, which is therefore the only one left.
+ *
+ * **38 pt, and the box is the band's centre rather than the drawn width.** At
+ * 38 pt the worst case sets at 318.6 pt. Centred on the captain's own
+ * centre — x 413 — a 324 pt box runs 251 → 575: inside `safeBox` by a point,
+ * and its ink stops **20 pt clear** of the measured sky boundary at 233. Every
+ * realistic fourteen-character name is far narrower than the guarantee
+ * (*"Wilhelmina-May"* 237 pt, *"Mohammed-Amir"* 262 pt) and so sets **inside
+ * the rectangle the captain drew**; only a name of fourteen `M`s reaches past
+ * it, and it reaches onto sky that has been measured, not assumed.
+ *
+ * 40 pt was tried and refused by the build rather than by taste: it needs
+ * 335 pt, and 335 pt centred on x 413 ends at 581, which `validateBook`
+ * returns as `slot.outsideSafeArea`.
+ *
+ * **The vertical is the drawn band verbatim** — y 61, 196 tall — with
+ * `baseline` chosen so the three lines centre in it: baselines at 127, 172 and
+ * 217 put the ink at y 100 → 217, whose centre is the band's own 159.
+ *
+ * **The ink did not need changing, and that is a measurement too.** Over every
+ * pixel of type on every delivered cover, `#3B2A20` against what is actually
+ * behind it is **7.5:1 at its worst** — WCAG wants 3:1 of type this size and
+ * 4.5:1 of body text. Nothing was gained by darkening it and a second colour
+ * would have been a second thing to keep true.
+ *
+ * **What the panel was doing, and what now does it.** It guaranteed a known
+ * ground under the words. Nothing replaces that guarantee: the title is set on
+ * illustration, and the only thing standing behind it is that the captain's
+ * cover compositions put open sky in this corner. That held on all three
+ * delivered covers — the same composition each time, child left, cake lower
+ * right — and **eleven of the fourteen looks have no cover artwork at all**,
+ * so for those eleven the corner is unmeasured. `docs/cover-face.md` § The
+ * corner carries the title is the record, and the check that catches a cover
+ * which breaks the pattern is a human looking at `npm run cover-faces`.
+ */
+const TITLE_CORNER = {
+  /**
+   * x and width: the captain's marked centre, with the width 38 pt needs.
+   * y and height: their rectangle's band, unchanged.
+   */
+  frame: { x: 251, y: 61, width: 324, height: 196 },
+  size: 38,
+  /** First baseline at y 127, which centres three lines in the band. */
+  baseline: 66,
+  /** 45 pt, which is the 52 : 44 the panel was set with, at the new size. */
+  lineHeight: 45,
+} as const;
+
 // ---------------------------------------------------------------------------
 // The slots
 // ---------------------------------------------------------------------------
@@ -943,7 +1022,7 @@ const LOOKS: Look[] = GENDERS.flatMap(({ id: gender }, column) =>
 export const FIRST_BOOK: BookTemplate = {
   schema: 1,
   id: "the-book-of-you",
-  rev: "f193676f",
+  rev: "7ffd938c",
   /**
    * **"When They Were Small".**
    *
@@ -1090,9 +1169,11 @@ export const FIRST_BOOK: BookTemplate = {
    * every look had one the choice stopped being able to change a pixel: a
    * delivered cover is an image and there is no ground under it to recolour.
    * Three wraps per look is eighty-four files and would still open onto the
-   * same rooms, and tinting the title's cream panel is argued against two
-   * screens below. So the choice went. `BookTemplate.coverColour` carries the
-   * whole note and `docs/print.md` carries the decision.
+   * same rooms, and tinting the title's cream panel was the other candidate —
+   * which has since stopped existing: the panel went on 19 November,
+   * § `TITLE_CORNER`, so that option is now unbuildable rather than merely
+   * refused. So the choice went. `BookTemplate.coverColour` carries the whole
+   * note and `docs/print.md` carries the decision.
    *
    * `COVER_COLOUR` is read twice — here and by the drawn cover's own `ground`
    * — because the back of the book and the front of it are one colour by
@@ -1117,7 +1198,14 @@ export const FIRST_BOOK: BookTemplate = {
      * the title's twenty-six characters and a fourteen-character name on the
      * same line, and a cover whose type is sized for the longest name the form
      * takes is a cover set in 29 pt. Stacked, the widest line is the name
-     * itself and the title can be set at 44.
+     * itself and the title can be set larger.
+     *
+     * **A fourth line would buy nothing**, and that is measured rather than
+     * argued: the widest line is always the name, the name cannot be broken,
+     * and *"Turned One"* sets at 208 pt against the name's 369 at 44 pt. So
+     * splitting *"Turned One"* in two moves no constraint at all — see
+     * § `TITLE_CORNER` for the three options that were weighed and which one
+     * the measurement left standing.
      *
      * **There is no name slot on the cover, and since 12 November none
      * anywhere in the book.** The name is *in* the title, and a second slot
@@ -1141,40 +1229,20 @@ export const FIRST_BOOK: BookTemplate = {
     }),
     layers: [
       {
-        id: "cover-panel",
-        kind: "shape",
-        frame: { x: 85, y: 212, width: 442, height: 188 },
-        shape: {
-          kind: "rect",
-          radius: 20,
-          // Cream, and not the cover colour: the title is set on this panel and
-          // has to stay legible against all three choices.
-          fill: "#FBF6EC",
-          stroke: { colour: "#FFFFFF", width: 4 },
-          shadow: { colour: "#2A1C12", blur: 10, dx: 0, dy: 6 },
-        },
-      },
-      {
         id: "cover-title",
         kind: "textSlot",
         slot: SLOT.story,
         /**
-         * Inside the panel above, which is 212 → 400.
-         *
-         * Three baselines at 226 + 48 + 52 n are 274, 326 and 378, so the
-         * first line's ascenders clear 212 and the last line's descenders stop
-         * short of 400 — the panel holds the title rather than the title
-         * crossing it.
-         *
-         * 402 pt across: fourteen characters of 44 pt Indie Flower is 374 pt
-         * measured against the vendored TTF, which is the longest line this
-         * slot can be given.
+         * **The captain's corner**, and every number in it is
+         * § `TITLE_CORNER`'s. There is no panel under it any more: see that
+         * block for what the panel was doing, what replaced it, and the one
+         * thing nobody has been able to check.
          */
-        frame: { x: 105, y: 226, width: 402, height: 160 },
+        frame: TITLE_CORNER.frame,
         font: "hand",
-        size: 44,
-        baseline: 48,
-        lineHeight: 52,
+        size: TITLE_CORNER.size,
+        baseline: TITLE_CORNER.baseline,
+        lineHeight: TITLE_CORNER.lineHeight,
         colour: INK,
         align: "middle",
         /**
@@ -1187,6 +1255,13 @@ export const FIRST_BOOK: BookTemplate = {
          * sixteen and this slot refuses at build time with
          * `text.storyOverflows` — which is the build saying that the cover no
          * longer holds the name, rather than the cover saying it in print.
+         *
+         * **Since the corner, the count is the only headroom there is.** The
+         * frame used to hold a fifteenth M as well as the fourteen the form
+         * takes; § `TITLE_CORNER`'s narrower box does not, so the width now
+         * runs out at exactly fourteen and this sixteen is what stops a
+         * fifteenth being typed. `test/cover-face.test.ts` reads that spare
+         * back out of the pixels rather than taking it on trust.
          */
         maxChars: 32,
         maxLines: 3,
