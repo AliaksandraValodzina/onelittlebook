@@ -217,6 +217,26 @@ no step** (a step nobody can see still moves every letter after it). The title
 is still one declared colour; `npm run cover-colour` is the sheets and the
 table and `docs/cover-colour.md` is the decision it is waiting on.
 
+**The verses' face is a live question too, and the measurement says a change
+is free.** `lib/book/verse-fit.ts` is `title-fit.ts`'s method on the eleven
+interior verses — the same two renders and the same difference, but over every
+verse page per face, because *which* line sets widest is itself a property of
+the face. What it found: every vendored face but Sniglet fits the 500 pt box at
+the declared 15 pt, and **no face can move one of the captain's twelve
+hand-marked positions**, because `lib/render/svg.ts` § `drawTextSlot` sets
+absolute baselines, so `VERSE_TOP_ON` is declared data and a face only changes
+the ascent and descent the 160 pt box already has 15 pt of slack for. The two
+columns that do decide it are not about fit at all: **ink coverage** (Baloo 2
+ExtraBold is +43% over today at an identical x-height, which is "too heavy for
+body text" as a number) and **which names the shop takes** — ten verses carry
+`{name}`, so five candidates would start refusing *Żaneta* and moving off
+Special Elite would stop refusing *Nguyễn*. `npm run verse-faces` is the
+spreads and the table, `docs/verse-face.md` is the recommendation, and
+`test/verse-face.test.ts` holds the committed face to the 20 pt of headroom
+`storySlot`'s docblock has claimed since 12 November. **`versePages` excludes
+the cover on purpose**: the cover's title is a `storyText` slot too, so "every
+story slot" would re-face the cover and make one sheet a lie about the other.
+
 **The name is checked against every face it lands in, which is not the list of
 name slots.** `lib/book/name.ts` § `facesTheNameIsSetIn` adds the face of any
 slot whose authored copy carries `{name}` — the verses are set in the
