@@ -321,6 +321,38 @@ export interface TextSlotLayer extends LayerBase {
   size: Pt;
   colour: Colour;
   /**
+   * **One colour per letter, cycled positionally. Absent is the whole slot in
+   * `colour`, and absent is what every slot in this repository declares.**
+   *
+   * The captain's reference is a party invitation whose headline sets each
+   * letter in a different pastel, and this is that as data: a list of colours,
+   * stepped through letter by letter. It is a field rather than a second layer
+   * kind for the format's own reason — a capability is a field with a stated
+   * meaning for its absence, never a branch in a component — and the meaning
+   * of its absence is the behaviour the renderer has always had.
+   *
+   * **The rule is positional and it is `lib/render/palette.ts`**, which both
+   * the renderer and the measurement import so there is exactly one of it. Two
+   * things in it are decisions rather than consequences, and both are written
+   * there: the cycle **restarts on each line**, and **whitespace takes no
+   * colour and does not advance it**. A slot's text can carry a buyer's name
+   * (*"When {name} Turned One"*), so no per-word or hand-assigned scheme can
+   * exist — the only thing a template can know about a letter is where it
+   * stands.
+   *
+   * **It says nothing about contrast and cannot.** A pastel that is lovely on
+   * cream disappears on teal, and a colour's legibility is a fact about the
+   * artwork underneath it, which this format never sees.
+   * `lib/book/title-colour.ts` measures it per letter against the pixels
+   * actually behind each one; `docs/cover-colour.md` is the record. A palette
+   * is therefore a thing to be measured on every cover before it is declared,
+   * and declaring one is one line here.
+   *
+   * An empty list is refused by `./validate.ts` rather than read as `colour`:
+   * two spellings of one state is somewhere for them to disagree.
+   */
+  palette?: readonly Colour[];
+  /**
    * Which edge of `frame` the text hangs from. Absent is `"start"`.
    *
    * `frame` is a real rectangle — the box an editor draws a selection round and

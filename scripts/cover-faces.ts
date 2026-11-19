@@ -6,8 +6,11 @@
  *     npm run cover-faces -- --full             # full size on every look, not just the first
  *     npm run cover-faces -- --out ./somewhere
  *
- * The captain dislikes the cover's title and wants to choose a new face **by
- * looking at it**. A specimen sheet of words on white cannot answer that: the
+ * The captain disliked the cover's title and chose a new face **by looking at
+ * it** — Baloo 2, on 19 November, `docs/cover-face.md`. This command drew the
+ * sheet that choice was made from and still draws it, with the winner in its
+ * place in the lineup and the box now sized to *its* widest name. A specimen
+ * sheet of words on white could not have answered the question: the
  * title is set straight onto a photographic cover and whether a face works is
  * a question about the cover, not about the face. So every picture
  * this writes is **the real cover page** — the captain's own delivered wrap,
@@ -30,8 +33,9 @@
  *  - **Which names the shop may still accept.** `lib/book/name.ts`
  *    § `facesTheNameIsSetIn` asks every face the name lands in and `checkName`
  *    refuses a character any of them cannot write, so a face with a narrower
- *    `cmap` than Indie Flower's is a face that **refuses buyers**. Six of the
- *    nine candidates cannot write Vietnamese.
+ *    `cmap` than the committed face's is a face that **refuses buyers**. Five
+ *    of the nine in the lineup would narrow what the shop takes; the one the
+ *    captain chose on 19 November narrows nothing.
  *  - **The curly apostrophe**, which More Sugar itself has not got. Measured
  *    rather than assumed, because *O’Brien* is a name and a cover with a hole
  *    in it is the failure `lib/render/coverage.ts` exists to prevent.
@@ -624,13 +628,14 @@ function report(verdicts: Verdict[], looks: string[], name: string, reference: b
     "|---|---|---|---|---|---|---|",
     ...rows,
     "",
-    "**The box is the captain\u2019s corner now, and it is a third narrower than the one these",
-    `faces were last compared in.** The title is set at ${slot.size} pt rather than 44 because that is the`,
-    `largest size at which ${limit} \`M\`s still fit ${across_pt} pt \u2014 \`templates/first-book.ts\``,
-    "\u00a7 `TITLE_CORNER` has the measurement and the two options it ruled out. Indie Flower is",
-    "the narrowest face here, so **a face that does not hold the worst case in this table needs a",
-    "smaller size still**, and the size it would need is in its verdict. Choosing any of these is",
-    "choosing a type size as well.",
+    "**The box is the captain\u2019s corner, and the size is a property of the face in it.**",
+    `The title is set at ${slot.size} pt because that is the largest size at which ${limit} \`M\`s of`,
+    `**${FACES[setIn].family}** still fit ${across_pt} pt \u2014 \`templates/first-book.ts\``,
+    "\u00a7 `TITLE_CORNER` has the measurement and the options it ruled out, and",
+    "`docs/cover-face.md` is the decision. So the box is sized to the committed face: a row",
+    "that does not hold the worst case here needs a size of its own, and the size it would",
+    "need is in its verdict. **Choosing a different face is choosing a type size as well**,",
+    "which is the thing this table exists to price.",
     "",
     "**“Refuses”** is the half a picture cannot show. `lib/book/name.ts` asks every face the",
     "name lands in and refuses a character any of them cannot write, so the face chosen for",

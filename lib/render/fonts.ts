@@ -29,8 +29,12 @@
  * picture the captain chooses from has to be the picture the press would make.
  * What `candidate` buys is that `test/fonts.test.ts` can still refuse a face
  * that is in the bundle for *no* reason, and that deleting the losers is one
- * edit with nothing to work out. `docs/cover-face.md` is the choice it is
- * waiting on.
+ * edit with nothing to work out.
+ *
+ * **The cover title's choice was made on 19 November and the field is how that
+ * arrived**: `baloo`'s note came off, and nothing else in the registry moved —
+ * `templates/first-book.ts` § `cover` names the key and § `TITLE_CORNER` holds
+ * the size the choice measured to. `docs/cover-face.md` is the record.
  */
 
 export interface Face {
@@ -84,7 +88,7 @@ export const FACES: Record<string, Face> = {
   },
 
   // -------------------------------------------------------------------------
-  // The cover title's candidates, open since 18 November
+  // The cover title's lineup — opened 18 November, decided 19 November
   // -------------------------------------------------------------------------
   //
   // The captain's reference is More Sugar, which this shop may not use: its
@@ -96,18 +100,26 @@ export const FACES: Record<string, Face> = {
   //
   // They are ordered as the comparison sheet orders them: the rounded sans
   // first, from the most to the least handmade, then the two faces that are a
-  // different idea rather than a variation on the same one.
+  // different idea rather than a variation on the same one. **The first of them
+  // is the one the captain chose** and carries no `candidate` note any more; it
+  // keeps its place in this order so that `npm run cover-faces` still draws the
+  // sheet the decision was made from, with the winner where it stood. Taking
+  // the eight losers out is one edit per entry plus their files, and is the
+  // cleanup `docs/cover-face.md` § Switching still names.
 
+  /**
+   * **The cover title's face since 19 November**, and therefore no longer a
+   * candidate: the captain chose it off `npm run cover-faces`, and
+   * `templates/first-book.ts` § `cover` sets the title in it at the 29 pt that
+   * choice measured to. It is in the rounded half of the lineup below and was
+   * the recommendation — the mass match for the captain's reference, and the
+   * only candidate that narrowed no name the shop accepts.
+   */
   baloo: {
     family: "Baloo 2",
     file: "fonts/Baloo2-ExtraBold.ttf",
     licence: "OFL-1.1",
     licenceFile: "fonts/Baloo2-OFL.txt",
-    candidate:
-      "The mass match. ExtraBold, round terminals, a high x-height and bowls " +
-      "that are a shade off geometric — the closest thing with an open licence " +
-      "to More Sugar's weight, and the only candidate that also writes " +
-      "Vietnamese.",
   },
   sniglet: {
     family: "Sniglet",

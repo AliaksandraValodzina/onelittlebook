@@ -147,16 +147,16 @@ replacement string when they disagree. Everything a customer types goes through
 renders perfectly in a browser and prints blank, so `lib/render/family.ts`
 reads it back out of each file's `name` table and `test/fonts.test.ts` compares.
 
-**`FACES` holds nine faces nothing sets type in, and `Face.candidate` is why.**
-The captain is choosing a new cover title by looking at it, so the lineup has
-to be loaded on exactly the terms the real faces are — the picture they choose
-from must be the picture the press would make. The cover is **still Indie
-Flower** (`cover.layers` § `cover-title`, `font: "hand"` — *not* the typewriter,
-which is the verses) and `test/fonts.test.ts` fails if a slot moves to a
-candidate. `npm run cover-faces` renders the real cover in every face over
-every delivered look and writes to gitignored `.artwork/cover-faces/`;
-`docs/cover-face.md` is the decision, the measurements and the recommendation,
-and the losers come out of `FACES` and `public/fonts/` the day it is made.
+**The cover title is Baloo 2 since 19 November, and `Face.candidate` is how a
+decision arrives.** The lineup had to be loaded on exactly the terms the real
+faces are — the picture the captain chooses from must be the picture the press
+would make — so a candidate is vendored, licensed and registered like any face
+and `candidate` is the only thing that differs. Choosing one is taking that note
+off (`cover.layers` § `cover-title`, `font: "baloo"` — *not* the typewriter,
+which is the verses); `test/fonts.test.ts` fails if a slot moves to a face that
+still carries it. **Eight losers are still in `FACES` and `public/fonts/`** so
+`npm run cover-faces` still draws the sheet the decision was made from, and
+taking them out is the one piece still owed — `docs/cover-face.md` § Switching.
 
 **A render width is not a declared page size, and for one day they were the
 same field.** The sheets are drawn small, so the command rewrote
@@ -173,36 +173,57 @@ is why `test/cover-faces.test.ts` mints fourteen looks and why
 `lib/book/print.ts` § `problemReport` names the look, the page and the numbers
 instead of a code three hundred times.
 
-**A character count is not a width, and the cover's fit was never measured
-until now.** `lib/book/title-fit.ts` renders the cover twice — once with the
-title, once with the slot gone — and reads the ink's box out of the difference,
-which is `test/book-verses.test.ts`'s method. What it found: only Indie Flower
-holds the *guaranteed* worst case (fourteen `M`s), Special Elite included,
-because the box has twice been sized to Indie Flower's narrow capitals. Every
-face holds every **realistic** fourteen-character name. So changing the cover's
-face is also choosing a type size, and `test/cover-face.test.ts` is where that
-cost arrives.
+**A character count is not a width, so changing the face is choosing a type
+size.** `lib/book/title-fit.ts` renders the cover twice — once with the title,
+once with the slot gone — and reads the ink's box out of the difference, which
+is `test/book-verses.test.ts`'s method. The box is the captain's and does not
+move; the **size is a property of the face in it**, and it has moved three
+times (44 in the panel, 38 in the corner, **29** for Baloo 2, which sets the
+guaranteed fourteen `M`s at 409 pt at 38). The number going down is not the
+title getting smaller: at 29 pt Baloo 2 sets that worst case *wider* than Indie
+Flower did at 38. `test/cover-face.test.ts` is where the cost arrives, and it
+holds the committed face to the guarantee rather than to a realistic name.
 
 **The title is in the captain's corner and there is no panel under it.** It was
 three lines of 44 pt centred on a cream panel until 19 November, when the
 captain marked a rectangle in the upper right. `templates/first-book.ts`
 § `TITLE_CORNER` is the whole decision and every number in it is measured: the
 mark's own edges, the 343 pt corridor the corner actually has (the child's head
-closes it at x 233, `canvas.safe` at 576), and why **38 pt** is the only answer
-— more lines move nothing, because the widest line is always the unbreakable
-name. **The removed panel was the guarantee of a known ground under the words
-and nothing replaces it**: the type sits on illustration, the corner was quiet
-on all three delivered covers (7.09:1 at its worst, so the ink did not change)
-and **eleven of the fourteen looks have no cover artwork, so their corner is
-unmeasured**. `docs/cover-face.md` § The corner carries the title is the record
-and names the per-cover check — a human, looking at `npm run cover-faces`.
+closes it at x 233, `canvas.safe` at 576), and the size, baseline and leading
+the face in it needs — more lines move nothing, because the widest line is
+always the unbreakable name, and widening into the whole corridor buys one
+point and spends 20 pt of clearance. **The removed panel was the guarantee of a
+known ground under the words and nothing replaces it**: the type sits on
+illustration, the corner is quiet on all three delivered covers (7.09:1 at its
+worst, so the ink did not change) and **eleven of the fourteen looks have no
+cover artwork — they render the placeholder's flat ground, which is measured
+and is not evidence about a wrap the captain has not drawn yet**.
+`docs/cover-face.md` § The corner carries the title is the record and names the
+per-cover check — a human, looking at `npm run cover-faces`.
+
+**A colour on a cover is a measurement, and `TextSlotLayer.palette` is a
+capability nothing declares.** With no panel under the title, a colour is only
+ever a colour *and a cover*: `lib/book/title-colour.ts` renders each cover
+twice — titleless, and with every letter in its own probe colour — and the pair
+gives an **ink map** of which artwork pixel each letter's ink stands on, after
+which every candidate colour is arithmetic over the same pixels. The footprint
+comes from the probe render and **not** from a difference against the proposed
+colour, because a difference-based mask drops the 1.0:1 pixel for being
+invisible. `palette` sets a title a letter at a time; `lib/render/palette.ts`
+is the cycle and both the renderer and the measurement import it, so the two
+cannot drift — **it restarts on each line** (otherwise the captain's fixed
+lines change colour with the length of the child's name) and **whitespace takes
+no step** (a step nobody can see still moves every letter after it). The title
+is still one declared colour; `npm run cover-colour` is the sheets and the
+table and `docs/cover-colour.md` is the decision it is waiting on.
 
 **The name is checked against every face it lands in, which is not the list of
 name slots.** `lib/book/name.ts` § `facesTheNameIsSetIn` adds the face of any
 slot whose authored copy carries `{name}` — the verses are set in the
-typewriter and the name slots in the hand, and the two faces' coverage
+typewriter and the cover's title in Baloo 2, and the two faces' coverage
 genuinely differs, so a Vietnamese name passes a name-slots-only check and
-prints with a hole in it on eleven interior pages.
+prints with a hole in it on eleven interior pages. Read the cover's face off
+the cover: a test that named it cost a line the day it moved.
 
 **The book has no `babyName` slot at all, and the name's length is therefore
 declared.** Both lone names went on 12 November — page one's because the

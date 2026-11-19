@@ -13,7 +13,7 @@
  * never divide by something a file told you.
  */
 
-import type { Canvas, Crop, Box, Mask, Pt } from "./types";
+import type { Canvas, Colour, Crop, Box, Mask, Pt } from "./types";
 
 const FULL_CROP: Crop = { x: 0, y: 0, width: 1, height: 1 };
 
@@ -68,6 +68,28 @@ export function maskOf(m: Mask | undefined): Mask {
     return { kind: "rect" };
   }
   return m;
+}
+
+/**
+ * **The colours a text slot's letters are cycled through, or `null` for "this
+ * slot is one colour".**
+ *
+ * `null` rather than an empty array, so that a caller cannot accidentally take
+ * the one-colour path by iterating over nothing: the two states are genuinely
+ * different — one draws a line as a single run and the other as a run per
+ * letter — and a reader that cannot tell them apart would silently lose the
+ * cycle on a template whose palette arrived as `[]`.
+ *
+ * Tolerant in this file's own way: anything that is not a non-empty array of
+ * strings is *no palette*, because a hand-edited file or a newer publisher is
+ * exactly where a `palette: "pink"` comes from, and the sane thing to draw is
+ * the slot's declared colour. `lib/template/validate.ts` is what *refuses* such
+ * a template; this is what keeps the renderer from throwing on one.
+ */
+export function paletteOf(t: { palette?: readonly Colour[] }): readonly Colour[] | null {
+  const p = t.palette;
+  if (!Array.isArray(p) || p.length === 0) return null;
+  return p.every((c) => typeof c === "string" && c.length > 0) ? p : null;
 }
 
 export function lineHeightOf(t: { size: Pt; lineHeight?: Pt }): Pt {

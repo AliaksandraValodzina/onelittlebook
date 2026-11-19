@@ -19,6 +19,11 @@ import { cropOf, measuredLength, safeBox, trimBox } from "./defaults";
 import { isKnownFace } from "../render/fonts";
 import type { PageFill, PageTemplate } from "./types";
 
+/** The spelling `Colour` documents, as a predicate. Nothing else reads it. */
+function isColour(c: unknown): boolean {
+  return typeof c === "string" && /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(c);
+}
+
 export interface Problem {
   /** Stable, greppable, and what a test asserts on. Never the sentence. */
   code: string;
@@ -81,6 +86,42 @@ export function validateTemplate(t: PageTemplate): Problem[] {
         say("text.maxCharsMissing", layer.id, "maxChars must be a positive whole number");
       }
       if (layer.size <= 0) say("text.sizeMissing", layer.id, "size must be positive");
+
+      /**
+       * **The palette, which is the one place a colour is checked.**
+       *
+       * `Colour` has always documented its own spelling — `#rgb`, `#rrggbb` or
+       * `#rrggbbaa`, and named CSS colours deliberately not allowed — and
+       * nothing checked it, because a single wrong `colour` is one wrong page
+       * and the first person to look at it sees it. A list is different in
+       * kind: one bad entry in a seven-colour cycle is one letter in seven,
+       * which reads as a rendering bug rather than as a typo, and the renderer
+       * writes each entry straight into a `fill`. So the list is checked, and
+       * `colour` is checked with it now that the predicate exists.
+       *
+       * An **empty** palette is refused rather than read as "one colour":
+       * `./defaults.ts` § `paletteOf` answers `null` for it so the renderer
+       * draws the sane thing, and two spellings of one state is somewhere for
+       * them to disagree.
+       */
+      if (!isColour(layer.colour)) {
+        say("text.colourMalformed", layer.id, `colour "${layer.colour}" is not #rgb, #rrggbb or #rrggbbaa`);
+      }
+      if (layer.palette !== undefined) {
+        if (!Array.isArray(layer.palette) || layer.palette.length === 0) {
+          say("text.paletteEmpty", layer.id, "palette is declared and holds no colours");
+        } else {
+          for (const [at, colour] of layer.palette.entries()) {
+            if (!isColour(colour)) {
+              say(
+                "text.paletteColour",
+                layer.id,
+                `palette[${at}] is "${String(colour)}", not #rgb, #rrggbb or #rrggbbaa`,
+              );
+            }
+          }
+        }
+      }
     }
   }
 
