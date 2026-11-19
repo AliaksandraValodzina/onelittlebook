@@ -1,23 +1,33 @@
 # The cover title's face
 
-**Status: open. The captain chooses.** The cover is still set in Indie Flower
-and nothing in this document changes a pixel of it — `lib/render/fonts.ts`
-vendors nine candidates and `templates/first-book.ts` § `cover` still names
-`hand`. Switching is a one-word edit once the choice is made; the rest of this
-file is what that edit costs.
+**Status: decided 19 November. The cover is set in Baloo 2 at 29 pt.** The
+captain chose it off the comparison sheets; `templates/first-book.ts` § `cover`
+names `baloo` and § `TITLE_CORNER` carries the size. `lib/render/fonts.ts` no
+longer marks it a candidate, which is how a decision arrives in the registry.
+The eight losing candidates are still vendored so that `npm run cover-faces`
+still draws the sheet the decision was made from; taking them out is § Switching
+below and is the one piece of this that is still owed.
 
-## What is being decided, and what it is not
+**What the choice cost, in one line: nine points of type and nothing else.**
+Baloo 2 at 38 pt sets the guaranteed worst case 85 pt past the captain's corner,
+so the size came down to 29 — and at 29 pt it sets that same worst case *wider*
+than Indie Flower did at 38. The title fills the corner exactly as before.
+§ The size the face measured to has the numbers.
 
-The captain dislikes the title's face and wants to choose a new one **by
-looking at it**. The reference is **More Sugar** — chunky, soft, rounded,
-slightly handmade.
+## What was being decided, and what it was not
+
+The captain disliked the title's face and chose a new one **by looking at it**.
+The reference is **More Sugar** — chunky, soft, rounded, slightly handmade.
 
 Two things are commonly got wrong about today's cover and are worth stating
 once:
 
-- **The title is set in `hand` — Indie Flower — and not in `typewriter`.** The
-  verses on the eleven interior pages are the typewriter face; the cover is
-  not, and never has been. Read it off `cover.layers` rather than from memory.
+- **The title has never been set in `typewriter`.** The verses on the eleven
+  interior pages are the typewriter face; the cover was Indie Flower until
+  19 November and is Baloo 2 now. Read it off `cover.layers` rather than from
+  memory — and read it off `cover.layers` in code too: `test/book-text.test.ts`
+  asks the cover which face it is rather than naming one, which is why the
+  switch cost that file one line.
 - **The *cover* is one thing and the *book* is another.** Changing the cover's
   face leaves eleven verses in Special Elite. That is a choice about a book,
   not about a title, and it is not what this is asking.
@@ -122,61 +132,96 @@ a `≥` in the table below is a floor and not a figure — `TitleFit.clipped`. T
 size a face would need is unaffected: it is re-measured at that size, where
 there is nothing to clip.
 
-### The result, re-measured 19 November in the corner's own box
+### The size the face measured to
 
-The table was first measured on 18 November at 44 pt in the 402 pt panel
-frame. The panel is gone and the frame is 324 pt at 38 pt — § The corner
-carries the title, below — so every number here was taken again. Nothing in it
-compares the faces differently; the box they are compared in got smaller.
+The lineup was first measured on 18 November at 44 pt in the 402 pt panel
+frame, and again on 19 November at 38 pt in the 324 pt corner. **The choice of
+Baloo 2 moved the size a third time**, and the table below is the lineup as it
+stands now: every face compared in the box the cover actually has, at the
+**29 pt the committed face measured to**.
 
-| Face | Licence | *Charlotte-Rose* at 38 pt | Fourteen `M`s at 38 pt | Narrows the names the shop accepts |
-|---|---|---|---|---|
-| **Indie Flower — today** | OFL-1.1 | fits, 2 spare | **fits**, no spare | — |
-| Special Elite — the verses' face | Apache-2.0 | fits, 1 spare | 21 pt outside the safe area · 33 pt to fit | — |
-| Baloo 2 | OFL-1.1 | fits, 2 spare | ≥ 36 pt outside the safe area · 29 pt to fit | — |
-| Grandstander | OFL-1.1 | fits, 1 spare | 30 pt outside the safe area · 31 pt to fit | — |
-| Bree Serif | OFL-1.1 | fits, 2 spare | ≥ 36 pt outside the safe area · 27 pt to fit | — |
-| Comfortaa | OFL-1.1 | fits, no spare | ≥ 36 pt outside the safe area · 23 pt to fit | — |
-| Bubblegum Sans | OFL-1.1 | fits, 2 spare | 25 pt outside the safe area · 32 pt to fit | Polish, Czech, Turkish |
-| Chewy | Apache-2.0 | fits, 2 spare | 34 pt outside the safe area · 31 pt to fit | Polish, Czech, Turkish |
-| Gochi Hand | OFL-1.1 | fits, 2 spare | 22 pt outside the safe area · 33 pt to fit | Polish, Turkish |
-| Fredoka | OFL-1.1 | fits, 2 spare | ≥ 36 pt outside the safe area · 28 pt to fit | Polish, Czech, Turkish |
-| Sniglet | OFL-1.1 | fits, no spare | ≥ 36 pt outside the safe area · 23 pt to fit | Polish, Czech, Turkish |
+Read that order of operations carefully, because it is the whole of why the
+numbers look different from yesterday's: the box is the captain's and does not
+move, the *size* is a property of the face in it, and the size is now Baloo 2's.
+Most of the lineup fits at 29 pt — they would, it is sized for the widest of
+them.
 
-Re-measure with `npm run cover-faces -- --table`, which writes the same table
-into the output directory and costs no pictures.
+| Face | Licence | *Charlotte-Rose* (pt) | Fourteen `M`s (pt) | At 29 pt | Narrows the names the shop accepts |
+|---|---|---|---|---|---|
+| **Baloo 2 — today** | OFL-1.1 | 198 | **321** | **fits**, no character spare | — |
+| Indie Flower — until 19 Nov | OFL-1.1 | 175 | 243 | fits, 2 characters spare | — |
+| Special Elite — the verses' face | Apache-2.0 | 226 | 281 | fits, 2 characters spare | — |
+| Grandstander | OFL-1.1 | 207 | 295 | fits, 1 character spare | — |
+| Gochi Hand | OFL-1.1 | 183 | 282 | fits, 2 characters spare | Polish, Turkish |
+| Bubblegum Sans | OFL-1.1 | 168 | 287 | fits, 1 character spare | Polish, Czech, Turkish |
+| Chewy | Apache-2.0 | 173 | 300 | fits, 1 character spare | Polish, Czech, Turkish |
+| Fredoka | OFL-1.1 | 197 | 328 | 1 pt outside the safe area · 28 pt to fit | Polish, Czech, Turkish |
+| Bree Serif | OFL-1.1 | 192 | 338 | 6 pt outside the safe area · 27 pt to fit | — |
+| Comfortaa | OFL-1.1 | 225 | 393 | 33 pt outside the safe area · 23 pt to fit | — |
+| Sniglet | OFL-1.1 | 247 | ≥ 399 | at least 36 pt outside the safe area · 23 pt to fit | Polish, Czech, Turkish |
 
-### What the two columns mean together
+Every width is the ink's own bounding box in points, read out of a difference
+between two renders. *Vietnamese* is refused in every row including the
+committed one, because the eleven verses are Special Elite and always have
+been. Re-measure with `npm run cover-faces -- --table`, which writes the same
+table into the output directory and costs no pictures.
 
-**Every face still holds every realistic fourteen-character name**, and that is
-the column the captain is actually looking at. The size is not in practical
-danger in any row.
+### 29 pt, and why it is not a smaller title
 
-**No face but Indie Flower holds the guarantee, and that includes Special
-Elite.** It was true at 44 pt in the panel and it is true at 38 pt in the
-corner, for the same reason: the box has twice been sized to Indie Flower,
-whose capitals are narrow for a handwritten face, so the fit is a property of
-that choice and not of the box. Switching the face means deciding, explicitly,
-one of three things:
+Baloo 2 at the 38 pt the corner was set at puts the guarantee — fourteen `M`s —
+at **409 pt**, which is 85 pt past the 324 pt box, 36 pt past the safe area and
+far enough past the page that the measurement itself is clipped. Three ways out
+were weighed and they are the same three the corner weighed:
 
-1. **Set the title smaller still** — the size each face needs is in the table,
-   and every one of them is in the twenties. On a cover already down from 44 to
-   38, that is a second visible step and not a rounding.
-2. **Widen the frame.** There is very little left to widen into: the corner's
-   corridor is measured below and 38 pt already spends most of it. Widening
-   past it moves the title back out of the corner the captain drew.
-3. **Accept that the guarantee is a realistic one rather than an absolute one**
-   — which is what the cover has in fact been doing, and is a defensible
-   position now that it is written down rather than assumed.
+| Option | Verdict |
+|---|---|
+| **More lines** | Still worth nothing. The widest line is always the name, a name cannot be broken, and splitting *"Turned One"* moves no constraint. |
+| **A wider box** | **Buys one point.** The corridor the corner has is 343 pt (x 233 → 576, § The corner carries the title), and 343 pt holds 30 pt of Baloo 2 and not 31 — its guarantee is 343.2 pt. One point of type would spend the whole 20 pt of clearance the ink keeps from the child's head. |
+| **A smaller size** | 29 pt, where the guarantee sets at **321.0 pt** inside 324, stops 2.4 pt inside the safe area and 19.6 pt clear of the sky boundary. |
 
-**The corner has made this choice more expensive, not less.** That is the
-honest summary of the re-measurement: the narrower box costs every candidate
-except today's face several more points of type.
+**And 29 pt is not a smaller title.** At 29 pt Baloo 2 sets the worst case
+2.4 pt *wider* than Indie Flower did at 38 — 321.0 against 318.6 — so the
+title fills the same corner to within two and a half points. A point of this
+face simply buys more width than a point of a handwritten one; the number went
+down and the words did not get smaller. The block of three lines is a quarter
+shorter (88 pt of ink against 118) because the leading follows the size, and
+that is the only visible change in the title's footprint.
 
-`test/cover-face.test.ts` holds the committed face to the guarantee. The day
-the cover moves, that test goes red and names the overflow in points — which is
-the point of it: the cost of the switch arrives at the moment the switch is
-made, and not in a printed book.
+`nameMaxChars` was not touched. Fourteen is a product fact — the length a buyer
+may type is not a consequence of a layout edit — and `lib/book/name.ts`
+§ `nameLimit` still answers fourteen. What absorbed the face change is the type
+size, which is what it is for.
+
+**The vertical was re-derived rather than kept.** `lineHeight` is 34, the point
+nearest the 52 : 44 the panel was set with; `baseline` is 73, which is the value
+whose three lines put the ink at y 114.6 → 202.6 — centre 158.6 against the
+band's own 159. Both were chosen by re-rendering, not by proportion.
+
+### What it still costs, and what it does not
+
+**The width's headroom is zero and that is unchanged.** At 29 pt the guarantee
+fits with **no character spare**: a fifteenth `M` would leave the box, exactly
+as it would have at 38 pt in Indie Flower. So `maxCharsPerLine: 16` is still the
+only margin there is, and raising `NAME_CHARS` past it still fails the build
+with `text.storyOverflows` rather than in a printed book.
+`test/cover-face.test.ts` reads that spare back out of the pixels.
+
+**It narrows nothing about the shop.** Baloo 2 carries 856 codepoints — every
+name the shop accepted on 18 November still prints, including *Żaneta*, *Řehoř*
+and *Gülşen*, which five of the nine candidates would have refused. It is also
+the only candidate that writes Vietnamese, though the shop still refuses it
+because Special Elite does not.
+
+**It is the name's face now**, which is a bigger change than a cover's look.
+`lib/book/name.ts` § `facesTheNameIsSetIn` returns Baloo 2 and Special Elite
+where it returned Indie Flower and Special Elite, and `nameSlotFont` — which is
+what the confirm-the-spelling screen sets a name in — follows it, so a buyer
+approves the letterforms that print.
+
+**The type is heavier over a child's cover**, which is the one thing the
+measurement cannot settle. It was raised when the panel went and it is still
+the captain's eye: `npm run cover-faces` and now `npm run cover-colour` are
+where that is looked at.
 
 ## The half a picture cannot show
 
@@ -188,11 +233,12 @@ write. So a candidate with a narrower `cmap` than Indie Flower's is a candidate
 that **turns buyers away**, and that is not visible in a picture of the word
 "Matilda".
 
-Five of the nine narrow it. *Żaneta*, *Řehoř* and *Gülşen* are names this shop
-accepts today and would refuse with Chewy, Fredoka, Sniglet, Bubblegum Sans or
-Gochi Hand on the cover. Vietnamese is already refused in every row, today's
-included, because Special Elite has never carried it and the verses are set in
-Special Elite.
+Five of the nine narrowed it, and **the chosen one is not among them**.
+*Żaneta*, *Řehoř* and *Gülşen* are names this shop accepts and would have
+refused with Chewy, Fredoka, Sniglet, Bubblegum Sans or Gochi Hand on the
+cover; Baloo 2 writes all three. Vietnamese is refused in every row, the
+committed one included, because Special Elite has never carried it and the
+verses are set in Special Elite.
 
 The **curly apostrophe** — which More Sugar itself has not got — is carried by
 every face in the lineup, measured rather than assumed. *O’Brien* sets
@@ -209,32 +255,28 @@ legible as the corner it lands in**. The three sheets are rendered over
 reason rather than for the panel's surround, and eleven looks have no cover to
 render at all.
 
-## The recommendation
+## What was recommended, and what was chosen
 
-**Baloo 2, at the declared 44 pt, accepting option 3 above.**
+**Baloo 2 was the recommendation and Baloo 2 is what the captain chose.** The
+argument for it was never only that it is closest to More Sugar's register —
+the same generous weight, the same round terminals, the same high x-height —
+but that it is the one candidate that **costs nothing elsewhere**. Chewy is
+closer still in character and would have refused *Żaneta*, *Řehoř* and
+*Gülşen*; a face that turns buyers away is a product decision wearing a
+typographic hat.
 
-It is the closest open-licensed face to More Sugar's register that this shop can
-actually use: the same generous weight, the same round terminals, the same
-high x-height. Chewy is closer still in *character* — the soft tapered strokes
-and the slight bounce are More Sugar's own — and if the captain chooses it by
-eye that is a good reason. But Chewy costs *Żaneta*, *Řehoř* and *Gülşen*, and
-a face that refuses buyers is a product decision wearing a typographic hat.
-Baloo 2 costs nothing: 856 codepoints, every name the shop takes today still
-printable.
+Grandstander was the one to look at second, and remains the thing to try if
+29 pt ever reads too heavy on a cover: it is the lightest of the rounded
+candidates that still holds the guarantee, at 295 pt against Baloo 2's 321, so
+it would fit the same box at a larger size.
 
-Grandstander is the one to look at second. It is among the closest to the
-guarantee — 31 pt to fit, against Baloo 2's 29 — and reads lighter and rounder,
-which is either warmer or thinner depending on the eye. The eye is the
-captain's.
+Comfortaa was in the lineup to mark where the register ends, not to win.
 
-**One caveat the corner adds to all of this.** The recommendation above was
-written when the title sat on cream. Now that it is set on the artwork, a
-heavier face is also a more *opaque* face over a child's cover — and the
-sheets, not this paragraph, are where that gets judged.
-
-Comfortaa is in the lineup to mark where the register ends, not to win. It is
-rounded by construction and cold with it, and a comparison with no wrong answer
-in it does not show anybody where the boundary is.
+**The caveat the corner added is still live.** The recommendation was first
+written when the title sat on cream; it is now set on illustration, and a
+heavier face is a more *opaque* face over a child's cover. That is for the eye
+and not for a table — `npm run cover-faces` is where it gets judged, and
+`docs/cover-colour.md` is the measurement of the other half of it.
 
 ## The corner carries the title
 
@@ -268,10 +310,13 @@ measured. 40 pt was tried and refused by the build, not by taste: it needs
 335 pt, which ends at 581 and returns `slot.outsideSafeArea`.
 
 **The ink did not need changing.** Over every pixel of type on every delivered
-cover, `#3B2A20` against what is actually behind it is **7.09:1 at its very
-worst** (boy-04, fourteen `M`s) and 0.00% of ink falls below 4.5:1. WCAG asks
-3:1 of type this size. A second colour would have been a second thing to keep
-true for no gain.
+cover, `#3B2A20` against what is actually behind it was **7.09:1 at its very
+worst** (boy-04, fourteen `M`s) in Indie Flower at 38 pt, and 0.00% of ink fell
+below 4.5:1. In Baloo 2 at 29 pt the same measurement is **7.09:1** on boy-04
+and **6.46:1** on the drawn placeholder cover — the figure moves because the
+glyphs are in different places, not because anything got worse. WCAG asks 3:1
+of type this size. `docs/cover-colour.md` is where the alternatives the captain
+asked to see are measured, and `npm run cover-colour` is the command.
 
 ### What the panel was doing, and what does not replace it
 
@@ -279,12 +324,22 @@ The panel guaranteed a known ground under the words. **Nothing replaces that
 guarantee.** The title is set on illustration and the only thing standing
 behind it is that the captain's cover compositions put open sky in this corner.
 
+Re-measured in Baloo 2 at 29 pt by `npm run cover-colour`, with fourteen `M`s
+in the title:
+
 | Look | Cover artwork | The marked corner | Worst contrast under the type |
 |---|---|---|---|
-| girl-01 | delivered | open teal sky, bokeh and confetti only | 7.74:1 |
-| girl-07 | delivered | open teal sky | 7.43:1 |
+| girl-01 | delivered | open teal sky, bokeh and confetti only | 7.60:1 |
+| girl-07 | delivered | open teal sky | 7.37:1 |
 | boy-04 | delivered | open teal sky | 7.09:1 |
-| girl-02 … girl-06, boy-01 … boy-03, boy-05 … boy-07 (11) | **none** | **unmeasured** | **unmeasured** |
+| girl-02 … girl-06, boy-01 … boy-03, boy-05 … boy-07 (11) | **none** | the drawn placeholder's flat ground | 6.46:1 — **and this is a measurement of the placeholder, not of a cover the captain has drawn** |
+
+The last row is the one to read carefully. Those eleven looks *do* render a
+cover — `templates/first-book.ts` draws one on the book's declared
+`coverColour` — and it is measured, so the table has no blank in it. But a flat
+pale ground is the easiest thing type ever sits on, so **a pass there says
+nothing about the wrap that will replace it**. The corner of eleven covers is
+still unmeasured in the only sense that matters.
 
 All three delivered covers are the same composition — child left, cake lower
 right, sky upper right — which is the reason the corner is clear and the reason
@@ -299,11 +354,18 @@ get to refuse rather than inherit.
 be: this is a fact about pixels a human supplied, and the repository's own
 position on measuring artwork it cannot judge is in `lib/book/cover-upload.ts`.
 
-## Switching
+## Switching — what it took, and what is still owed
 
-One word in `templates/first-book.ts` § `cover` — the title layer's `font` —
-plus a `size` if the captain takes option 1, plus `npm run print` to restamp
-`rev` and refresh `data/`. Then the losing candidates come out of `FACES` and
-`FACE_COVERAGE` and their files out of `public/fonts/`, which is what
-`Face.candidate` is for: nine faces in the rasteriser's font list is nine TTFs
-parsed per page render, and the lineup is not meant to outlive the decision.
+**Done on 19 November.** One word in `templates/first-book.ts` § `cover` (the
+title layer's `font`), the three numbers in § `TITLE_CORNER` that are a function
+of the face, `baloo`'s `candidate` note off in `lib/render/fonts.ts`, and
+`rev` restamped. One test changed: `test/book-text.test.ts` named `hand` where
+it should have asked the cover, and now asks.
+
+**Still owed: the eight losers come out.** `FACES`, `FACE_COVERAGE` and
+`public/fonts/` each hold them, and nine faces in the rasteriser's font list is
+nine TTFs parsed per page render. They are deliberately still here for now so
+that `npm run cover-faces` draws the sheet the decision was made from with the
+winner in its place — but the lineup is not meant to outlive the decision, and
+`Face.candidate` is what makes the removal one edit per entry with nothing to
+work out.
