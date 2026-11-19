@@ -27,9 +27,9 @@ the block rather than about legibility.
 
 ## What is being decided, and what it is not
 
-This is **the eleven interior verses** and nothing else. The cover's title is a
+This is **the eleven interior verses** and nothing else. The cover's title was a
 separate decision with its own sheet, its own measurement and its own document
-— `docs/cover-face.md`. The two could easily have become one by accident,
+— `docs/cover-face.md`, and it has since been taken: Baloo 2 at 29 pt. The two could easily have become one by accident,
 because the cover's title is a `storyText` slot too, so "every story slot" also
 means the cover: `lib/book/verse-fit.ts` § `versePages` excludes it explicitly
 and `test/verse-face.test.ts` § *"re-facing the verses leaves the cover exactly
@@ -37,8 +37,10 @@ as it is"* is the guard.
 
 Two facts about today's book that are commonly got wrong:
 
-- **The verses are `typewriter` and the cover is not.** The cover has been Indie
-  Flower since it was drawn. Read both off the slots rather than from memory.
+- **The verses are `typewriter` and the cover is not.** The cover was Indie
+  Flower from the day it was drawn until 19 November, when the captain chose
+  **Baloo 2 at 29 pt** for the title. Read both off the slots rather than from
+  memory — that is the line that moved, and the day it moved it cost a test.
 - **A character count cannot see any of this.** `validateBook` counts
   characters and a character count is face-independent — so the same book, set
   in a face half again as wide, passes every check this repository has and
@@ -259,7 +261,8 @@ changing it changes which names the shop will take. The two rows that matter:
   typographic hat.
 - **Moving off Special Elite would widen it.** Today's book refuses *Nguyễn*,
   and it refuses it **because of the verses** — Special Elite has never carried
-  Vietnamese, and Indie Flower on the cover does. With the verses in Baloo 2,
+  Vietnamese, and Baloo 2, the cover's face since 19 November, does. With the
+  verses in Baloo 2,
   Grandstander, Comfortaa or Indie Flower, the shop's refusal list is **empty**.
   That is a real gain nobody asked for and it is sitting in the table.
 
@@ -311,9 +314,11 @@ every column at once — fits with 116 pt spare, **27% less ink** than today, an
 it refuses no name. It is also the cover's own family, so the book reads as one
 object rather than as a title and an interior that met by accident. The cost is
 a file: somebody has to vendor a static instance and add one `FACES` entry,
-which is the one thing on this page that is not already in the repository. It is
-conditional on the cover actually going to Baloo 2 — that decision is still
-`docs/cover-face.md`'s and was in flight as this was written.
+which is the one thing on this page that is not already in the repository. It
+was written conditional on the cover actually going to Baloo 2; **that condition
+is met** — `docs/cover-face.md` records the cover landing on Baloo 2 at 29 pt on
+19 November, so "the cover's own family" is a fact about the committed book and
+not a bet on a decision in flight.
 
 **Second choice, needing no new file: Bree Serif.** Vendored today, fits with
 95 pt spare, +20% ink, an x-height a shade under today's, and it refuses exactly
@@ -340,8 +345,8 @@ with 54 pt spare. Against it: +48% ink, the heaviest of the faces that fit.
 
 **Indie Flower is in the lineup because the captain asked for it, and it is the
 weakest row on the page.** A book whose cover and verses shared one
-hand would be a deliberate choice — but it is about to stop being the cover's
-face, and on the two columns that matter for six lines of body copy it is the
+hand would have been a deliberate choice — but it stopped being the cover's
+face on 19 November, and on the two columns that matter for six lines of body copy it is the
 weakest row here: **49% less ink** than today and a **0.419 em x-height**, 20%
 smaller than today's at the same point size. On the full-size renders it is
 plainly the faintest of the twelve. Matching the others would mean raising the

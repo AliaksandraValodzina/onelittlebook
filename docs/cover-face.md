@@ -30,7 +30,8 @@ once:
   switch cost that file one line.
 - **The *cover* is one thing and the *book* is another.** Changing the cover's
   face leaves eleven verses in Special Elite. That is a choice about a book,
-  not about a title, and it is not what this is asking.
+  not about a title, and it is not what this is asking. It is asked and
+  measured separately in `docs/verse-face.md`, which is open.
 
 ## More Sugar may not be used, and the clause that says so is not the obvious one
 

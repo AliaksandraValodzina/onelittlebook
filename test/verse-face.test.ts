@@ -347,10 +347,13 @@ describe("every vendored face really can set the verses", () => {
  * The cover's title is a `storyText` slot too — `templates/first-book.ts`
  * § `cover`, because a title is authored words with `{name}` in them — so
  * `pagesWithSlot(book, SLOT.story)` returns the cover first and a helper that
- * re-faced "every story slot" would re-face the cover as well. The captain is
- * choosing those two faces separately, from separate sheets, against separate
- * measurements (`docs/cover-face.md` and `docs/verse-face.md`), and a command
- * that silently moved both would make one sheet a lie about the other.
+ * re-faced "every story slot" would re-face the cover as well. The captain
+ * chose the cover's face on 19 November from its own sheet and is choosing the
+ * verses' from this one — separate sheets, separate measurements
+ * (`docs/cover-face.md` and `docs/verse-face.md`) — and a command that silently
+ * moved both would make one sheet a lie about the other. The face this reads
+ * comes off the cover's own slot and is never named here: naming it cost a line
+ * the day it moved.
  */
 describe("re-facing the verses leaves the cover exactly as it is", () => {
   it("never touches the cover's title, in any face", () => {
