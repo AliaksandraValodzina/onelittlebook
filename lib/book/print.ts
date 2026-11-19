@@ -66,9 +66,48 @@ export function printProblems(book: BookTemplate, fill: BookFill): Problem[] {
   return [...validateBook(book), ...blockingProblems(validateBookFill(book, fill))];
 }
 
+/**
+ * **Why a book cannot be printed, in a message somebody can act on.**
+ *
+ * `BookNotPrintable.problems` is the structured list and the HTTP routes return
+ * it verbatim; that half was always right. The **message** was the codes, one
+ * per problem, joined with commas — and a fault that touches every page of
+ * every look repeats one word three hundred and thirty-six times and names
+ * neither the page, nor the look, nor the numbers.
+ *
+ * That is not a cosmetic complaint. `npm run cover-faces` reached the captain
+ * as *done* on 19 November because of exactly this: the command printed
+ * `336 problem(s): art.wrongSize, art.wrongSize, …`, wrote no sheets, and said
+ * nothing a reader could act on. An error that does not say what to do is the
+ * same bug in a different costume.
+ *
+ * So: the count, then the codes **once each with their tallies**, then the
+ * first few problems in full — `where` is the page and `detail` already carries
+ * the look and both numbers, because every `say` in `./validate.ts` was written
+ * to. The first line keeps its old shape, so the code is still the greppable
+ * thing. The cap is deliberate: with twenty-five pages and fourteen looks the
+ * fourth repetition of a fault says everything the three hundredth does, and a
+ * three-hundred-line stack trace is how the useful first line gets scrolled
+ * away.
+ */
+const PROBLEMS_SHOWN = 4;
+
+export function problemReport(problems: Problem[]): string {
+  const tally = new Map<string, number>();
+  for (const p of problems) tally.set(p.code, (tally.get(p.code) ?? 0) + 1);
+  const codes = [...tally].map(([code, n]) => (n === 1 ? code : `${code} ×${n}`)).join(", ");
+  const shown = problems.slice(0, PROBLEMS_SHOWN).map((p) => `  ${p.code}  ${p.where}  ${p.detail}`);
+  const rest = problems.length - shown.length;
+  return [
+    `${problems.length} problem(s): ${codes}`,
+    ...shown,
+    ...(rest > 0 ? [`  …and ${rest} more`] : []),
+  ].join("\n");
+}
+
 export class BookNotPrintable extends Error {
   constructor(readonly problems: Problem[]) {
-    super(`${problems.length} problem(s): ${problems.map((p) => p.code).join(", ")}`);
+    super(problemReport(problems));
     this.name = "BookNotPrintable";
   }
 }

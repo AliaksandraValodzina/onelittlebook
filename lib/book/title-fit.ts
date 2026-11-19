@@ -35,7 +35,8 @@ import { pageFillFor, pageTemplateFor } from "./derive";
 import { SLOT } from "./slots";
 import { nameLimit } from "./name";
 import { maxCharsPerLineOf, safeBox } from "../template/defaults";
-import { renderPrintPixels } from "../render/raster";
+import { renderPrintPixels, renderPrintPng } from "../render/raster";
+import { BookNotPrintable, printProblems } from "./print";
 import { FACES, familyOf } from "../render/fonts";
 import type { BookFill, BookTemplate } from "./types";
 import type { Box, TextSlotLayer } from "../template/types";
@@ -120,6 +121,58 @@ export function atRenderWidth(book: BookTemplate, width: number): BookTemplate {
     ...book,
     page: { ...book.page, print: { ...book.page.print, pixels: { width, height: width } } },
   };
+}
+
+/**
+ * **The cover as a picture, at a width the caller can afford — which is not a
+ * print file, and is why the print gate is run against the book and not
+ * against the width.**
+ *
+ * `npm run cover-faces` draws every candidate face on every delivered cover,
+ * so it wants about a hundred and fifty pictures and cannot want them at
+ * 3600 px. It asked `renderBookPagePng` for them on an `atRenderWidth` book,
+ * and that is the bug this function exists to make unrepeatable:
+ * `renderBookPagePng` gates on `printProblems`, `atRenderWidth` rewrites
+ * `page.print.pixels` — *the book's declared print size*, which is what
+ * `docs/look-upload-contract.md` § 2 holds the captain's artwork to — and so
+ * every delivered interior page became `art.wrongSize` against a 560 px
+ * declaration that existed only inside the script. On 19 November that was
+ * **336 refusals, fourteen looks by twenty-four interior pages**, and not one
+ * sheet written. The cover itself was exempt (`./validate.ts` measures it
+ * against the printed panel as a *floor*), which is exactly why a store
+ * holding covers and no interior pages passed and the captain's did not.
+ *
+ * So the two numbers are separated here and stay separated:
+ *
+ *  - **What the book declares** is 3600 px and the gate is run against *that*,
+ *    on the book as handed in. Nothing about the artwork contract is relaxed —
+ *    a page that really is the wrong size is still refused, and the delivered
+ *    sizes were never in disagreement: the book declares 3600 × 3600
+ *    (`templates/first-book.ts` § `print`), `npm run artwork:upload` checks the
+ *    same number, and the captain's pages are 3600 × 3600.
+ *  - **What this render is produced at** is the caller's `width`, applied after
+ *    the gate. A contact sheet is not a print file and must not be held to one;
+ *    `renderPrintPng` is still the one renderer, exactly as `titleInkFor`
+ *    above uses `renderPrintPixels` to measure at 1800.
+ *
+ * Index 0 is the cover — `./derive.ts` § `pageSequence` puts it first, which is
+ * the assumption `titleInkFor` already makes.
+ */
+export async function coverPngAt(
+  book: BookTemplate,
+  fill: BookFill,
+  width: number,
+): Promise<Uint8Array> {
+  const problems = printProblems(book, fill);
+  if (problems.length) throw new BookNotPrintable(problems);
+
+  const sized = width === book.page.print.pixels.width ? book : atRenderWidth(book, width);
+  const chosen = { lookId: fill.lookId };
+  const { png } = await renderPrintPng(
+    pageTemplateFor(sized, 0, chosen),
+    pageFillFor(sized, 0, fill),
+  );
+  return png;
 }
 
 /** The ink's bounding box, in page units, or `null` if the two renders agree. */

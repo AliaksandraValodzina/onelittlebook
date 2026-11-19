@@ -158,6 +158,21 @@ every delivered look and writes to gitignored `.artwork/cover-faces/`;
 `docs/cover-face.md` is the decision, the measurements and the recommendation,
 and the losers come out of `FACES` and `public/fonts/` the day it is made.
 
+**A render width is not a declared page size, and for one day they were the
+same field.** The sheets are drawn small, so the command rewrote
+`page.print.pixels` (`lib/book/title-fit.ts` § `atRenderWidth`) and then asked
+the **print gate** for the picture — holding 3600 px artwork to a 560 px
+declaration, which with every look delivered is `336 art.wrongSize`, fourteen
+looks by twenty-four interior pages, and no sheet written. Nothing declared was
+wrong: `coverPngAt` now gates the book as handed in and applies the width after.
+The lesson that generalises is the one that let it ship: the cover page is held
+to the printed panel as a **floor** and interior pages to an equality, so a
+store with covers and no interior pages has nothing to refuse — **a check
+against a partly-filled artwork store proves nothing about a full one**, which
+is why `test/cover-faces.test.ts` mints fourteen looks and why
+`lib/book/print.ts` § `problemReport` names the look, the page and the numbers
+instead of a code three hundred times.
+
 **A character count is not a width, and the cover's fit was never measured
 until now.** `lib/book/title-fit.ts` renders the cover twice — once with the
 title, once with the slot gone — and reads the ink's box out of the difference,
