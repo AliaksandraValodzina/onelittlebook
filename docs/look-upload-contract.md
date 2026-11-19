@@ -353,7 +353,7 @@ leave the areas clear.
 
 | Page | Carries | Keep clear |
 |---|---|---|
-| `cover-softcover.png`, `cover-hardcover.png` | **on the front panel only**: *"When {name} Turned One"*, three lines, on a cream panel. Nothing is drawn on the back cover or the spine | the middle of the **front panel** — roughly a third of its height, centred |
+| `cover-softcover.png`, `cover-hardcover.png` | **on the front panel only**: *"When {name} Turned One"*, three lines, set straight onto your artwork — there is no panel behind it since 19 November. Nothing is drawn on the back cover or the spine | **the upper right of the front panel**: the band from 10% to 42% of its height, and from 38% of its width to 95% of it. Keep it quiet — the type is dark and it is sitting on your picture |
 | `page-001.png` | nothing — the name slots went on 12 November and the name now reaches the book only inside authored copy | — |
 | `page-002.png` | **the buyer's photograph, the dedication and the from-line** | see below — most of the page |
 | `page-003.png`, 005, 007 … 023 | six lines of story, 160 pt tall | **a 160 pt band whose top is this spread's own**, not one shared band: the captain marked nine of the twelve on 13 November and each took its own position — 185, 113, 177, 320, 138, 148, 168, 122 and 182 for spreads 3–6 and 8–12. `page-003` and `page-013` carry no mark and take the median, **168** (y 168–328). Every band is inside the `verse_zone`, the middle 60% (y 122–490), so keeping that zone clear keeps all of them clear. `templates/first-book.ts` § `VERSE_TOP_ON` is the table and the measurement |

@@ -15,7 +15,9 @@
  * and a heavy rounded display face is far wider than a handwritten one at the
  * same size. Sixteen characters of one face is eleven of another, and the way
  * that arrives is a printed cover with a child's name running off both sides of
- * the panel.
+ * the page. Since 19 November there is no cream panel under the title at all —
+ * `templates/first-book.ts` § `TITLE_CORNER` — so the only thing between a
+ * too-wide face and the cut line is the measurement below.
  *
  * Every number here is **measured out of the pixels** —
  * `lib/book/title-fit.ts` renders the cover twice, once with the title and once
@@ -31,7 +33,7 @@ import { FIRST_BOOK } from "../templates/first-book";
 import { FIXTURE_BOOK_FILL } from "../fixtures/book-order";
 import { nameLimit } from "../lib/book/name";
 import { checkName } from "../lib/book/name";
-import { maxCharsPerLineOf } from "../lib/template/defaults";
+import { maxCharsPerLineOf, safeBox } from "../lib/template/defaults";
 import {
   coverTitleIn,
   coverTitleSlot,
@@ -40,6 +42,10 @@ import {
   titleInkFor,
 } from "../lib/book/title-fit";
 import { FACES, isCandidate } from "../lib/render/fonts";
+import { pageFillFor, pageTemplateFor } from "../lib/book/derive";
+import { renderPrintPixels } from "../lib/render/raster";
+import type { BookTemplate } from "../lib/book/types";
+import type { Layer } from "../lib/template/types";
 
 const SLOT = coverTitleSlot(FIRST_BOOK);
 const LIMIT = nameLimit(FIRST_BOOK);
@@ -83,14 +89,16 @@ describe("the cover's title fits its own box, in the face it is set in", () => {
     expect(fit.spare, `${fit.family} overflows by ${-fit.spare} pt`).toBeGreaterThan(-SLACK);
 
     /**
-     * **The headroom, stated — and it is one character and not two.**
+     * **The headroom, stated — and the corner has spent it.**
      *
      * `test/book-text.test.ts` measures the headroom the *build* enforces and
      * finds two: fourteen characters in a box declared to hold sixteen. This
      * is the same headroom measured as a width, and the width runs out first.
-     * Both numbers are true and they answer different questions — the count is
-     * what refuses a book, the width is what the press prints — and the
-     * smaller of the two is the real margin on the captain's cover.
+     * It used to run out one character later than fourteen; in
+     * `templates/first-book.ts` § `TITLE_CORNER`'s narrower box it runs out at
+     * exactly fourteen, so the count is now the only margin there is. Both
+     * numbers are true and they answer different questions — the count is what
+     * refuses a book, the width is what the press prints.
      *
      * Read off the measurement rather than typed, so a change of face or of
      * size moves it and the failure message says by how much.
@@ -98,6 +106,36 @@ describe("the cover's title fits its own box, in the face it is set in", () => {
     expect(fit.charactersSpare).toBeGreaterThanOrEqual(0);
     expect(fit.charactersSpare).toBeLessThan(ACROSS - LIMIT);
     expect(fit.countBindsFirst).toBe(false);
+  });
+
+  /**
+   * **The bound the cream panel used to be.**
+   *
+   * While the title sat on an opaque panel, a name wider than its box was
+   * still on cream and the failure was ugly rather than unprintable. Since
+   * `templates/first-book.ts` § `TITLE_CORNER` there is no panel and the box
+   * stops a point short of the page's safe area on its right, so the thing
+   * that goes wrong is different in kind: the name runs at the cut line
+   * instead of looking wrong on cream. Asserted on
+   * the **ink**, which is where it would happen, and not on the frame, which
+   * `lib/template/validate.ts` already holds inside the safe area.
+   */
+  it("keeps the longest name inside the page's safe area, where the panel used to stand", async () => {
+    const fit = await titleFitFor(FIRST_BOOK, FIXTURE_BOOK_FILL, SET_IN, { renderWidth: WIDTH });
+    expect(fit.ink).not.toBeNull();
+    expect(fit.bound).toEqual(safeBox(FIRST_BOOK.page.canvas));
+    expect(fit.boundSpare, `the title reaches ${-fit.boundSpare} pt outside the safe area`).toBeGreaterThan(
+      -SLACK,
+    );
+
+    // The paired control: the same measurement at double the size must report
+    // the overflow, so a passing assertion above is not one that passes at any
+    // size at all.
+    const big = await titleFitFor(FIRST_BOOK, FIXTURE_BOOK_FILL, SET_IN, {
+      size: SLOT.size * 2,
+      renderWidth: WIDTH,
+    });
+    expect(big.boundSpare).toBeLessThan(0);
   });
 
   it("would overflow if the type were larger, which is what makes the fit a measurement", async () => {
@@ -139,18 +177,162 @@ describe("every vendored candidate really can be set by the rasteriser", () => {
       expect(ink, `${FACES[key].family} drew no type — the rasteriser has no such family`).not.toBeNull();
 
       /**
-       * Vertically inside the cream panel the title is set on, which is the
-       * constraint a heavier face threatens that a character count cannot see
-       * at all. Read off the shape layer rather than typed, so re-drawing the
-       * panel moves this with it.
+       * Vertically inside the box the captain drew, which is the constraint a
+       * heavier face threatens that a character count cannot see at all. It
+       * used to be read off the cream panel the title was set on; the panel
+       * went with the move to the corner — `templates/first-book.ts`
+       * § `TITLE_CORNER` — so the box is the slot's own frame now, and the
+       * outer bound the page's safe area rather than a shape layer.
        */
-      const panel = (FIRST_BOOK.cover.layers ?? []).find((l) => l.kind === "shape");
-      expect(panel, "the cover has no panel to measure against").toBeTruthy();
-      if (!panel || !ink) return;
-      expect(ink.y, `${key} sets above the panel`).toBeGreaterThan(panel.frame.y - SLACK);
-      expect(ink.y + ink.height, `${key} sets below the panel`).toBeLessThan(
-        panel.frame.y + panel.frame.height + SLACK,
+      if (!ink) return;
+      expect(ink.y, `${key} sets above its box`).toBeGreaterThan(SLOT.frame.y - SLACK);
+      expect(ink.y + ink.height, `${key} sets below its box`).toBeLessThan(
+        SLOT.frame.y + SLOT.frame.height + SLACK,
       );
+
+      /**
+       * **Nothing is asserted about the width here, and that is deliberate.**
+       * A candidate wider than Indie Flower runs the name past the box and,
+       * for the widest of them, past the safe area — which is exactly what
+       * `npm run cover-faces` is for reporting. Turning that into a failure
+       * here would be this file deciding the captain's choice for them. The
+       * committed face is held to the width above; a candidate is only held
+       * to drawing at all, and to standing where the slot says.
+       */
     });
   }
+});
+
+/**
+ * **The panel is gone, asserted in pixels and not in the layer list.**
+ *
+ * The captain asked for the cream panel removed on 19 November and
+ * `templates/first-book.ts` § `TITLE_CORNER` removed it. A test that read
+ * `cover.layers` for the absence of a shape would be the template restating
+ * itself; what actually matters is that **the only thing the cover's layers
+ * put under the title is the artwork**, which is a fact about the printed
+ * page. So the cover is rendered three ways and the pixels are compared.
+ *
+ * The control `test/pixels.ts` asks for is the third render: the old panel
+ * re-inserted must make the same comparison fail, or the assertion would pass
+ * against a renderer that drew no layers at all.
+ */
+describe("the title is set on the artwork, with nothing drawn under it", () => {
+  const WIDE = 600;
+
+  /** The cover's own ground, with no layers on it at all. */
+  function coverWith(layers: BookTemplate["cover"]["layers"]): BookTemplate {
+    return { ...FIRST_BOOK, cover: { ...FIRST_BOOK.cover, layers } };
+  }
+
+  /** The cover as committed, with only the title taken off. */
+  const WITHOUT_TITLE = (FIRST_BOOK.cover.layers ?? []).filter((l) => l.id !== SLOT.id);
+
+  /**
+   * The panel exactly as it was until 19 November: a rounded cream rectangle
+   * with a white keyline and a drop shadow, moved to sit under the title's new
+   * frame so the comparison is about the panel and not about where it was.
+   */
+  const OLD_PANEL: Layer = {
+    id: "cover-panel",
+    kind: "shape",
+    frame: {
+      x: SLOT.frame.x - 20,
+      y: SLOT.frame.y - 14,
+      width: SLOT.frame.width + 40,
+      height: SLOT.frame.height + 28,
+    },
+    shape: {
+      kind: "rect",
+      radius: 20,
+      fill: "#FBF6EC",
+      stroke: { colour: "#FFFFFF", width: 4 },
+      shadow: { colour: "#2A1C12", blur: 10, dx: 0, dy: 6 },
+    },
+  };
+
+  const pixelsOf = async (book: BookTemplate) => {
+    const sized = atRenderWidth(book, WIDE);
+    const chosen = { lookId: FIXTURE_BOOK_FILL.lookId };
+    const { rgba } = await renderPrintPixels(
+      pageTemplateFor(sized, 0, chosen),
+      pageFillFor(sized, 0, FIXTURE_BOOK_FILL),
+    );
+    return rgba;
+  };
+
+  const same = (a: Uint8Array, b: Uint8Array) =>
+    a.length === b.length && a.every((v, i) => v === b[i]);
+
+  it("draws nothing at all under the title, and would notice a panel that came back", async () => {
+    const [bare, committed, panelled] = await Promise.all([
+      pixelsOf(coverWith([])),
+      pixelsOf(coverWith(WITHOUT_TITLE)),
+      pixelsOf(coverWith([OLD_PANEL, ...WITHOUT_TITLE])),
+    ]);
+
+    expect(
+      same(bare, committed),
+      "the cover draws something besides the title — if that is deliberate, this test is the place to say so",
+    ).toBe(true);
+
+    // The control. Without it the assertion above would pass against a cover
+    // whose layers drew nothing whatever, including the title.
+    expect(same(bare, panelled), "the panel drew nothing, so the comparison proves nothing").toBe(
+      false,
+    );
+  });
+});
+
+/**
+ * **The title is in the corner, measured against the page and not against the
+ * numbers that put it there.**
+ *
+ * `templates/first-book.ts` § `TITLE_CORNER` derives its frame from a
+ * rectangle the captain drew, which is not in this repository — so asserting
+ * the frame against those same numbers would prove nothing. What *can* be
+ * asserted without circularity is the two properties that make a corner a
+ * corner, both read off `page.canvas`: the type is entirely in the top half of
+ * the page, and its centre is right of the page's centre. The title the move
+ * replaced — three lines centred in the middle of the cover — fails both, and
+ * that is the control below.
+ */
+describe("the title stands in the upper right of the cover", () => {
+  const MIDDLE_X = FIRST_BOOK.page.canvas.width / 2;
+  const MIDDLE_Y = FIRST_BOOK.page.canvas.height / 2;
+
+  it("sets in the top half, right of centre, at the longest name there is", async () => {
+    const ink = await titleInkFor(atRenderWidth(FIRST_BOOK, WIDTH), FIXTURE_BOOK_FILL, LONGEST);
+    expect(ink, "the title drew nothing").not.toBeNull();
+    if (!ink) return;
+
+    expect(ink.y + ink.height, "the title reaches below the middle of the cover").toBeLessThan(
+      MIDDLE_Y,
+    );
+    expect(ink.x + ink.width / 2, "the title is not right of the cover's centre").toBeGreaterThan(
+      MIDDLE_X,
+    );
+  });
+
+  it("would fail for the centred title it replaced, which is what makes it an assertion", async () => {
+    // The pre-19-November frame: 402 pt across, starting at y 226, centred on
+    // the page. Written out here because it is a counterexample and not a
+    // declaration — nothing reads it but this control.
+    const centred: BookTemplate = {
+      ...FIRST_BOOK,
+      cover: {
+        ...FIRST_BOOK.cover,
+        layers: (FIRST_BOOK.cover.layers ?? []).map((l) =>
+          l.id === SLOT.id
+            ? { ...l, frame: { x: 105, y: 226, width: 402, height: 160 }, size: 44, baseline: 48, lineHeight: 52 }
+            : l,
+        ),
+      },
+    };
+    const ink = await titleInkFor(atRenderWidth(centred, WIDTH), FIXTURE_BOOK_FILL, LONGEST);
+    expect(ink).not.toBeNull();
+    if (!ink) return;
+    expect(ink.y + ink.height).toBeGreaterThan(MIDDLE_Y);
+    expect(Math.abs(ink.x + ink.width / 2 - MIDDLE_X)).toBeLessThan(1);
+  });
 });

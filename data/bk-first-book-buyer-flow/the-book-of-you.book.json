@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "id": "the-book-of-you",
-  "rev": "f193676f",
+  "rev": "7ffd938c",
   "name": "When They Were Small",
   "blurb": "Twelve spreads of their first year, with their name through it, one of your own photographs, and a dedication in the front.",
   "dedicationDefault": "Dear {name},\n\nHere is your year, all tucked in a book,\nEach first and each giggle, each wide-eyed look.\nWe'll read it together again and again,\nAnd remember how small you were back then.\n\nWith all our love",
@@ -212,44 +212,19 @@
     },
     "layers": [
       {
-        "id": "cover-panel",
-        "kind": "shape",
-        "frame": {
-          "x": 85,
-          "y": 212,
-          "width": 442,
-          "height": 188
-        },
-        "shape": {
-          "kind": "rect",
-          "radius": 20,
-          "fill": "#FBF6EC",
-          "stroke": {
-            "colour": "#FFFFFF",
-            "width": 4
-          },
-          "shadow": {
-            "colour": "#2A1C12",
-            "blur": 10,
-            "dx": 0,
-            "dy": 6
-          }
-        }
-      },
-      {
         "id": "cover-title",
         "kind": "textSlot",
         "slot": "storyText",
         "frame": {
-          "x": 105,
-          "y": 226,
-          "width": 402,
-          "height": 160
+          "x": 251,
+          "y": 61,
+          "width": 324,
+          "height": 196
         },
         "font": "hand",
-        "size": 44,
-        "baseline": 48,
-        "lineHeight": 52,
+        "size": 38,
+        "baseline": 66,
+        "lineHeight": 45,
         "colour": "#3B2A20",
         "align": "middle",
         "maxChars": 32,

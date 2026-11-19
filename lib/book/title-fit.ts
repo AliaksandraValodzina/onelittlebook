@@ -3,17 +3,18 @@
  *
  * `templates/first-book.ts` § `cover` sizes the title from two numbers: the
  * slot's `maxCharsPerLine` of sixteen, which is what the build enforces, and a
- * **width in points** written into the docblock beside it — *"fourteen
- * characters of 44 pt Indie Flower is 374 pt measured against the vendored
- * TTF"*. The first is checked on every build. The second was measured once, by
- * hand, in one face, and nothing has re-measured it since.
+ * **width in points** written into the docblock beside it. The first is checked
+ * on every build. The second was, until this file existed, measured once by
+ * hand in one face — and since 19 November it is the number that decides the
+ * type size, because `templates/first-book.ts` § `TITLE_CORNER` sized the
+ * title to a corner the captain drew rather than the other way round.
  *
  * That was fine while there was one face. It stops being fine the moment the
  * face is a question: a character count says nothing about a width, and a heavy
  * rounded display face is far wider than a typewriter face at the same size.
  * A count of sixteen that holds fourteen characters of Special Elite holds
  * eleven of something else, and the way that failure arrives is a printed cover
- * with the child's name running off both sides of the panel.
+ * with the child's name running off both sides of the page.
  *
  * So this module answers the width question the way `test/book-verses.test.ts`
  * answers it for the verses, and for the same reason: **render the page twice,
@@ -33,7 +34,7 @@
 import { pageFillFor, pageTemplateFor } from "./derive";
 import { SLOT } from "./slots";
 import { nameLimit } from "./name";
-import { maxCharsPerLineOf } from "../template/defaults";
+import { maxCharsPerLineOf, safeBox } from "../template/defaults";
 import { renderPrintPixels } from "../render/raster";
 import { FACES, familyOf } from "../render/fonts";
 import type { BookFill, BookTemplate } from "./types";
@@ -72,25 +73,23 @@ export function coverTitleIn(book: BookTemplate, font: string, size?: number): B
 }
 
 /**
- * **The ground the title is printed on, which is a wider bound than its box.**
+ * **The outer bound on the title, which is wider than its own box.**
  *
- * The cover sets the title in a cream panel — a `shape` layer — and the slot's
- * frame sits inside it with room to spare. The two are different questions and
- * a comparison needs both: a name that leaves the *frame* has left the box the
- * captain drew for it, which is a design decision to take knowingly; a name
- * that leaves the *panel* is set on photography and is a defect. Found by
- * containment rather than by id, so re-drawing or renaming the panel moves this
- * with it, and `null` when a cover has no such ground at all.
+ * There are two questions here and a comparison needs both. A name that leaves
+ * the slot's **frame** has left the box the captain drew for it — a design
+ * decision to take knowingly, not a defect. A name that leaves the **page's
+ * safe area** is running at the cut line, and that is the defect: nobody sees
+ * it until a book is in a box.
+ *
+ * This used to be the cream panel the title was set in, found by containment,
+ * because a name that left *that* was set on photography. The panel went on
+ * 19 November — `templates/first-book.ts` § `TITLE_CORNER` — and the title is
+ * now set on the artwork by design, so the panel is no longer the bound. The
+ * safe area is, and it is the book's own declaration rather than anything this
+ * file knows: `lib/template/defaults.ts` § `safeBox` off `page.canvas`.
  */
-export function titlePanelOf(book: BookTemplate): Box | null {
-  const frame = coverTitleSlot(book).frame;
-  const holds = (box: Box) =>
-    box.x <= frame.x &&
-    box.y <= frame.y &&
-    box.x + box.width >= frame.x + frame.width &&
-    box.y + box.height >= frame.y + frame.height;
-  const panel = (book.cover.layers ?? []).find((l) => l.kind === "shape" && holds(l.frame));
-  return panel ? panel.frame : null;
+export function titleBoundOf(book: BookTemplate): Box {
+  return safeBox(book.page.canvas);
 }
 
 /** The same cover with the title taken away — the other half of the difference. */
@@ -191,8 +190,8 @@ export interface TitleFit {
   size: number;
   /** The slot's own frame — what the title has to fit across. */
   frame: Box;
-  /** The cream panel the title is printed on, which is the wider bound. */
-  panel: Box | null;
+  /** The page's safe area, which is the wider bound the ink must stay inside. */
+  bound: Box;
   /** The name every number below is for. */
   name: string;
   /** The ink's box at that name. `null` means no type was drawn. */
@@ -200,10 +199,12 @@ export interface TitleFit {
   /** Points of the frame's width still unused. Negative is an overflow. */
   spare: number;
   /**
-   * Points of the **panel's** width still unused. Negative is a name set on
-   * photography, which is the failure rather than the decision.
+   * The ink's narrowest margin to the **safe area**, in points — a distance
+   * and not a width, because where the ink sits is the whole question here.
+   * Negative is a name set at the cut line, which is the failure rather than
+   * the decision.
    */
-  panelSpare: number;
+  boundSpare: number;
   /**
    * How many characters longer the name could be before the ink leaves the
    * frame — measured by lengthening it, not divided out of an average.
@@ -216,6 +217,21 @@ export interface TitleFit {
   charactersSpare: number;
   /** True while the character limit, rather than the width, is the binding one. */
   countBindsFirst: boolean;
+  /**
+   * **True when the ink ran off the rendered page**, so `spare` and
+   * `boundSpare` are floors rather than figures.
+   *
+   * The measurement is a difference between two renders of a page, so a line
+   * set wider than the page cannot be measured past its edge — the widest
+   * candidates here overflow by more than the numbers say. It did not arise
+   * while the title was centred on a 612 pt page and nothing set wider than
+   * that; `templates/first-book.ts` § `TITLE_CORNER` moved the slot's centre
+   * to x 413, which halves the room a wide face has before it is cut off.
+   * Reported rather than corrected: the only honest fix would be to measure a
+   * page this book does not have. `needsSize` is unaffected — it re-renders at
+   * the smaller size, where there is nothing to clip.
+   */
+  clipped: boolean;
   /**
    * The size this face would need for the title to fit, when it does not.
    *
@@ -242,7 +258,7 @@ export async function titleFitFor(
   options: { size?: number; renderWidth?: number; name?: string } = {},
 ): Promise<TitleFit> {
   const slot = coverTitleSlot(book);
-  const panel = titlePanelOf(book);
+  const bound = titleBoundOf(book);
   const size = options.size ?? slot.size;
   const across = maxCharsPerLineOf(slot);
   const limit = nameLimit(book);
@@ -252,7 +268,15 @@ export async function titleFitFor(
   const inkAt = (text: string) => titleInkFor(affordable, fill, text);
   const ink = await inkAt(name);
   const spare = ink === null ? -Infinity : slot.frame.width - ink.width;
-  const panelSpare = ink === null || panel === null ? -Infinity : panel.width - ink.width;
+  const boundSpare =
+    ink === null
+      ? -Infinity
+      : Math.min(
+          ink.x - bound.x,
+          ink.y - bound.y,
+          bound.x + bound.width - (ink.x + ink.width),
+          bound.y + bound.height - (ink.y + ink.height),
+        );
 
   /**
    * Lengthen the name a character at a time until the ink leaves the frame, or
@@ -295,16 +319,25 @@ export async function titleFitFor(
     needsSize = guess;
   }
 
+  const edge = 0.5;
+  const clipped =
+    ink !== null &&
+    (ink.x <= edge ||
+      ink.y <= edge ||
+      ink.x + ink.width >= book.page.canvas.width - edge ||
+      ink.y + ink.height >= book.page.canvas.height - edge);
+
   return {
     font,
     family: FACES[font]?.family ?? familyOf(font),
     size,
     frame: slot.frame,
-    panel,
+    bound,
     name,
     ink,
     spare,
-    panelSpare,
+    boundSpare,
+    clipped,
     charactersSpare,
     countBindsFirst: ink !== null && spare >= 0 && charactersSpare >= across - name.length,
     needsSize,

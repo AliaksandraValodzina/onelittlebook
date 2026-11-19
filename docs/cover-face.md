@@ -81,49 +81,66 @@ Two columns, because "does it fit" has two honest answers:
   will accept, which is `validateBook`'s own worst case.
 
 And two bounds, because overflowing is not one failure: the title's **frame**
-is 402 pt and the cream **panel** it is printed on is 442 pt. Past the frame is
-a design decision to take knowingly. Past the panel is a child's name set on
-photography, which is a defect.
+is 324 pt and the page's **safe area** — the outer bound now that there is no
+panel — runs x 36 → 576. Past the frame is a design decision to take
+knowingly. Past the safe area is a child's name running at the cut line, which
+is a defect.
 
-### The result, measured 18 November
+A line set wider than the page cannot be measured past the page's own edge, so
+a `≥` in the table below is a floor and not a figure — `TitleFit.clipped`. The
+size a face would need is unaffected: it is re-measured at that size, where
+there is nothing to clip.
 
-| Face | Licence | *Charlotte-Rose* at 44 pt | Fourteen `M`s at 44 pt | Narrows the names the shop accepts |
+### The result, re-measured 19 November in the corner's own box
+
+The table was first measured on 18 November at 44 pt in the 402 pt panel
+frame. The panel is gone and the frame is 324 pt at 38 pt — § The corner
+carries the title, below — so every number here was taken again. Nothing in it
+compares the faces differently; the box they are compared in got smaller.
+
+| Face | Licence | *Charlotte-Rose* at 38 pt | Fourteen `M`s at 38 pt | Narrows the names the shop accepts |
 |---|---|---|---|---|
-| **Indie Flower — today** | OFL-1.1 | fits, 2 spare | **fits**, 1 spare | — |
-| Special Elite — the verses' face | Apache-2.0 | fits, 1 spare | 24 pt past the frame, on the panel | — |
-| Baloo 2 | OFL-1.1 | fits, 2 spare | 45 pt off the panel · 36 pt to fit | — |
-| Grandstander | OFL-1.1 | fits, 2 spare | 5 pt off the panel · 39 pt to fit | — |
-| Bree Serif | OFL-1.1 | fits, 2 spare | 70 pt off the panel · 34 pt to fit | — |
-| Comfortaa | OFL-1.1 | fits, 1 spare | 155 pt off the panel · 29 pt to fit | — |
-| Bubblegum Sans | OFL-1.1 | fits, 2 spare | 33 pt past the frame, on the panel | Polish, Czech, Turkish |
-| Chewy | Apache-2.0 | fits, 2 spare | 14 pt off the panel · 38 pt to fit | Polish, Czech, Turkish |
-| Gochi Hand | OFL-1.1 | fits, 2 spare | 25 pt past the frame, on the panel | Polish, Turkish |
-| Fredoka | OFL-1.1 | fits, 2 spare | 56 pt off the panel · 35 pt to fit | Polish, Czech, Turkish |
-| Sniglet | OFL-1.1 | fits, no spare | 163 pt off the panel · 29 pt to fit | Polish, Czech, Turkish |
+| **Indie Flower — today** | OFL-1.1 | fits, 2 spare | **fits**, no spare | — |
+| Special Elite — the verses' face | Apache-2.0 | fits, 1 spare | 21 pt outside the safe area · 33 pt to fit | — |
+| Baloo 2 | OFL-1.1 | fits, 2 spare | ≥ 36 pt outside the safe area · 29 pt to fit | — |
+| Grandstander | OFL-1.1 | fits, 1 spare | 30 pt outside the safe area · 31 pt to fit | — |
+| Bree Serif | OFL-1.1 | fits, 2 spare | ≥ 36 pt outside the safe area · 27 pt to fit | — |
+| Comfortaa | OFL-1.1 | fits, no spare | ≥ 36 pt outside the safe area · 23 pt to fit | — |
+| Bubblegum Sans | OFL-1.1 | fits, 2 spare | 25 pt outside the safe area · 32 pt to fit | Polish, Czech, Turkish |
+| Chewy | Apache-2.0 | fits, 2 spare | 34 pt outside the safe area · 31 pt to fit | Polish, Czech, Turkish |
+| Gochi Hand | OFL-1.1 | fits, 2 spare | 22 pt outside the safe area · 33 pt to fit | Polish, Turkish |
+| Fredoka | OFL-1.1 | fits, 2 spare | ≥ 36 pt outside the safe area · 28 pt to fit | Polish, Czech, Turkish |
+| Sniglet | OFL-1.1 | fits, no spare | ≥ 36 pt outside the safe area · 23 pt to fit | Polish, Czech, Turkish |
 
 Re-measure with `npm run cover-faces -- --table`, which writes the same table
 into the output directory and costs no pictures.
 
 ### What the two columns mean together
 
-**Every face holds every realistic fourteen-character name at 44 pt.** The
-widest real name measured — *Wilhelmina-May* in Grandstander — is 335 pt in a
-402 pt frame. The size is not in practical danger.
+**Every face still holds every realistic fourteen-character name**, and that is
+the column the captain is actually looking at. The size is not in practical
+danger in any row.
 
-**No face but Indie Flower holds the guarantee at 44 pt, and that includes
-Special Elite.** The box was drawn around Indie Flower, whose capitals are
-narrow for a handwritten face, and the fit has been a coincidence of that
-choice rather than a property of the box since the cover was drawn. So
-switching the face means deciding, explicitly, one of three things:
+**No face but Indie Flower holds the guarantee, and that includes Special
+Elite.** It was true at 44 pt in the panel and it is true at 38 pt in the
+corner, for the same reason: the box has twice been sized to Indie Flower,
+whose capitals are narrow for a handwritten face, so the fit is a property of
+that choice and not of the box. Switching the face means deciding, explicitly,
+one of three things:
 
-1. **Set the title smaller** — the size each face needs is in the table. 36 pt
-   on a 44 pt cover is a visible change, not a rounding.
-2. **Widen the frame and the panel.** This moves drawn content, which
-   `templates/first-book.ts` § `cover` is clear is one statement with the
-   artboard, and it restamps `rev`.
+1. **Set the title smaller still** — the size each face needs is in the table,
+   and every one of them is in the twenties. On a cover already down from 44 to
+   38, that is a second visible step and not a rounding.
+2. **Widen the frame.** There is very little left to widen into: the corner's
+   corridor is measured below and 38 pt already spends most of it. Widening
+   past it moves the title back out of the corner the captain drew.
 3. **Accept that the guarantee is a realistic one rather than an absolute one**
    — which is what the cover has in fact been doing, and is a defensible
    position now that it is written down rather than assumed.
+
+**The corner has made this choice more expensive, not less.** That is the
+honest summary of the re-measurement: the narrower box costs every candidate
+except today's face several more points of type.
 
 `test/cover-face.test.ts` holds the committed face to the guarantee. The day
 the cover moves, that test goes red and names the overflow in points — which is
@@ -151,13 +168,15 @@ every face in the lineup, measured rather than assumed. *O’Brien* sets
 correctly in all eleven, and `sheet-<look>-apostrophe.png` is the picture of it,
 with the reference tile beside them showing the gap.
 
-**The look under the cover does not change the ground under the type.** The
-title is set on an opaque cream panel — `#FBF6EC`, `cover-panel` — in every one
-of the fourteen looks, so a face that is legible on one cover is legible on all
-of them and the "pale teal versus dark" question does not reach the letters.
-What does change is how the panel *reads* against its surround, which is why
-the sheets are rendered over three looks rather than one: `girl-01` is the
-palest, `girl-07` the most saturated, `boy-04` in between.
+**The look under the cover is now the ground under the type, and that is new.**
+Until 19 November the title sat on an opaque cream panel, so a face legible on
+one cover was legible on all fourteen and the "pale teal versus dark" question
+never reached the letters. The panel is gone — § The corner carries the title —
+and the type is set on the illustration itself, which means **a face is only as
+legible as the corner it lands in**. The three sheets are rendered over
+`girl-01` (palest), `girl-07` (most saturated) and `boy-04` (between) for that
+reason rather than for the panel's surround, and eleven looks have no cover to
+render at all.
 
 ## The recommendation
 
@@ -172,14 +191,82 @@ a face that refuses buyers is a product decision wearing a typographic hat.
 Baloo 2 costs nothing: 856 codepoints, every name the shop takes today still
 printable.
 
-Grandstander is the one to look at second. It is the closest to the guarantee —
-5 pt off the panel at fourteen `M`s, against Baloo 2's 45 — and reads lighter
-and rounder, which is either warmer or thinner depending on the eye. The eye is
-the captain's.
+Grandstander is the one to look at second. It is among the closest to the
+guarantee — 31 pt to fit, against Baloo 2's 29 — and reads lighter and rounder,
+which is either warmer or thinner depending on the eye. The eye is the
+captain's.
+
+**One caveat the corner adds to all of this.** The recommendation above was
+written when the title sat on cream. Now that it is set on the artwork, a
+heavier face is also a more *opaque* face over a child's cover — and the
+sheets, not this paragraph, are where that gets judged.
 
 Comfortaa is in the lineup to mark where the register ends, not to win. It is
 rounded by construction and cold with it, and a comparison with no wrong answer
 in it does not show anybody where the boundary is.
+
+## The corner carries the title
+
+**Decided 19 November, on the captain's mark.** They drew a red rectangle in
+the upper right of the girl-01 cover and asked for three things: the cream
+panel gone, the title in that corner, and the ink changed if it needed
+changing. `templates/first-book.ts` § `TITLE_CORNER` is the implementation and
+carries every number; this is what was weighed.
+
+**The mark, measured off their file.** Outer edge **x 278 → 549, y 61 → 257**
+on the 612 pt page; centre **x 413**; **271 pt** across where the frame it left
+was 402.
+
+**It could not simply move.** Fourteen `M`s — the widest name `nameMaxChars`
+admits — set at **369 pt** at 44 pt. Three ways out, and the measurement left
+one standing:
+
+| Option | Verdict |
+|---|---|
+| **More lines** | Worth nothing. The widest line is always the name, a name cannot be broken, and *"Turned One"* sets at 208 pt. A fourth line moves no constraint. |
+| **A wider box** | Not far enough. Column by column across the marked band, every delivered cover clears 4.5:1 against `INK` only from **x 233** rightwards — left of that is the child's head — and `canvas.safe` closes the other side at 576. The widest corridor the corner has is **343 pt**, and 44 pt needs 369. |
+| **A smaller size** | The only one left. **38 pt**, where the guarantee sets at 318.6 pt. |
+
+**The box is the band's centre rather than the drawn width.** 324 pt centred on
+the captain's own x 413 runs 251 → 575, a point inside the safe area, and its
+ink stops 20 pt clear of the sky boundary at 233. Every realistic
+fourteen-character name is far narrower than the guarantee — *Wilhelmina-May*
+237 pt, *Mohammed-Amir* 261 pt — and so sets **inside the rectangle the captain
+drew**. Only a name of fourteen `M`s reaches past it, onto sky that has been
+measured. 40 pt was tried and refused by the build, not by taste: it needs
+335 pt, which ends at 581 and returns `slot.outsideSafeArea`.
+
+**The ink did not need changing.** Over every pixel of type on every delivered
+cover, `#3B2A20` against what is actually behind it is **7.09:1 at its very
+worst** (boy-04, fourteen `M`s) and 0.00% of ink falls below 4.5:1. WCAG asks
+3:1 of type this size. A second colour would have been a second thing to keep
+true for no gain.
+
+### What the panel was doing, and what does not replace it
+
+The panel guaranteed a known ground under the words. **Nothing replaces that
+guarantee.** The title is set on illustration and the only thing standing
+behind it is that the captain's cover compositions put open sky in this corner.
+
+| Look | Cover artwork | The marked corner | Worst contrast under the type |
+|---|---|---|---|
+| girl-01 | delivered | open teal sky, bokeh and confetti only | 7.74:1 |
+| girl-07 | delivered | open teal sky | 7.43:1 |
+| boy-04 | delivered | open teal sky | 7.09:1 |
+| girl-02 … girl-06, boy-01 … boy-03, boy-05 … boy-07 (11) | **none** | **unmeasured** | **unmeasured** |
+
+All three delivered covers are the same composition — child left, cake lower
+right, sky upper right — which is the reason the corner is clear and the reason
+to expect the remaining eleven to follow it. It is a reason and not a check.
+**The check is a human looking at `npm run cover-faces` as each cover lands**,
+and the thing to look for is anything in the upper right: bunting, a window, a
+cake, a second child. A cover that breaks the pattern needs its own answer —
+per-look ink, or a soft halo — and both are design changes the captain should
+get to refuse rather than inherit.
+
+`lib/book/name.ts` and `validateBook` are no help here and were never going to
+be: this is a fact about pixels a human supplied, and the repository's own
+position on measuring artwork it cannot judge is in `lib/book/cover-upload.ts`.
 
 ## Switching
 

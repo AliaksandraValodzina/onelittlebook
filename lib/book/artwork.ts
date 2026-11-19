@@ -43,10 +43,16 @@
  * the same assertion against the ordinary render, which *does* carry the name.
  *
  * What is **kept** is everything the book draws for itself: the artwork, and
- * furniture like the cover's cream panel. That is deliberate. The model is
- * being asked to replace a child in a finished page, and a page with the panel
- * but no lettering is the page as it will print minus the words — where a page
- * with the panel removed would invite a child drawn where the name goes.
+ * any furniture the book still draws. That is deliberate — the model is being
+ * asked to replace a child in a finished page, and what it should see is the
+ * page as it will print minus the words.
+ *
+ * The cover used to keep a cream panel here for exactly that reason, and the
+ * panel went on 19 November (`templates/first-book.ts` § `TITLE_CORNER`). So
+ * the cover now goes out with **nothing** marking where the title lands, and a
+ * model told to redraw it is free to put something in that corner. The
+ * captain's own eye on the result is the check; there has never been another
+ * one for this download.
  *
  * ## Which pages a character swap has to touch, and the measurement
  *

@@ -392,7 +392,7 @@ const SMALL: BookTemplate = {
   },
 };
 
-/** The book with the cover's title and its panel taken off. */
+/** The book with the cover's title taken off. */
 function withoutTheTitle(book: BookTemplate): BookTemplate {
   return {
     ...book,
@@ -402,9 +402,7 @@ function withoutTheTitle(book: BookTemplate): BookTemplate {
       // that carries a story and nothing to set it in, which is the rule
       // keeping words from silently going nowhere.
       story: undefined,
-      layers: (book.cover.layers ?? []).filter(
-        (l) => !("slot" in l && l.slot === SLOT.story) && l.id !== "cover-panel",
-      ),
+      layers: (book.cover.layers ?? []).filter((l) => !("slot" in l && l.slot === SLOT.story)),
     },
   };
 }

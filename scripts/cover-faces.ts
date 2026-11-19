@@ -8,8 +8,8 @@
  *
  * The captain dislikes the cover's title and wants to choose a new face **by
  * looking at it**. A specimen sheet of words on white cannot answer that: the
- * title is set in a cream panel on a photographic cover and whether a face
- * works is a question about the cover, not about the face. So every picture
+ * title is set straight onto a photographic cover and whether a face works is
+ * a question about the cover, not about the face. So every picture
  * this writes is **the real cover page** — the captain's own delivered wrap,
  * cut to the front panel by `lib/print/printify.ts` § `frontPanelPxOf`, with
  * the captain's own title string on it, at the size the template declares,
@@ -61,8 +61,8 @@ import {
   atRenderWidth,
   coverTitleIn,
   coverTitleSlot,
+  titleBoundOf,
   titleFitFor,
-  titlePanelOf,
 } from "../lib/book/title-fit";
 import { checkName, nameLimit } from "../lib/book/name";
 import { FACES, isCandidate } from "../lib/render/fonts";
@@ -156,9 +156,9 @@ async function verdictFor(key: string): Promise<Verdict> {
  * One fit in a phrase.
  *
  * Three outcomes and they are genuinely different: inside the box the captain
- * drew; past that box but still on the cream panel it is printed on, which is a
- * design decision to take knowingly; and past the panel, which is a name set on
- * photography and is a defect rather than a choice.
+ * drew; past that box but still inside the page's safe area, which is a design
+ * decision to take knowingly; and past the safe area, which is a name running
+ * at the cut line and is a defect rather than a choice.
  */
 function phrase(fit: TitleFit): string {
   if (fit.ink === null) return "DREW NOTHING";
@@ -169,10 +169,13 @@ function phrase(fit: TitleFit): string {
         : `${fit.charactersSpare} character${fit.charactersSpare === 1 ? "" : "s"} spare`;
     return `fits, ${room}`;
   }
-  if (fit.panelSpare >= 0) {
-    return `${(-fit.spare).toFixed(0)} pt past its box, still on the panel — ${fit.needsSize} pt to fit`;
+  // A line set wider than the page cannot be measured past its edge, so the
+  // overflow is a floor rather than a figure — `TitleFit.clipped`.
+  const over = fit.clipped ? "at least " : "";
+  if (fit.boundSpare >= 0) {
+    return `${over}${(-fit.spare).toFixed(0)} pt past its box, still inside the safe area — ${fit.needsSize} pt to fit`;
   }
-  return `${(-fit.panelSpare).toFixed(0)} pt off the panel — ${fit.needsSize} pt to fit`;
+  return `${over}${(-fit.boundSpare).toFixed(0)} pt outside the safe area — ${fit.needsSize} pt to fit`;
 }
 
 /** The one line a sheet tile carries: the realistic name, which is what it shows. */
@@ -293,7 +296,7 @@ function sheetSvg(tiles: Tile[], heading: string, columns: number): string {
     `<text x="${pad}" y="46" font-family="Special Elite" font-size="30" fill="#2A1C12">` +
     `${esc(heading)}</text>` +
     `<text x="${pad}" y="74" font-family="Special Elite" font-size="18" fill="#6B5A4A">` +
-    `${esc("The real cover page, the captain’s delivered wrap, the title at its declared 44 pt. Outlined: the face it is on today.")}</text>` +
+    `${esc(`The real cover page, the captain’s delivered wrap, the title in the corner they marked at its declared ${coverTitleSlot(FIRST_BOOK).size} pt \u2014 no panel. Outlined: the face it is on today.`)}</text>` +
     tiles.map(cell).join("") +
     `</svg>`
   );
@@ -451,9 +454,10 @@ function report(verdicts: Verdict[], looks: string[], name: string, reference: b
   const limit = nameLimit(FIRST_BOOK);
   const across = maxCharsPerLineOf(slot);
   const setIn = slot.font;
-  const panel = titlePanelOf(FIRST_BOOK);
+  const bound = titleBoundOf(FIRST_BOOK);
   const across_pt = slot.frame.width;
-  const width = (fit: TitleFit) => (fit.ink ? fit.ink.width.toFixed(0) : "—");
+  const width = (fit: TitleFit) =>
+    fit.ink ? `${fit.clipped ? "≥" : ""}${fit.ink.width.toFixed(0)}` : "—";
   const rows = verdicts.map(
     (v) =>
       `| ${FACES[v.key].family}${v.key === setIn ? " **(today)**" : ""} | ` +
@@ -493,20 +497,23 @@ function report(verdicts: Verdict[], looks: string[], name: string, reference: b
     `- **The worst case** is ${limit} \`M\`s, the widest ${limit} characters the form will accept. It is the`,
     "  only column that *guarantees* anything, and it is `validateBook`'s own worst case.",
     "",
-    `The title's box is ${across_pt} pt across; the cream panel it is printed on is ` +
-      `${panel ? `${panel.width} pt` : "not declared"}. Past the box is a decision; past the panel is a name set on photography.`,
+    `The title's box is ${across_pt} pt across and there is no panel under it: since` +
+      ` 19 November the type is set straight onto the cover artwork —` +
+      ` \`templates/first-book.ts\` § \`TITLE_CORNER\`. The outer bound is the page's own safe` +
+      ` area, ${bound.x} → ${bound.x + bound.width} pt. Past the box is a decision; past the safe` +
+      ` area is a name running at the cut line.`,
     "",
     `| Face | Licence | “${LONGEST}” (pt) | Verdict | Worst case (pt) | Verdict | Refuses |`,
     "|---|---|---|---|---|---|---|",
     ...rows,
     "",
-    "**Only one face holds the worst case at the declared 44 pt, and it is the one the cover is",
-    "already set in.** That is not luck: the box was drawn around Indie Flower, whose capitals",
-    "are narrow for a handwritten face. Every other face in the lineup — including Special",
-    "Elite, which the verses are set in — needs a smaller size for the guarantee to hold. So",
-    "**choosing any of these is choosing a type size as well**, and the size each would need",
-    "is in its verdict. The alternative is to widen the box and the panel, which moves drawn",
-    "content and is the captain's call.",
+    "**The box is the captain\u2019s corner now, and it is a third narrower than the one these",
+    `faces were last compared in.** The title is set at ${slot.size} pt rather than 44 because that is the`,
+    `largest size at which ${limit} \`M\`s still fit ${across_pt} pt \u2014 \`templates/first-book.ts\``,
+    "\u00a7 `TITLE_CORNER` has the measurement and the two options it ruled out. Indie Flower is",
+    "the narrowest face here, so **a face that does not hold the worst case in this table needs a",
+    "smaller size still**, and the size it would need is in its verdict. Choosing any of these is",
+    "choosing a type size as well.",
     "",
     "**“Refuses”** is the half a picture cannot show. `lib/book/name.ts` asks every face the",
     "name lands in and refuses a character any of them cannot write, so the face chosen for",
