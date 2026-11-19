@@ -49,9 +49,11 @@ import {
   maxLinesOf,
   measuredLength,
   opacityOf,
+  paletteOf,
   rotationOf,
   textOf,
 } from "../template/defaults";
+import { letteringOf } from "./palette";
 import { centreOf, maskPath, placePhoto, r, roundedRectPath } from "../template/geometry";
 import { drawArt, shadowFilter } from "./decoration";
 import { ghostOverlay, type GhostOptions } from "./ghost";
@@ -214,6 +216,14 @@ export class TextOverflows extends Error {
  * about a shaping engine, so checking them here costs nothing and keeps the
  * one thing that cannot be undone — a line printed past the bottom of a page —
  * out of reach of anything but a crash.
+ *
+ * **A slot with a `palette` is set a letter at a time** — see `./palette.ts`
+ * for the cycle and `TextSlotLayer.palette` for why it is a field. It is still
+ * one `<text>` and one `<tspan>` per line: the per-letter spans carry a `fill`
+ * and no position, so the shaper lays the line out exactly as it would have.
+ * Measured, not assumed — `test/title-palette.test.ts` reads the ink's box out
+ * of both renders and they are the same box to the pixel, which is what makes
+ * a palette a colour change and not a layout change.
  */
 function drawTextSlot(layer: TextSlotLayer, fill: PageFill): string {
   const raw = fill.texts?.[layer.slot];
@@ -253,8 +263,21 @@ function drawTextSlot(layer: TextSlotLayer, fill: PageFill): string {
   // may keep it. That is a screen/print divergence produced by pressing Return
   // twice, which is exactly the class of difference this renderer exists to
   // make impossible.
+  //
+  // **A palette sets each letter in its own colour** and is otherwise the same
+  // text: one `<tspan>` per character, nested inside the line's own, with no
+  // `x` of its own so the shaper keeps laying the line out as a line.
+  // `./palette.ts` is the cycle, and it is imported rather than restated
+  // because `lib/book/title-colour.ts` measures what this draws.
+  const palette = paletteOf(layer);
+  const run = (line: string) =>
+    palette === null
+      ? esc(line)
+      : letteringOf(line, palette)
+          .map((l) => (l.colour === null ? esc(l.char) : `<tspan fill="${l.colour}">${esc(l.char)}</tspan>`))
+          .join("");
   const tspans = lines
-    .map((line, i) => `<tspan x="${r(at.x)}" y="${r(at.y + lh * i)}">${esc(line)}</tspan>`)
+    .map((line, i) => `<tspan x="${r(at.x)}" y="${r(at.y + lh * i)}">${run(line)}</tspan>`)
     .join("");
 
   return (

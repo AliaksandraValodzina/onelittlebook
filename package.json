@@ -12,6 +12,7 @@
     "print": "tsx scripts/render-print.ts",
     "book": "tsx scripts/render-book.ts",
     "cover-faces": "tsx scripts/cover-faces.ts",
+    "cover-colour": "tsx scripts/cover-colour.ts",
     "artwork": "tsx scripts/import-artwork.ts",
     "artwork:upload": "tsx scripts/upload-artwork.ts",
     "looks": "tsx scripts/check-looks.ts",
