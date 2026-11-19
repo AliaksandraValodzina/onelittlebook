@@ -49,6 +49,18 @@ import type { BookTemplate } from "../lib/book/types";
 const slot = dedicationSlot(FIRST_BOOK)!;
 const chosen = { lookId: FIRST_BOOK.looks[0].id };
 
+/**
+ * The face the cover's title is set in, **read off the book**.
+ *
+ * It moved from Indie Flower to Baloo 2 on 19 November, and a name-coverage
+ * assertion that had named the face would have gone red for the one reason that
+ * is not a defect. What this file is about is *which* faces the name lands in,
+ * so it asks the cover which face that is.
+ */
+const COVER_FACE = ((FIRST_BOOK.cover.layers ?? []).find(
+  (l) => l.kind === "textSlot" && l.slot === SLOT.story,
+) as { font: string }).font;
+
 /** The problem codes this book reports, which is how every refusal is asserted. */
 const codesOf = (book: BookTemplate) => validateBook(book).map((p) => p.code);
 
@@ -121,27 +133,30 @@ describe("the baby's name is refused, never quietly changed", () => {
   });
 
   it("asks every face the name is set in, which since 12 November is only the copy's", () => {
-    // The failure this closes: a name the handwritten face can write and the
+    // The failure this closes: a name the cover's face can write and the
     // typewriter cannot would print cleanly on the cover and as a gap on page
-    // ten. Indie Flower carries Vietnamese that Special Elite has never heard
-    // of, so "Thư" is the name that tells the two apart.
+    // ten. The cover's face carries Vietnamese that Special Elite has never
+    // heard of, so "Thư" is the name that tells the two apart — and it told
+    // them apart when the cover was Indie Flower and still does now it is
+    // Baloo 2, which is the point of asking the book rather than naming a face.
     //
     // **The name reaches both faces entirely through the copy**, because this
     // book has no `babyName` slot at all — the captain's two lone names went
-    // on 12 November. The cover's title is set in the hand with `{name}` in
-    // it, the twelve verses are set in the typewriter with `{name}` in them,
-    // and a check that looked at name slots would now find nothing to look at
-    // and accept every name in the language.
+    // on 12 November. The cover's title carries `{name}`, the twelve verses are
+    // set in the typewriter with `{name}` in them, and a check that looked at
+    // name slots would now find nothing to look at and accept every name in the
+    // language.
     expect(slotsForRole(FIRST_BOOK, SLOT.name)).toEqual([]);
-    expect(facesTheNameIsSetIn(FIRST_BOOK).sort()).toEqual(["hand", "typewriter"]);
+    expect(facesTheNameIsSetIn(FIRST_BOOK).sort()).toEqual([COVER_FACE, "typewriter"].sort());
+    expect(COVER_FACE).not.toBe("typewriter");
     expect(checkName(FIRST_BOOK, "Thư").ok).toBe(false);
 
     /**
      * The control, and what makes this a test of *where the name goes* rather
      * than of "both faces, always": take `{name}` out of the verses and the
      * typewriter stops being a face the name is set in — same book, same
-     * slots, same faces on the page. The cover keeps its `{name}`, so the hand
-     * stays and the name still reaches the book.
+     * slots, same faces on the page. The cover keeps its `{name}`, so its own
+     * face stays and the name still reaches the book.
      */
     const noNameInTheVerses = (story: string | undefined) =>
       story === undefined ? undefined : story.split(NAME_TOKEN).join("Somebody");
@@ -149,7 +164,7 @@ describe("the baby's name is refused, never quietly changed", () => {
       ...FIRST_BOOK,
       pages: FIRST_BOOK.pages.map((p) => ({ ...p, story: noNameInTheVerses(p.story) })),
     };
-    expect(facesTheNameIsSetIn(wordless)).toEqual(["hand"]);
+    expect(facesTheNameIsSetIn(wordless)).toEqual([COVER_FACE]);
     expect(checkName(wordless, "Thư").ok).toBe(true);
 
     // And the other half of the rule, which this book no longer exercises on
@@ -182,7 +197,7 @@ describe("the baby's name is refused, never quietly changed", () => {
       ),
     };
     expect(limitsForRole(slotted, SLOT.name).faces).toEqual(["typewriter"]);
-    expect(facesTheNameIsSetIn(slotted).sort()).toEqual(["hand", "typewriter"]);
+    expect(facesTheNameIsSetIn(slotted).sort()).toEqual([COVER_FACE, "typewriter"].sort());
     expect(checkName(slotted, "Thư").ok).toBe(false);
   });
 

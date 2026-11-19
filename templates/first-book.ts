@@ -225,28 +225,61 @@ const NAME_CHARS = 14;
  *    widening alone cannot hold the guarantee at any position.
  *  - **A smaller size**, which is therefore the only one left.
  *
- * **38 pt, and the box is the band's centre rather than the drawn width.** At
- * 38 pt the worst case sets at 318.6 pt. Centred on the captain's own
- * centre — x 413 — a 324 pt box runs 251 → 575: inside `safeBox` by a point,
- * and its ink stops **20 pt clear** of the measured sky boundary at 233. Every
- * realistic fourteen-character name is far narrower than the guarantee
- * (*"Wilhelmina-May"* 237 pt, *"Mohammed-Amir"* 262 pt) and so sets **inside
- * the rectangle the captain drew**; only a name of fourteen `M`s reaches past
- * it, and it reaches onto sky that has been measured, not assumed.
+ * **The box is the band's centre rather than the drawn width.** Centred on the
+ * captain's own centre — x 413 — a 324 pt box runs 251 → 575: inside `safeBox`
+ * by a point, and its ink stops **about 20 pt clear** of the measured sky
+ * boundary at 233. That box has not moved since and is not a function of the
+ * face; the three numbers below are.
  *
- * 40 pt was tried and refused by the build rather than by taste: it needs
- * 335 pt, and 335 pt centred on x 413 ends at 581, which `validateBook`
- * returns as `slot.outsideSafeArea`.
+ * At 38 pt of Indie Flower the worst case set at 318.6 pt, which is how 38 was
+ * arrived at. 40 pt was tried and refused by the build rather than by taste:
+ * it needs 335 pt, and 335 pt centred on x 413 ends at 581, which
+ * `validateBook` returns as `slot.outsideSafeArea`.
  *
- * **The vertical is the drawn band verbatim** — y 61, 196 tall — with
- * `baseline` chosen so the three lines centre in it: baselines at 127, 172 and
- * 217 put the ink at y 100 → 217, whose centre is the band's own 159.
+ * ## The face is Baloo 2 since 19 November, and the size moved with it
+ *
+ * The captain chose it off `npm run cover-faces`' lineup — `docs/cover-face.md`
+ * is the decision — and **a face is also a width.** Baloo 2 ExtraBold sets the
+ * guarantee at **409 pt at 38 pt**: 85 pt past this box, 36 pt past the safe
+ * area, and far enough past the page that the measurement itself is clipped.
+ * Re-measured the way the 38 was measured — `lib/book/title-fit.ts`, the ink's
+ * own box out of a difference between two renders — the answer is **29 pt**,
+ * where fourteen `M`s set at **321.0 pt** in a 324 pt box, stopping 2.4 pt
+ * inside the safe area and 19.6 pt clear of the sky boundary.
+ *
+ * **29 pt is not a smaller title, and that is the thing to understand before
+ * reading the number as a loss.** At 29 pt Baloo 2 sets the worst case *wider*
+ * than Indie Flower did at 38 — 321.0 pt against 318.6 — so the title fills
+ * the same corner to within two and a half points. What changed is how much
+ * width a point of this face buys, not how large the words are on the cover.
+ * Every realistic fourteen-character name is still far narrower than the
+ * guarantee (*"Charlotte-Rose"* 198.6 pt) and so sets **inside the rectangle
+ * the captain drew**; only a name of fourteen `M`s reaches past it, onto sky
+ * that has been measured.
+ *
+ * **Widening the box was weighed again and buys one point.** The corridor the
+ * corner actually has is 343 pt, and 343 pt holds 30 pt of Baloo 2 and not 31
+ * (343.2 pt). One point of type would cost the whole 20 pt of clearance the
+ * ink keeps from the child's head, so the box stays the captain's.
+ *
+ * **`nameMaxChars` was not touched and is not the lever.** Fourteen is a
+ * product fact (§ `NAME_CHARS`); the size is the consequence.
+ *
+ * **The vertical is re-derived rather than kept.** The band is still the drawn
+ * rectangle verbatim — y 61, 196 tall — and the two numbers inside it follow
+ * the size: `lineHeight` 34 is the point nearest the 52 : 44 the panel was set
+ * with, and `baseline` 73 is the value whose three lines put the ink at
+ * y 114.6 → 202.6, centre **158.6** against the band's own 159. Both were
+ * chosen by re-rendering, not by proportion.
  *
  * **The ink did not need changing, and that is a measurement too.** Over every
  * pixel of type on every delivered cover, `#3B2A20` against what is actually
- * behind it is **7.5:1 at its worst** — WCAG wants 3:1 of type this size and
- * 4.5:1 of body text. Nothing was gained by darkening it and a second colour
- * would have been a second thing to keep true.
+ * behind it is **6.4:1 at its worst** in Baloo 2 at 29 pt — WCAG wants 3:1 of
+ * type this size and 4.5:1 of body text, and 0.00% of the ink is under either.
+ * A heavier face covers more of the artwork and so reads *more* contrasty, not
+ * less; the figure moves because the glyphs are in different places, not
+ * because anything got worse. `npm run cover-colour` is the command, and
+ * `docs/cover-colour.md` carries the alternatives the captain asked to see.
  *
  * **What the panel was doing, and what now does it.** It guaranteed a known
  * ground under the words. Nothing replaces that guarantee: the title is set on
@@ -260,15 +293,17 @@ const NAME_CHARS = 14;
  */
 const TITLE_CORNER = {
   /**
-   * x and width: the captain's marked centre, with the width 38 pt needs.
-   * y and height: their rectangle's band, unchanged.
+   * x and width: the captain's marked centre, with the width the type needs.
+   * y and height: their rectangle's band, unchanged — and unchanged again by
+   * the move to Baloo 2, which moved the three numbers under it and not this.
    */
   frame: { x: 251, y: 61, width: 324, height: 196 },
-  size: 38,
-  /** First baseline at y 127, which centres three lines in the band. */
-  baseline: 66,
-  /** 45 pt, which is the 52 : 44 the panel was set with, at the new size. */
-  lineHeight: 45,
+  /** Measured: 29 pt is the largest size at which fourteen `M`s of Baloo 2 fit 324 pt. */
+  size: 29,
+  /** First baseline at y 134, which centres three lines of 34 on the band. */
+  baseline: 73,
+  /** 34 pt, which is the 52 : 44 the panel was set with, at this size. */
+  lineHeight: 34,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -1022,7 +1057,7 @@ const LOOKS: Look[] = GENDERS.flatMap(({ id: gender }, column) =>
 export const FIRST_BOOK: BookTemplate = {
   schema: 1,
   id: "the-book-of-you",
-  rev: "7ffd938c",
+  rev: "2e43f97b",
   /**
    * **"When They Were Small".**
    *
@@ -1239,7 +1274,20 @@ export const FIRST_BOOK: BookTemplate = {
          * thing nobody has been able to check.
          */
         frame: TITLE_CORNER.frame,
-        font: "hand",
+        /**
+         * **Baloo 2**, chosen by the captain off `npm run cover-faces` on
+         * 19 November — `docs/cover-face.md` is the record, and the size beside
+         * this line is the measurement that came with it.
+         *
+         * It is also the face the **name** is set in, which is a bigger change
+         * than a cover's look: `lib/book/name.ts` § `facesTheNameIsSetIn`
+         * refuses a character *any* face the name lands in cannot write, so the
+         * title's face decides which names the shop accepts. Baloo 2 is the one
+         * candidate that narrows nothing — 856 codepoints against Indie
+         * Flower's, every name the shop took yesterday still printable, and
+         * Vietnamese still refused only because the verses are Special Elite.
+         */
+        font: "baloo",
         size: TITLE_CORNER.size,
         baseline: TITLE_CORNER.baseline,
         lineHeight: TITLE_CORNER.lineHeight,
