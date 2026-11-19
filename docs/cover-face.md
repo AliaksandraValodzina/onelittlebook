@@ -62,8 +62,39 @@ every replacement is better than the reference.
 writes to `.artwork/cover-faces/` — **gitignored, and deliberately**: these are
 pictures of a family's artwork and this repository is public. Every picture is
 the real cover page, with the captain's own delivered wrap under it, the real
-title string on it, at the declared 44 pt, drawn by the one renderer. Not
-specimens. The sheets are labelled and carry today's face outlined.
+title string on it, at the captain's own declared size, drawn by the one
+renderer. Not specimens. The sheets are labelled and carry today's face
+outlined.
+
+### It wrote nothing until 19 November, and the number said why
+
+Against a store where every look had a delivered cover the command produced an
+empty `full/`, an empty `look/` and no sheets at all, reporting
+`336 problem(s): art.wrongSize` — the code three hundred and thirty-six times
+and not one look, page or size named. **336 is fourteen looks by twenty-four
+interior pages.**
+
+The sheets are drawn small, and `lib/book/title-fit.ts` § `atRenderWidth` makes
+that affordable by rewriting `page.print.pixels` — which is *the book's declared
+print size*, the number `docs/look-upload-contract.md` § 2 holds the captain's
+artwork to. Asking `renderBookPagePng` for a 560 px picture therefore asked the
+print gate to hold 3600 px artwork to a 560 px declaration, and a book that
+validates perfectly at its own size became three hundred and thirty-six
+refusals.
+
+**Nothing declared was wrong and nothing declared moved.** The book declares
+3600 × 3600, `npm run artwork:upload` checks the same number, and the captain's
+pages are 3600 × 3600. The 560 was a measuring device leaking into a product
+declaration, and `lib/book/title-fit.ts` § `coverPngAt` now separates the two:
+the gate is run against the book as handed in, the width is applied after it.
+
+Two things about the shape of this, because both will recur. The **cover** page
+is measured against the printed front panel as a *floor* rather than an
+equality, so it was immune — which is exactly why a store holding covers and no
+interior pages passed, and why a worker who cannot reach the artwork store will
+never see this. And the refusal now names the look, the page and both sizes, and
+says plainly that nothing was written: `test/cover-faces.test.ts` is a
+fourteen-look fixture for both halves.
 
 ## Two measurements, because there are two questions
 

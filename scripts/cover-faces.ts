@@ -54,11 +54,12 @@ import { Resvg } from "@resvg/resvg-js";
 import { FIRST_BOOK } from "../templates/first-book";
 import { FIXTURE_BOOK_FILL } from "../fixtures/book-order";
 import { bookAsDelivered, looksWithCoverArtwork, releaseArtworkFor, releaseStoreFromEnv } from "../lib/artwork/release";
-import { renderBookPagePng } from "../lib/book/print";
+import { printProblems, problemReport } from "../lib/book/print";
 import { renderPrintSvg } from "../lib/render/raster";
 import { pageFillFor, pageTemplateFor } from "../lib/book/derive";
 import {
   atRenderWidth,
+  coverPngAt,
   coverTitleIn,
   coverTitleSlot,
   titleBoundOf,
@@ -68,6 +69,7 @@ import { checkName, nameLimit } from "../lib/book/name";
 import { FACES, isCandidate } from "../lib/render/fonts";
 import { maxCharsPerLineOf } from "../lib/template/defaults";
 import type { BookTemplate } from "../lib/book/types";
+import type { Problem } from "../lib/template/validate";
 import type { TitleFit } from "../lib/book/title-fit";
 
 const OUT = path.join(process.cwd(), ".artwork", "cover-faces");
@@ -187,7 +189,14 @@ function shortVerdict(v: Verdict): string {
 // The pictures
 // ---------------------------------------------------------------------------
 
-/** The cover, in one face, on one look, at one width. */
+/**
+ * The cover, in one face, on one look, at one width.
+ *
+ * `coverPngAt` and not `renderBookPagePng`: the gate belongs to the book's own
+ * 3600 px declaration and the *width* is how big this picture is. Asking the
+ * print path for a picture at 560 px was 336 refusals and no sheets —
+ * `lib/book/title-fit.ts` § `coverPngAt` is the whole story.
+ */
 async function coverPng(
   book: BookTemplate,
   key: string,
@@ -195,13 +204,7 @@ async function coverPng(
   name: string,
   width: number,
 ): Promise<Uint8Array> {
-  const sized = width === book.page.print.pixels.width ? book : atRenderWidth(book, width);
-  const { png } = await renderBookPagePng(coverTitleIn(sized, key), 0, {
-    ...FIXTURE_BOOK_FILL,
-    lookId,
-    name,
-  });
-  return png;
+  return coverPngAt(coverTitleIn(book, key), { ...FIXTURE_BOOK_FILL, lookId, name }, width);
 }
 
 /**
@@ -321,6 +324,110 @@ function rasteriseSheet(svg: string, width: number): Uint8Array {
 }
 
 // ---------------------------------------------------------------------------
+// The gate
+// ---------------------------------------------------------------------------
+
+/** What the gate below found, when it found anything. */
+interface Refusal {
+  /** Every distinct problem, in the order first met. */
+  problems: Problem[];
+  /** How many face-and-look combinations the print path refused. */
+  combinations: number;
+  faces: string[];
+  looks: string[];
+}
+
+/**
+ * **Whether the print path will draw these covers at all — asked once, before
+ * a single byte is written.**
+ *
+ * Every picture here is the real cover page, so a book the print path refuses
+ * is a picture of nothing. The refusal has to arrive *before* the directories
+ * and it has to *name what is wrong*, because the way this command failed on
+ * 19 November was neither: it printed one code three hundred and thirty-six
+ * times, left an empty `full/` and an empty `look/` behind, exited, and was
+ * reported as done. An error that does not say what to do is the same bug in a
+ * different costume.
+ *
+ * It asks about **exactly the books the renderer will be handed** — every
+ * candidate face against every look that has a cover, with the longest name the
+ * form accepts in the title — and it can afford to, because `printProblems` is
+ * arithmetic over the template and a hundred and fifty calls cost less than one
+ * tile.
+ *
+ * The problems are **deduplicated across those combinations**, which is the
+ * whole lesson of the 19 November failure written into the shape of the answer:
+ * `validateBook` is a statement about the book and every look's artwork at
+ * once, so a fault in the artwork is the same fault in all hundred and fifty
+ * combinations and printing it a hundred and fifty times is how the useful line
+ * gets scrolled away. The count of refused combinations is kept, because *how
+ * much of the sheet is gone* is a different fact from *what is wrong*.
+ *
+ * Note which book is asked: the **delivered** one, at its own declared 3600 px.
+ * The width the pictures are drawn at is not a declaration and is applied after
+ * the gate — `lib/book/title-fit.ts` § `coverPngAt`.
+ */
+function refusalsIn(
+  book: BookTemplate,
+  faces: string[],
+  looks: string[],
+  name: string,
+): Refusal | null {
+  const seen = new Map<string, Problem>();
+  const refusedFaces = new Set<string>();
+  const refusedLooks = new Set<string>();
+  let combinations = 0;
+  for (const face of faces) {
+    const inFace = coverTitleIn(book, face);
+    for (const lookId of looks) {
+      const problems = printProblems(inFace, { ...FIXTURE_BOOK_FILL, lookId, name });
+      if (problems.length === 0) continue;
+      combinations++;
+      refusedFaces.add(face);
+      refusedLooks.add(lookId);
+      for (const p of problems) {
+        const key = `${p.code}\u0000${p.where}\u0000${p.detail}`;
+        if (!seen.has(key)) seen.set(key, p);
+      }
+    }
+  }
+  if (combinations === 0) return null;
+  return {
+    problems: [...seen.values()],
+    combinations,
+    faces: [...refusedFaces],
+    looks: [...refusedLooks],
+  };
+}
+
+/**
+ * What a reader has to be told when there is nothing to look at.
+ *
+ * The three things the old failure left out, in order: that **nothing was
+ * written**, *which* look and page and numbers are wrong — `problemReport`
+ * carries all three, because every `say` in `lib/book/validate.ts` was written
+ * to — and what to run next.
+ */
+function reportRefusal(refusal: Refusal, out: string, total: number): void {
+  const { combinations, faces, looks, problems } = refusal;
+  console.error(
+    `\nNOTHING WAS WRITTEN. ${out} is unchanged.\n\n` +
+      `The print path refuses this book for ${combinations} of the ${total} face-and-look ` +
+      `combinations these sheets are made of: ${faces.length} face(s) ` +
+      `(${faces.map((f) => FACES[f]?.family ?? f).join(", ")}) across ${looks.length} ` +
+      `look(s) (${looks.join(", ")}). Every picture here is the real cover page, so there ` +
+      `is nothing to draw until that is fixed.\n`,
+  );
+  for (const line of problemReport(problems).split("\n")) console.error(`  ${line}`);
+  console.error(
+    "\nEach line is a code, the page it is on, and the look and both sizes it is about.\n" +
+      "What this machine actually holds:        npm run artwork -- status\n" +
+      "The contract the sizes are held to:      docs/look-upload-contract.md § 2\n" +
+      "The table is still worth having alone:   npm run cover-faces -- --table",
+  );
+}
+
+// ---------------------------------------------------------------------------
 
 async function main() {
   const out = arg("out") ?? OUT;
@@ -344,9 +451,6 @@ async function main() {
     return;
   }
   console.log(`${withCovers.length} look(s) with a delivered cover: ${withCovers.join(", ")}`);
-
-  await mkdir(path.join(out, "full"), { recursive: true });
-  await mkdir(path.join(out, "look"), { recursive: true });
 
   // -------------------------------------------------------------------------
   // The measurement, first: it is cheap, and a face that draws nothing should
@@ -405,10 +509,23 @@ async function main() {
   }
 
   if (tableOnly) {
+    await mkdir(out, { recursive: true });
     await writeFile(path.join(out, "README.md"), report(verdicts, withCovers, name, Boolean(otf)));
     console.log(`\n${path.join(out, "README.md")} has the table. No pictures: --table.`);
     return;
   }
+
+  // The gate: before the directories, so a refusal really does leave nothing
+  // behind rather than two empty folders somebody has to interpret.
+  const refusal = refusalsIn(delivered, keys, withCovers, LONGEST);
+  if (refusal) {
+    reportRefusal(refusal, out, keys.length * withCovers.length);
+    process.exitCode = 1;
+    return;
+  }
+
+  await mkdir(path.join(out, "full"), { recursive: true });
+  await mkdir(path.join(out, "look"), { recursive: true });
 
   console.log("\ncomparison sheets");
   for (const lookId of withCovers) await sheet(lookId, name, `sheet-${lookId}.png`);
